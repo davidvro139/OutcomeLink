@@ -2,6 +2,7 @@ import {
   Alert,
   Button,
   Center,
+  Divider,
   Paper,
   PasswordInput,
   Stack,
@@ -19,6 +20,11 @@ interface LoginFormValues {
   email: string;
   password: string;
 }
+
+// Seeded test account from local dev setup — see the session's earlier work
+// creating this user directly against the dev database. Dev-only: import.meta.env.DEV
+// is false in a production build, so this button (and the credentials) never ship.
+const DEMO_CREDENTIALS = { email: "ada@mwtc.edu", password: "password123" };
 
 export function LoginPage() {
   const { status, login } = useAuth();
@@ -40,11 +46,11 @@ export function LoginPage() {
     return <Navigate to={destination} replace />;
   }
 
-  async function handleSubmit(values: LoginFormValues) {
+  async function handleLogin(email: string, password: string) {
     setError(null);
     setSubmitting(true);
     try {
-      await login(values.email, values.password);
+      await login(email, password);
       navigate("/", { replace: true });
     } catch (err) {
       setError(
@@ -72,7 +78,7 @@ export function LoginPage() {
             </Alert>
           )}
 
-          <form onSubmit={form.onSubmit(handleSubmit)}>
+          <form onSubmit={form.onSubmit((values) => handleLogin(values.email, values.password))}>
             <Stack gap="md">
               <TextInput
                 type="email"
@@ -92,6 +98,21 @@ export function LoginPage() {
               </Button>
             </Stack>
           </form>
+
+          {import.meta.env.DEV && (
+            <>
+              <Divider label="Development only" labelPosition="center" />
+              <Button
+                variant="light"
+                color="grape"
+                fullWidth
+                loading={submitting}
+                onClick={() => handleLogin(DEMO_CREDENTIALS.email, DEMO_CREDENTIALS.password)}
+              >
+                Demo login
+              </Button>
+            </>
+          )}
         </Stack>
       </Paper>
     </Center>

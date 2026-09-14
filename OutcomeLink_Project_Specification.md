@@ -1,4 +1,5 @@
 # OutcomeLink
+
 ## Technical College Outcomes, Placement & Accreditation Management Platform
 
 ## 1. Product Overview
@@ -55,6 +56,7 @@ Every reported number must be traceable back to the underlying records. An admin
 ## 4. User Roles
 
 System Administrator
+
 - Configure institution settings
 - Manage users and roles
 - Manage programs
@@ -63,6 +65,7 @@ System Administrator
 - View audit logs
 
 Institutional Administrator
+
 - View institution-wide dashboards
 - View all programs and CPL calculations
 - Review accreditation reports and data-quality problems
@@ -71,18 +74,21 @@ Institutional Administrator
 - Export institutional reports
 
 Program Administrator
+
 - View assigned programs
 - Manage student outcomes and placement information
 - Review follow-up queues and program reports
 - Manage program improvement plans
 
 Career Services / Placement Staff
+
 - View students and employers across all programs
 - Manage employer relationships and verification across programs
 - Record employment and placement information
 - Coordinate follow-up efforts with program staff
 
 Instructor / Staff
+
 - View authorized students
 - Record follow-up attempts
 - Enter employment information
@@ -91,6 +97,7 @@ Instructor / Staff
 - Update assigned tasks
 
 Read-Only / Auditor
+
 - View authorized reports, supporting records, evidence, and audit history
 - Cannot modify data.
 
@@ -107,6 +114,7 @@ Programs should include program name, code, CIP code, credential type, program l
 ## 6. Student Records
 
 Identity fields:
+
 - Internal student ID
 - First name
 - Last name
@@ -115,6 +123,7 @@ Identity fields:
 - Phone
 
 Communication preferences:
+
 - Preferred contact method
 - SMS consent status and date
 - Do-not-contact flag and reason
@@ -122,6 +131,7 @@ Communication preferences:
 For development and public portfolio deployments, use synthetic student data only.
 
 Enrollment fields:
+
 - Program
 - Campus
 - Start date
@@ -172,6 +182,7 @@ Provide a task-oriented queue with Student, Program, Status, Attempts, Last Cont
 ## 13. Automated Follow-Up Rules
 
 Examples:
+
 - If no outcome exists seven days after completion -> Create follow-up task.
 - If no response after three attempts -> Escalate.
 - If student reports employment -> Create employer verification task.
@@ -244,6 +255,7 @@ When a reporting period's readiness reaches an acceptable state, administrators 
 Once a reporting period's CPL calculations and validation checks are reviewed and considered accurate, an Institutional Administrator should be able to finalize the period, moving its status from Open/Ready for Review to Finalized.
 
 Finalizing a period should:
+
 - Prevent further edits to student outcome, employment, and licensure records tied to that period through normal workflows.
 - Freeze the CPL calculation results and the rule set version used to produce them.
 - Require an explicit, permissioned "reopen" action, with a mandatory reason, to make further changes. Reopening must be recorded in the audit trail and should re-trigger validation before the period can be re-finalized.

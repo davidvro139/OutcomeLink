@@ -1,0 +1,24 @@
+export const FOLLOW_UP_METHODS = [
+  "PHONE",
+  "EMAIL",
+  "SMS",
+  "SURVEY",
+  "IN_PERSON",
+  "EMPLOYER_CONTACT",
+  "OTHER",
+] as const;
+export type FollowUpMethod = (typeof FOLLOW_UP_METHODS)[number];
+
+export const FOLLOW_UP_OUTCOMES = [
+  "NO_RESPONSE",
+  "STUDENT_CONTACTED",
+  "EMPLOYMENT_REPORTED",
+  "EMPLOYMENT_VERIFIED",
+  "SEEKING_EMPLOYMENT",
+  "CONTINUING_EDUCATION",
+  "UNAVAILABLE",
+  "INCORRECT_CONTACT_INFORMATION",
+  "FOLLOW_UP_REQUIRED",
+  "COMPLETE",
+] as const;
+export type FollowUpOutcome = (typeof FOLLOW_UP_OUTCOMES)[number];

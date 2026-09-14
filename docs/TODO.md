@@ -70,17 +70,21 @@ Working checklist toward the Phase 1 / MVP scope defined in the spec (§62), seq
 
 **Checkpoint reached:** verified end-to-end against the live database and over HTTP — created a framework/rule set/reporting period, ran nine hand-computed scenarios (covering every classification branch) through `computeReportingPeriod`, got exactly the expected numerator/denominator/percentage at both program and institution level, confirmed re-running is idempotent (no duplicate rows), then repeated a smaller version purely through the HTTP API (framework → rule set → reporting period → outcome record → compute → results → drill-down → per-student explanation) and got correct results there too. Separately verified finalize → blocked recompute/edit → submit → reopen (with and without a reason) → recompute works again, confirmed via direct SQL that every field change (including dates, post-fix) lands in `audit_log_entries`. Separately verified the validation engine against five seeded problem scenarios and got exactly the expected issue set, including a cross-period edge case and the duplicate-name detection; caught and fixed a false-positive (a 0/0 metric with no applicable students was being flagged as "below benchmark").
 
-**Follow-up (not yet done):** Duplicate Student Resolution (spec §23) is the one remaining stage-4 item — the validation engine flags likely duplicates but there's no merge workflow to resolve them yet. Also still open from before: `computeReportingPeriod` always recomputes every enrollment from scratch (no incremental/partial recomputation) — acceptable at this project's data scale, revisit if that changes.
+**Still open (low priority):** `computeReportingPeriod` always recomputes every enrollment from scratch (no incremental/partial recomputation) — acceptable at this project's data scale, revisit if that changes.
 
 ## 5. Frontend foundation
 
 - [x] Vite + React + TS scaffold, Mantine provider/theme setup — done in stage 0
-- [ ] React Router layout shell with role-based route guarding
-- [x] TanStack Query client + typed API client wrapper (reusing `shared/` types) — basic client wired in stage 0 (`src/lib/apiClient.ts`); role-aware/auth-aware version still needed once auth exists
-- [ ] Login page + silent token refresh handling
-- [ ] App shell: nav, global search (spec §54)
+- [x] React Router layout shell with role-based route guarding — `client/src/auth/RequireAuth.tsx` (redirects to `/login`, preserving the intended destination) and `RequireRole.tsx` (renders an access-denied alert; not yet exercised by a real route since no role-gated pages exist until stage 6)
+- [x] TanStack Query client + typed API client wrapper (reusing `shared/` types) — `apiClient.ts` now holds the in-memory access token (never localStorage) and attaches it automatically; `AuthProvider.tsx`/`AuthContext.ts` provide `user`/`status`/`login`/`logout` app-wide
+- [x] Login page + silent token refresh handling — `LoginPage.tsx` (Mantine form, redirects if already authenticated); `AuthProvider` attempts `POST /api/auth/refresh` on mount using the httpOnly cookie, so a page reload restores the session without forcing a fresh login
+- [x] App shell: nav, global search (spec §54) — `layout/AppLayout.tsx` (Mantine AppShell header with title, search, user menu/sign-out) + a real backend `GET /api/search` (`server/src/modules/search/`) searching Student/Employer/Program/EmployerContact within the caller's institution, wired to `components/GlobalSearch.tsx`'s debounced dropdown. No navbar yet — deliberately, since there are no feature pages to link to until stage 6
 
-**Checkpoint:** can log in through the UI and see an empty authenticated shell.
+**Checkpoint reached — verified in a real browser**, not just typechecked: started both dev servers, drove headless Chromium (Playwright) through the full user-facing flow — logged out → redirected to `/login`; logged in → landed on the dashboard showing the real user's name; app shell header shows title, search, and user menu; typed a partial name into global search → got a real grouped dropdown from the live database; signed out → back to `/login`; logged in again and reloaded the page → silent refresh kept the session instead of bouncing to login. Screenshots taken at each step.
+
+**Two real bugs the browser run caught that typecheck/lint didn't:**
+1. `@outcomelink/shared` is CommonJS (kept that way so the server's Jest setup stays simple, per `docs/TECH_STACK.md`), but Vite's dev server serves linked npm-workspace packages as native ESM without routing them through esbuild's CJS-interop pre-bundling — so importing any named export (`ROLE_LABELS`, etc.) from it threw `does not provide an export named...` at runtime, with zero indication from `tsc`. Fixed via `optimizeDeps.include: ["@outcomelink/shared"]` in `client/vite.config.ts`.
+2. The login page's email field never had `type="email"` set — cosmetically invisible (a Mantine `TextInput` looks identical either way) and harmless to the login flow itself, but it does mean no mobile "@"-keyboard and no native email format hinting. Fixed.
 
 ## 6. MVP feature screens
 

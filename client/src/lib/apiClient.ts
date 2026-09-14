@@ -12,11 +12,24 @@ export class ApiRequestError extends Error {
   }
 }
 
+// Holds the short-lived access token in memory only — never localStorage — since
+// the refresh token that actually restores a session lives in an httpOnly cookie
+// the JS layer can't (and shouldn't) touch directly. See auth/AuthProvider.tsx.
+let accessToken: string | null = null;
+
+export function setAccessToken(token: string | null): void {
+  accessToken = token;
+}
+
 /** Thin fetch wrapper matching the server's { data } / { error } envelope (spec §59). */
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    headers: {
+      "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      ...init?.headers,
+    },
     ...init,
   });
 

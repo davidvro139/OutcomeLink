@@ -14,6 +14,7 @@ import { followupsRouter } from "./modules/followups";
 import { outcomesRouter } from "./modules/outcomes";
 import { placementsRouter } from "./modules/placements";
 import { programsRouter } from "./modules/programs";
+import { searchRouter } from "./modules/search";
 import { studentsRouter } from "./modules/students";
 
 export function createApp() {
@@ -42,6 +43,7 @@ export function createApp() {
   app.use("/api/followups", followupsRouter);
   app.use("/api/evidence", evidenceRouter);
   app.use("/api/accreditation", accreditationRouter);
+  app.use("/api/search", searchRouter);
   // Further domain routers are mounted here as each module lands.
 
   app.use(notFoundHandler);

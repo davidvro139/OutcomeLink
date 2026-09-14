@@ -1,5 +1,6 @@
 import { Alert, Badge, Group, Stack, Text, Title } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "../auth/AuthContext";
 import { apiRequest } from "../lib/apiClient";
 
 interface HealthStatus {
@@ -7,6 +8,7 @@ interface HealthStatus {
 }
 
 export function DashboardPage() {
+  const { user } = useAuth();
   const { data, error, isLoading } = useQuery({
     queryKey: ["health"],
     queryFn: () => apiRequest<HealthStatus>("/health"),
@@ -15,10 +17,11 @@ export function DashboardPage() {
 
   return (
     <Stack p="xl" gap="md">
-      <Title order={1}>OutcomeLink</Title>
+      <Title order={1}>Welcome, {user?.name}</Title>
       <Text c="dimmed">
-        Scaffold checkpoint: Mantine, React Router, and TanStack Query are wired up. This card
-        reflects whether the API server is reachable.
+        Stage 5 checkpoint: authenticated shell with silent session restore, global search, and
+        role-aware routing are wired up. Feature screens (programs, students, CPL dashboard, etc.)
+        land in stage 6.
       </Text>
       <Group>
         <Text fw={500}>API status:</Text>

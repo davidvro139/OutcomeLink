@@ -1,2 +1,1 @@
-// followups module: routes, controllers, and services live here.
-export {};
+export * from "./followups.routes";

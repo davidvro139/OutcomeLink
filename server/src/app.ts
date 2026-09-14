@@ -8,6 +8,7 @@ import { runWithRequestContext } from "./lib/requestContext";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { authRouter } from "./modules/auth";
 import { programsRouter } from "./modules/programs";
+import { studentsRouter } from "./modules/students";
 
 export function createApp() {
   const app = express();
@@ -28,8 +29,8 @@ export function createApp() {
 
   app.use("/api/auth", authRouter);
   app.use("/api", programsRouter);
-  // Further domain routers are mounted here as each module lands, e.g.:
-  // app.use("/api/students", studentsRouter);
+  app.use("/api/students", studentsRouter);
+  // Further domain routers are mounted here as each module lands.
 
   app.use(notFoundHandler);
   app.use(errorHandler);

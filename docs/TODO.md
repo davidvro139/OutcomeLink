@@ -15,10 +15,10 @@ Working checklist toward the Phase 1 / MVP scope defined in the spec (§62), seq
 
 ## 1. Database & Prisma
 
-- [ ] Install Prisma, point at local MySQL instance
-- [ ] Translate `docs/DATA_MODEL.md` entities into `server/prisma/schema.prisma`, one entity group at a time (org structure → students → accreditation engine → outcomes → employers → follow-up/evidence → surveys → governance → operations)
-- [ ] First migration; confirm it applies cleanly to a fresh MySQL database
-- [ ] Seed script skeleton (empty for now — real synthetic data is step 8)
+- [x] Install Prisma, point at local MySQL instance (MySQL 8.0 running as a local Windows service; dedicated `outcomelink` DB)
+- [x] Translate `docs/DATA_MODEL.md` entities into `server/prisma/schema.prisma`, one entity group at a time (org structure → students → accreditation engine → outcomes → employers → follow-up/evidence → surveys → governance → operations) — 33 models, `prisma validate` and `prisma generate` both clean
+- [x] First migration; confirm it applies cleanly to a fresh MySQL database — applied and verified via `SHOW TABLES`. Also added a follow-up migration for the `Evidence`/`VerificationRecord` "exactly one target" CHECK constraints flagged in §13; required setting `onDelete`/`onUpdate` to `Restrict` on those relations since MySQL forbids a CHECK on a column governed by a cascading FK action (Prisma's default for optional relations)
+- [x] Seed script skeleton (empty for now — real synthetic data is step 8)
 
 ## 2. Backend foundation
 

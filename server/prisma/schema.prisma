@@ -1,0 +1,890 @@
+// OutcomeLink database schema — translated from docs/DATA_MODEL.md.
+// Field-level FK relationships only exist here where the data model doc marked
+// them "(FK -> X)"; "by"-style attribution fields (verified_by, uploaded_by,
+// performed_by, resolved_by, finalized_by, reopened_by) were deliberately left
+// as plain strings in that doc and are kept that way here for fidelity.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums (mirror shared/src vocabularies where they overlap)
+// ---------------------------------------------------------------------------
+
+enum Role {
+  SYSTEM_ADMINISTRATOR
+  INSTITUTIONAL_ADMINISTRATOR
+  PROGRAM_ADMINISTRATOR
+  CAREER_SERVICES_STAFF
+  INSTRUCTOR_STAFF
+  READ_ONLY_AUDITOR
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  GRADUATE_COMPLETER
+  NON_GRADUATE_COMPLETER
+  WITHDRAWN
+  TRANSFERRED
+  OTHER
+}
+
+enum CplMetric {
+  COMPLETION
+  PLACEMENT
+  LICENSURE
+}
+
+enum ReportingPeriodStatus {
+  OPEN
+  READY_FOR_REVIEW
+  FINALIZED
+  SUBMITTED
+  REOPENED
+}
+
+enum ValidationSeverity {
+  ERROR
+  WARNING
+  INFORMATION
+}
+
+enum FollowUpMethod {
+  PHONE
+  EMAIL
+  SMS
+  SURVEY
+  IN_PERSON
+  EMPLOYER_CONTACT
+  OTHER
+}
+
+enum FollowUpOutcome {
+  NO_RESPONSE
+  STUDENT_CONTACTED
+  EMPLOYMENT_REPORTED
+  EMPLOYMENT_VERIFIED
+  SEEKING_EMPLOYMENT
+  CONTINUING_EDUCATION
+  UNAVAILABLE
+  INCORRECT_CONTACT_INFORMATION
+  FOLLOW_UP_REQUIRED
+  COMPLETE
+}
+
+enum EvidenceType {
+  EMPLOYER_VERIFICATION
+  GRADUATE_CONFIRMATION
+  EMAIL
+  LETTER
+  SURVEY
+  EMPLOYMENT_DOCUMENTATION
+  LICENSURE_RESULT
+  SCHOOL_RECORD
+  OTHER
+}
+
+enum ImprovementPlanStatus {
+  DRAFT
+  ACTIVE
+  MONITORING
+  COMPLETED
+  CLOSED
+}
+
+enum LicensureResultStatus {
+  PASSED
+  FAILED
+  UNKNOWN
+  WAITING
+  SCHEDULED
+}
+
+enum ImportBatchStatus {
+  UPLOADED
+  MAPPED
+  VALIDATED
+  PREVIEWED
+  IMPORTED
+  FAILED
+}
+
+enum NotificationType {
+  FOLLOW_UP_DUE
+  FOLLOW_UP_OVERDUE
+  VERIFICATION_REQUIRED
+  LICENSURE_RESULT_REQUIRED
+  VALIDATION_ERROR
+  IMPROVEMENT_PLAN_TASK_DUE
+  PROGRAM_BELOW_THRESHOLD
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  MERGE
+  FINALIZE
+  REOPEN
+}
+
+enum CommunicationEventType {
+  FOLLOW_UP_ATTEMPT
+  SURVEY_SENT
+  SURVEY_RESPONSE
+  VERIFICATION_CONTACT
+  NOTIFICATION
+}
+
+// ---------------------------------------------------------------------------
+// 2. Org structure
+// ---------------------------------------------------------------------------
+
+model Institution {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  campuses              Campus[]
+  departments           Department[]
+  programs              Program[]
+  users                 User[]
+  students              Student[]
+  employers             Employer[]
+  reportingPeriods      ReportingPeriod[]
+  importMappingProfiles ImportMappingProfile[]
+
+  @@map("institutions")
+}
+
+model Campus {
+  id            Int     @id @default(autoincrement())
+  institutionId Int     @map("institution_id")
+  name          String
+  address       String? @db.Text
+  city          String?
+  state         String?
+  zip           String?
+
+  institution Institution         @relation(fields: [institutionId], references: [id])
+  programs    Program[]
+  enrollments StudentEnrollment[]
+  userAccess  UserCampusAccess[]
+
+  @@map("campuses")
+}
+
+model Department {
+  id            Int    @id @default(autoincrement())
+  institutionId Int    @map("institution_id")
+  name          String
+
+  institution Institution @relation(fields: [institutionId], references: [id])
+  programs    Program[]
+
+  @@map("departments")
+}
+
+model Program {
+  id                           Int       @id @default(autoincrement())
+  institutionId                Int       @map("institution_id")
+  campusId                     Int       @map("campus_id")
+  departmentId                 Int?      @map("department_id")
+  name                         String
+  code                         String
+  cipCode                      String?   @map("cip_code")
+  credentialType               String    @map("credential_type")
+  programLength                String?   @map("program_length")
+  clockHours                   Int?      @map("clock_hours")
+  creditHours                  Int?      @map("credit_hours")
+  licensureRequired            Boolean   @default(false) @map("licensure_required")
+  accreditationReportingStatus String?   @map("accreditation_reporting_status")
+  active                       Boolean   @default(true)
+  effectiveStartDate           DateTime? @map("effective_start_date")
+  effectiveEndDate             DateTime? @map("effective_end_date")
+
+  institution Institution @relation(fields: [institutionId], references: [id])
+  campus      Campus      @relation(fields: [campusId], references: [id])
+  department  Department? @relation(fields: [departmentId], references: [id])
+
+  cohorts               Cohort[]
+  enrollments           StudentEnrollment[]
+  licensureResults      LicensureResult[]
+  cplCalculationResults CplCalculationResult[]
+  validationIssues      ValidationIssue[]
+  improvementPlans      ImprovementPlan[]
+  userAccess            UserProgramAccess[]
+
+  @@map("programs")
+}
+
+model Cohort {
+  id        Int     @id @default(autoincrement())
+  programId Int     @map("program_id")
+  name      String
+  entryTerm String? @map("entry_term")
+  entryYear Int?    @map("entry_year")
+
+  program     Program             @relation(fields: [programId], references: [id])
+  enrollments StudentEnrollment[]
+
+  @@map("cohorts")
+}
+
+// ---------------------------------------------------------------------------
+// 3. Identity & access
+// ---------------------------------------------------------------------------
+
+model User {
+  id            Int       @id @default(autoincrement())
+  institutionId Int       @map("institution_id")
+  name          String
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  role          Role
+  active        Boolean   @default(true)
+  lastLoginAt   DateTime? @map("last_login_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  institution Institution @relation(fields: [institutionId], references: [id])
+
+  programAccess UserProgramAccess[]
+  campusAccess  UserCampusAccess[]
+
+  followUpAttempts FollowUpAttempt[]
+  improvementPlans ImprovementPlan[]
+  auditLogEntries  AuditLogEntry[]
+  notifications    Notification[]
+
+  @@map("users")
+}
+
+model UserProgramAccess {
+  id        Int @id @default(autoincrement())
+  userId    Int @map("user_id")
+  programId Int @map("program_id")
+
+  user    User    @relation(fields: [userId], references: [id])
+  program Program @relation(fields: [programId], references: [id])
+
+  @@unique([userId, programId])
+  @@map("user_program_access")
+}
+
+model UserCampusAccess {
+  id       Int @id @default(autoincrement())
+  userId   Int @map("user_id")
+  campusId Int @map("campus_id")
+
+  user   User   @relation(fields: [userId], references: [id])
+  campus Campus @relation(fields: [campusId], references: [id])
+
+  @@unique([userId, campusId])
+  @@map("user_campus_access")
+}
+
+// ---------------------------------------------------------------------------
+// 4. Students
+// ---------------------------------------------------------------------------
+
+model Student {
+  id                Int      @id @default(autoincrement())
+  institutionId     Int      @map("institution_id")
+  internalStudentId String   @map("internal_student_id")
+  firstName         String   @map("first_name")
+  lastName          String   @map("last_name")
+  preferredName     String?  @map("preferred_name")
+  email             String?
+  phone             String?
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  institution             Institution                     @relation(fields: [institutionId], references: [id])
+  communicationPreference StudentCommunicationPreference?
+  enrollments             StudentEnrollment[]
+  employmentRecords       EmploymentRecord[]
+  licensureResults        LicensureResult[]
+  followUpAttempts        FollowUpAttempt[]
+  communicationEvents     CommunicationEvent[]
+  graduateSurveys         GraduateSurvey[]
+  employerSurveys         EmployerSurvey[]
+  validationIssues        ValidationIssue[]
+
+  mergesAsSurvivor StudentMergeLog[] @relation("SurvivingStudent")
+  mergesAsMerged   StudentMergeLog[] @relation("MergedStudent")
+
+  // Per-institution identifier uniqueness. Duplicate *people* entered under
+  // different internal_student_id values are still caught by the
+  // ValidationIssue "duplicate student" check and resolved via
+  // StudentMergeLog — this only rejects literal ID collisions.
+  @@unique([institutionId, internalStudentId])
+  @@map("students")
+}
+
+model StudentCommunicationPreference {
+  id                     Int             @id @default(autoincrement())
+  studentId              Int             @unique @map("student_id")
+  preferredContactMethod FollowUpMethod? @map("preferred_contact_method")
+  smsConsentStatus       Boolean?        @map("sms_consent_status")
+  smsConsentDate         DateTime?       @map("sms_consent_date")
+  doNotContact           Boolean         @default(false) @map("do_not_contact")
+  doNotContactReason     String?         @map("do_not_contact_reason") @db.Text
+
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@map("student_communication_preferences")
+}
+
+model StudentEnrollment {
+  id                     Int              @id @default(autoincrement())
+  studentId              Int              @map("student_id")
+  programId              Int              @map("program_id")
+  campusId               Int              @map("campus_id")
+  cohortId               Int?             @map("cohort_id")
+  startDate              DateTime         @map("start_date")
+  expectedCompletionDate DateTime?        @map("expected_completion_date")
+  actualCompletionDate   DateTime?        @map("actual_completion_date")
+  enrollmentStatus       EnrollmentStatus @map("enrollment_status")
+  credentialEarned       String?          @map("credential_earned")
+  exitReason             String?          @map("exit_reason")
+
+  student Student @relation(fields: [studentId], references: [id])
+  program Program @relation(fields: [programId], references: [id])
+  campus  Campus  @relation(fields: [campusId], references: [id])
+  cohort  Cohort? @relation(fields: [cohortId], references: [id])
+
+  outcomeRecords  StudentOutcomeRecord[]
+  classifications StudentClassification[]
+
+  @@map("student_enrollments")
+}
+
+// ---------------------------------------------------------------------------
+// 5. Accreditation engine
+// ---------------------------------------------------------------------------
+
+model AccreditationFramework {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
+  description String? @db.Text
+
+  ruleSets RuleSet[]
+
+  @@map("accreditation_frameworks")
+}
+
+model RuleSet {
+  id                          Int       @id @default(autoincrement())
+  frameworkId                 Int       @map("framework_id")
+  versionLabel                String    @map("version_label")
+  effectiveStartDate          DateTime  @map("effective_start_date")
+  effectiveEndDate            DateTime? @map("effective_end_date")
+  // Deliberately unresolved until official COE documentation is reviewed —
+  // see docs/DATA_MODEL.md §13 and spec §67. Do not design this shape from
+  // assumptions.
+  ruleDefinitionSchemaVersion String?   @map("rule_definition_schema_version")
+  ruleDefinition              Json      @map("rule_definition")
+
+  framework AccreditationFramework @relation(fields: [frameworkId], references: [id])
+
+  reportingPeriods          ReportingPeriod[]
+  classificationsDetermined StudentClassification[]
+
+  @@unique([frameworkId, versionLabel])
+  @@map("rule_sets")
+}
+
+model ReportingPeriod {
+  id                     Int                   @id @default(autoincrement())
+  institutionId          Int                   @map("institution_id")
+  ruleSetId              Int                   @map("rule_set_id")
+  label                  String
+  startDate              DateTime              @map("start_date")
+  endDate                DateTime              @map("end_date")
+  cohortWindowDefinition Json?                 @map("cohort_window_definition")
+  status                 ReportingPeriodStatus @default(OPEN)
+  finalizedAt            DateTime?             @map("finalized_at")
+  finalizedBy            String?               @map("finalized_by")
+  reopenedAt             DateTime?             @map("reopened_at")
+  reopenedBy             String?               @map("reopened_by")
+  reopenReason           String?               @map("reopen_reason") @db.Text
+
+  institution Institution @relation(fields: [institutionId], references: [id])
+  ruleSet     RuleSet     @relation(fields: [ruleSetId], references: [id])
+
+  studentClassifications StudentClassification[]
+  cplCalculationResults  CplCalculationResult[]
+  validationIssues       ValidationIssue[]
+  outcomeRecords         StudentOutcomeRecord[]
+  improvementPlans       ImprovementPlan[]
+
+  @@unique([institutionId, label])
+  @@map("reporting_periods")
+}
+
+model StudentClassification {
+  id                    Int       @id @default(autoincrement())
+  studentEnrollmentId   Int       @map("student_enrollment_id")
+  reportingPeriodId     Int       @map("reporting_period_id")
+  // A student is classified separately per metric — see docs/DATA_MODEL.md §13.
+  metric                CplMetric
+  classificationCode    String    @map("classification_code")
+  determinedByRuleSetId Int       @map("determined_by_rule_set_id")
+  computedAt            DateTime  @default(now()) @map("computed_at")
+
+  studentEnrollment   StudentEnrollment @relation(fields: [studentEnrollmentId], references: [id])
+  reportingPeriod     ReportingPeriod   @relation(fields: [reportingPeriodId], references: [id])
+  determinedByRuleSet RuleSet           @relation(fields: [determinedByRuleSetId], references: [id])
+
+  explanation CplCalculationExplanation?
+
+  @@unique([studentEnrollmentId, reportingPeriodId, metric])
+  @@map("student_classifications")
+}
+
+model CplCalculationResult {
+  id                Int       @id @default(autoincrement())
+  programId         Int?      @map("program_id")
+  reportingPeriodId Int       @map("reporting_period_id")
+  metric            CplMetric
+  numerator         Int
+  denominator       Int
+  percentage        Decimal   @db.Decimal(5, 2)
+  computedAt        DateTime  @default(now()) @map("computed_at")
+
+  program         Program?        @relation(fields: [programId], references: [id])
+  reportingPeriod ReportingPeriod @relation(fields: [reportingPeriodId], references: [id])
+
+  @@unique([programId, reportingPeriodId, metric])
+  @@map("cpl_calculation_results")
+}
+
+model CplCalculationExplanation {
+  id                      Int     @id @default(autoincrement())
+  studentClassificationId Int     @unique @map("student_classification_id")
+  countsInNumerator       Boolean @map("counts_in_numerator")
+  countsInDenominator     Boolean @map("counts_in_denominator")
+  reasonText              String  @map("reason_text") @db.Text
+
+  studentClassification StudentClassification @relation(fields: [studentClassificationId], references: [id])
+
+  @@map("cpl_calculation_explanations")
+}
+
+model ValidationIssue {
+  id                Int                @id @default(autoincrement())
+  reportingPeriodId Int                @map("reporting_period_id")
+  studentId         Int?               @map("student_id")
+  programId         Int?               @map("program_id")
+  issueType         String             @map("issue_type")
+  severity          ValidationSeverity
+  detectedAt        DateTime           @default(now()) @map("detected_at")
+  resolvedAt        DateTime?          @map("resolved_at")
+  resolvedBy        String?            @map("resolved_by")
+
+  reportingPeriod ReportingPeriod @relation(fields: [reportingPeriodId], references: [id])
+  student         Student?        @relation(fields: [studentId], references: [id])
+  program         Program?        @relation(fields: [programId], references: [id])
+
+  @@map("validation_issues")
+}
+
+// ---------------------------------------------------------------------------
+// 6. Outcomes
+// ---------------------------------------------------------------------------
+
+model StudentOutcomeRecord {
+  id                              Int       @id @default(autoincrement())
+  studentEnrollmentId             Int       @map("student_enrollment_id")
+  reportingPeriodId               Int       @map("reporting_period_id")
+  completionClassification        String?   @map("completion_classification")
+  employmentStatus                String?   @map("employment_status")
+  employerId                      Int?      @map("employer_id")
+  jobTitle                        String?   @map("job_title")
+  employmentStartDate             DateTime? @map("employment_start_date")
+  relatedToTraining               Boolean?  @map("related_to_training")
+  relatedToTrainingJustification  String?   @map("related_to_training_justification") @db.Text
+  continuingEducationStatus       String?   @map("continuing_education_status")
+  militaryStatus                  String?   @map("military_status")
+  availabilityForEmploymentStatus String?   @map("availability_for_employment_status")
+  licensureRequired               Boolean   @default(false) @map("licensure_required")
+  verificationStatus              String?   @map("verification_status")
+  verificationMethod              String?   @map("verification_method")
+  verifiedBy                      String?   @map("verified_by")
+  verificationDate                DateTime? @map("verification_date")
+  notes                           String?   @db.Text
+
+  studentEnrollment StudentEnrollment @relation(fields: [studentEnrollmentId], references: [id])
+  reportingPeriod   ReportingPeriod   @relation(fields: [reportingPeriodId], references: [id])
+  employer          Employer?         @relation(fields: [employerId], references: [id])
+
+  evidence            Evidence[]
+  verificationRecords VerificationRecord[]
+
+  @@map("student_outcome_records")
+}
+
+model EmploymentRecord {
+  id                              Int       @id @default(autoincrement())
+  studentId                       Int       @map("student_id")
+  employerId                      Int       @map("employer_id")
+  jobTitle                        String    @map("job_title")
+  startDate                       DateTime  @map("start_date")
+  endDate                         DateTime? @map("end_date")
+  fullTime                        Boolean   @map("full_time")
+  relatedToTraining               Boolean   @map("related_to_training")
+  relationshipDeterminationMethod String?   @map("relationship_determination_method")
+  salaryOrWage                    Decimal?  @map("salary_or_wage") @db.Decimal(10, 2)
+  employmentStatus                String    @map("employment_status")
+  verificationStatus              String?   @map("verification_status")
+  verificationDate                DateTime? @map("verification_date")
+  verificationSource              String?   @map("verification_source")
+  notes                           String?   @db.Text
+
+  student  Student  @relation(fields: [studentId], references: [id])
+  employer Employer @relation(fields: [employerId], references: [id])
+
+  evidence            Evidence[]
+  verificationRecords VerificationRecord[]
+
+  @@map("employment_records")
+}
+
+model LicensureResult {
+  id            Int                   @id @default(autoincrement())
+  studentId     Int                   @map("student_id")
+  programId     Int                   @map("program_id")
+  examName      String                @map("exam_name")
+  scheduledDate DateTime?             @map("scheduled_date")
+  examDate      DateTime?             @map("exam_date")
+  result        LicensureResultStatus
+  attemptNumber Int                   @default(1) @map("attempt_number")
+
+  student Student @relation(fields: [studentId], references: [id])
+  program Program @relation(fields: [programId], references: [id])
+
+  evidence Evidence[]
+
+  @@map("licensure_results")
+}
+
+// ---------------------------------------------------------------------------
+// 7. Employers
+// ---------------------------------------------------------------------------
+
+model Employer {
+  id            Int     @id @default(autoincrement())
+  institutionId Int     @map("institution_id")
+  name          String
+  industry      String?
+  naicsCode     String? @map("naics_code")
+  address       String? @db.Text
+  city          String?
+  state         String?
+  zip           String?
+  website       String?
+  notes         String? @db.Text
+  active        Boolean @default(true)
+
+  institution Institution @relation(fields: [institutionId], references: [id])
+
+  contacts          EmployerContact[]
+  outcomeRecords    StudentOutcomeRecord[]
+  employmentRecords EmploymentRecord[]
+  employerSurveys   EmployerSurvey[]
+
+  @@map("employers")
+}
+
+model EmployerContact {
+  id                    Int     @id @default(autoincrement())
+  employerId            Int     @map("employer_id")
+  name                  String
+  title                 String?
+  phone                 String?
+  email                 String?
+  isPrimaryContact      Boolean @default(false) @map("is_primary_contact")
+  isVerificationContact Boolean @default(false) @map("is_verification_contact")
+
+  employer Employer @relation(fields: [employerId], references: [id])
+
+  @@map("employer_contacts")
+}
+
+// ---------------------------------------------------------------------------
+// 8. Follow-up, verification, evidence
+// ---------------------------------------------------------------------------
+
+model FollowUpAttempt {
+  id               Int             @id @default(autoincrement())
+  studentId        Int             @map("student_id")
+  staffUserId      Int             @map("staff_user_id")
+  attemptedAt      DateTime        @map("attempted_at")
+  method           FollowUpMethod
+  outcome          FollowUpOutcome
+  notes            String?         @db.Text
+  nextFollowUpDate DateTime?       @map("next_follow_up_date")
+
+  student   Student @relation(fields: [studentId], references: [id])
+  staffUser User    @relation(fields: [staffUserId], references: [id])
+
+  @@map("follow_up_attempts")
+}
+
+/// Exactly one of outcomeRecordId / employmentRecordId must be set. Real
+/// nullable FKs were chosen over a generic (entity_type, entity_id) pair to
+/// preserve referential integrity — see docs/DATA_MODEL.md §13. Prisma's
+/// schema language doesn't yet express a cross-column CHECK for MySQL, so
+/// that constraint is added via a manual migration SQL edit (tracked in
+/// docs/TODO.md) rather than enforced here.
+model VerificationRecord {
+  id                 Int       @id @default(autoincrement())
+  outcomeRecordId    Int?      @map("outcome_record_id")
+  employmentRecordId Int?      @map("employment_record_id")
+  verificationMethod String?   @map("verification_method")
+  verifiedBy         String?   @map("verified_by")
+  verificationDate   DateTime? @map("verification_date")
+  verificationStatus String?   @map("verification_status")
+
+  outcomeRecord    StudentOutcomeRecord? @relation(fields: [outcomeRecordId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  employmentRecord EmploymentRecord?     @relation(fields: [employmentRecordId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@map("verification_records")
+}
+
+/// Exactly one target FK must be set — see VerificationRecord's note above;
+/// the same manual-migration CHECK-constraint follow-up applies here.
+model Evidence {
+  id                 Int          @id @default(autoincrement())
+  outcomeRecordId    Int?         @map("outcome_record_id")
+  employmentRecordId Int?         @map("employment_record_id")
+  licensureResultId  Int?         @map("licensure_result_id")
+  evidenceType       EvidenceType @map("evidence_type")
+  fileReference      String       @map("file_reference")
+  description        String?      @db.Text
+  uploadedBy         String       @map("uploaded_by")
+  uploadedAt         DateTime     @default(now()) @map("uploaded_at")
+  verificationStatus String?      @map("verification_status")
+
+  outcomeRecord    StudentOutcomeRecord? @relation(fields: [outcomeRecordId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  employmentRecord EmploymentRecord?     @relation(fields: [employmentRecordId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  licensureResult  LicensureResult?      @relation(fields: [licensureResultId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  improvementPlanUpdates ImprovementPlanUpdate[]
+
+  @@map("evidence")
+}
+
+model CommunicationEvent {
+  id          Int                    @id @default(autoincrement())
+  studentId   Int                    @map("student_id")
+  eventType   CommunicationEventType @map("event_type")
+  sourceId    Int                    @map("source_id")
+  occurredAt  DateTime               @map("occurred_at")
+  summaryText String                 @map("summary_text") @db.Text
+
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@map("communication_events")
+}
+
+// ---------------------------------------------------------------------------
+// 9. Surveys
+// ---------------------------------------------------------------------------
+
+model GraduateSurvey {
+  id        Int      @id @default(autoincrement())
+  studentId Int      @map("student_id")
+  sentAt    DateTime @map("sent_at")
+  channel   String?
+
+  student  Student                 @relation(fields: [studentId], references: [id])
+  response GraduateSurveyResponse?
+
+  @@map("graduate_surveys")
+}
+
+model GraduateSurveyResponse {
+  id                        Int      @id @default(autoincrement())
+  surveyId                  Int      @unique @map("survey_id")
+  employmentStatus          String?  @map("employment_status")
+  employer                  String?
+  jobTitle                  String?  @map("job_title")
+  relatedToTrainingResponse String?  @map("related_to_training_response")
+  continuingEducation       String?  @map("continuing_education")
+  satisfactionRating        Int?     @map("satisfaction_rating")
+  skillsPreparednessRating  Int?     @map("skills_preparedness_rating")
+  comments                  String?  @db.Text
+  submittedAt               DateTime @map("submitted_at")
+
+  survey GraduateSurvey @relation(fields: [surveyId], references: [id])
+
+  @@map("graduate_survey_responses")
+}
+
+model EmployerSurvey {
+  id         Int      @id @default(autoincrement())
+  employerId Int      @map("employer_id")
+  studentId  Int      @map("student_id")
+  sentAt     DateTime @map("sent_at")
+
+  employer Employer                @relation(fields: [employerId], references: [id])
+  student  Student                 @relation(fields: [studentId], references: [id])
+  response EmployerSurveyResponse?
+
+  @@map("employer_surveys")
+}
+
+model EmployerSurveyResponse {
+  id                          Int      @id @default(autoincrement())
+  surveyId                    Int      @unique @map("survey_id")
+  employmentVerification      String?  @map("employment_verification")
+  technicalPreparednessRating Int?     @map("technical_preparedness_rating")
+  communicationRating         Int?     @map("communication_rating")
+  problemSolvingRating        Int?     @map("problem_solving_rating")
+  professionalismRating       Int?     @map("professionalism_rating")
+  overallSatisfactionRating   Int?     @map("overall_satisfaction_rating")
+  skillsGapNotes              String?  @map("skills_gap_notes") @db.Text
+  likelihoodToHireAgainRating Int?     @map("likelihood_to_hire_again_rating")
+  comments                    String?  @db.Text
+  submittedAt                 DateTime @map("submitted_at")
+
+  survey EmployerSurvey @relation(fields: [surveyId], references: [id])
+
+  @@map("employer_survey_responses")
+}
+
+// ---------------------------------------------------------------------------
+// 10. Improvement plans & governance
+// ---------------------------------------------------------------------------
+
+model ImprovementPlan {
+  id                 Int                   @id @default(autoincrement())
+  programId          Int                   @map("program_id")
+  metric             CplMetric
+  reportingPeriodId  Int                   @map("reporting_period_id")
+  currentResult      Decimal?              @map("current_result") @db.Decimal(5, 2)
+  target             Decimal?              @db.Decimal(5, 2)
+  problemDescription String?               @map("problem_description") @db.Text
+  rootCause          String?               @map("root_cause") @db.Text
+  responsibleUserId  Int                   @map("responsible_user_id")
+  dueDate            DateTime?             @map("due_date")
+  status             ImprovementPlanStatus @default(DRAFT)
+
+  program         Program         @relation(fields: [programId], references: [id])
+  reportingPeriod ReportingPeriod @relation(fields: [reportingPeriodId], references: [id])
+  responsibleUser User            @relation(fields: [responsibleUserId], references: [id])
+
+  updates ImprovementPlanUpdate[]
+
+  @@map("improvement_plans")
+}
+
+model ImprovementPlanUpdate {
+  id                   Int      @id @default(autoincrement())
+  improvementPlanId    Int      @map("improvement_plan_id")
+  updateText           String   @map("update_text") @db.Text
+  correctiveAction     String?  @map("corrective_action") @db.Text
+  supportingEvidenceId Int?     @map("supporting_evidence_id")
+  createdBy            String   @map("created_by")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  improvementPlan    ImprovementPlan @relation(fields: [improvementPlanId], references: [id])
+  supportingEvidence Evidence?       @relation(fields: [supportingEvidenceId], references: [id])
+
+  @@map("improvement_plan_updates")
+}
+
+model AuditLogEntry {
+  id            Int         @id @default(autoincrement())
+  entityType    String      @map("entity_type")
+  entityId      Int         @map("entity_id")
+  action        AuditAction
+  fieldChanged  String?     @map("field_changed")
+  previousValue String?     @map("previous_value") @db.Text
+  newValue      String?     @map("new_value") @db.Text
+  userId        Int         @map("user_id")
+  occurredAt    DateTime    @default(now()) @map("occurred_at")
+  reason        String?     @db.Text
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@map("audit_log_entries")
+}
+
+model StudentMergeLog {
+  id                 Int      @id @default(autoincrement())
+  survivingStudentId Int      @map("surviving_student_id")
+  mergedStudentId    Int      @map("merged_student_id")
+  performedBy        String   @map("performed_by")
+  performedAt        DateTime @default(now()) @map("performed_at")
+  reason             String   @db.Text
+
+  survivingStudent Student @relation("SurvivingStudent", fields: [survivingStudentId], references: [id])
+  mergedStudent    Student @relation("MergedStudent", fields: [mergedStudentId], references: [id])
+
+  @@map("student_merge_logs")
+}
+
+// ---------------------------------------------------------------------------
+// 11. Operations
+// ---------------------------------------------------------------------------
+
+model ImportBatch {
+  id               Int               @id @default(autoincrement())
+  sourceSystem     String            @map("source_system")
+  uploadedBy       String            @map("uploaded_by")
+  uploadedAt       DateTime          @default(now()) @map("uploaded_at")
+  mappingProfileId Int?              @map("mapping_profile_id")
+  status           ImportBatchStatus @default(UPLOADED)
+
+  mappingProfile ImportMappingProfile? @relation(fields: [mappingProfileId], references: [id])
+  rowErrors      ImportRowError[]
+
+  @@map("import_batches")
+}
+
+model ImportMappingProfile {
+  id               Int    @id @default(autoincrement())
+  institutionId    Int    @map("institution_id")
+  sourceSystemName String @map("source_system_name")
+  columnMapping    Json   @map("column_mapping")
+
+  institution   Institution   @relation(fields: [institutionId], references: [id])
+  importBatches ImportBatch[]
+
+  @@unique([institutionId, sourceSystemName])
+  @@map("import_mapping_profiles")
+}
+
+model ImportRowError {
+  id            Int    @id @default(autoincrement())
+  importBatchId Int    @map("import_batch_id")
+  rowNumber     Int    @map("row_number")
+  errorMessage  String @map("error_message") @db.Text
+  rawRowData    Json   @map("raw_row_data")
+
+  importBatch ImportBatch @relation(fields: [importBatchId], references: [id])
+
+  @@map("import_row_errors")
+}
+
+model Notification {
+  id                  Int              @id @default(autoincrement())
+  userId              Int              @map("user_id")
+  type                NotificationType
+  referenceEntityType String?          @map("reference_entity_type")
+  referenceEntityId   Int?             @map("reference_entity_id")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  readAt              DateTime?        @map("read_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}

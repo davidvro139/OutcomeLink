@@ -9,7 +9,11 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "jest",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:seed": "tsx prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@outcomelink/shared": "*",

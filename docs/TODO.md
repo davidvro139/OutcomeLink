@@ -54,8 +54,8 @@ Working checklist toward the Phase 1 / MVP scope defined in the spec (§62), seq
 
 ## 4. Accreditation engine (do not skip the reading)
 
-- [ ] **Obtain and read official COE CPL documentation for the target reporting year before writing any rule logic** (spec §67 — non-negotiable gate for this section)
-- [ ] Build the documented rule matrix: COE definition → classification → numerator behavior → denominator behavior → exclusion behavior → validation rules → automated tests
+- [x] **Obtain and read official COE CPL documentation for the target reporting year before writing any rule logic** (spec §67) — read the current (Revised October 2025) Annual Report Help Manual plus the 2024 edition for worksheet detail not extractable as text in the current PDF; both cited in `docs/COE_RULE_MATRIX.md`. The Handbook of Accreditation itself is still unread — flagged as an open question there, to revisit before the Validation Engine/Improvement Plans work
+- [x] Build the documented rule matrix: COE definition → classification → numerator behavior → denominator behavior → exclusion behavior → validation rules → automated tests — `docs/COE_RULE_MATRIX.md`. Caught and corrected a wrong guess already sitting in `docs/DATA_MODEL.md` §13 (continuing education is actually *related placement*, i.e. counts in the Placement numerator — not a Placement exclusion as an earlier draft assumed)
 - [ ] AccreditationFramework / RuleSet / ReportingPeriod CRUD (admin configuration)
 - [ ] Classifier interface + COE-2026 implementation, driven by the rule matrix — one classification per (student enrollment, reporting period, metric) per `docs/DATA_MODEL.md`
 - [ ] Calculator interface for Completion / Placement / Licensure + unit tests against the rule matrix's worked examples

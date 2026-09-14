@@ -138,7 +138,7 @@ A student may have more than one `StudentEnrollment` over time (re-enrollment in
 - id (PK)
 - student_enrollment_id (FK)
 - reporting_period_id (FK)
-- metric (Completion | Placement | Licensure) — a student is classified separately per metric, since COE eligibility/exclusion rules differ by metric (e.g., a student in continuing education may be excluded from the Placement denominator but still counted for Completion)
+- metric (Completion | Placement | Licensure) — a student is classified separately per metric, since COE eligibility/exclusion rules differ by metric (e.g., per docs/COE_RULE_MATRIX.md §5, a graduate awaiting licensure results is excluded from the Placement denominator entirely while still counting toward Completion)
 - classification_code (rule-set-controlled value, e.g., Graduate Completer / Non-Completer / Exclusion category — meaning is metric-specific)
 - determined_by_rule_set_id (FK) — should match the reporting period's rule set, but stored explicitly for traceability if a period is reopened under a later rule set
 - computed_at
@@ -401,7 +401,7 @@ erDiagram
 
 3. **`StudentClassification` granularity: one row per (student enrollment, reporting period, metric).**
    Decision: classification is now scoped per metric (Completion / Placement / Licensure), not one classification per student per period. Reflected above with an added `metric` column, a uniqueness constraint, and `CplCalculationExplanation` simplified to a 1:1 relationship with `StudentClassification` (metric no longer duplicated there).
-   Rationale: COE-style rules routinely include/exclude a student differently per metric — e.g., a student pursuing continuing education is commonly excluded from the Placement denominator while still counting toward Completion. Modeling one classification per student per period would force artificial multi-valued fields or lossy conflation of independent eligibility decisions. This is the one place where getting the granularity wrong would be expensive to unwind later, since it's the join point for every drill-down (§20-21).
+   Rationale: COE rules genuinely do include/exclude a student differently per metric — confirmed against the actual COE Annual Report Help Manual in `docs/COE_RULE_MATRIX.md` §5: a graduate awaiting licensure exam results is excluded from the Placement denominator entirely (not merely reclassified) while still counting toward Completion, and continuing education is actually a form of *related placement* (it counts in the Placement numerator, not an exclusion) — the opposite of what an earlier, pre-research draft of this rationale guessed. Modeling one classification per student per period would force artificial multi-valued fields or lossy conflation of independent eligibility decisions. This is the one place where getting the granularity wrong would be expensive to unwind later, since it's the join point for every drill-down (§20-21).
 
 4. **`Cohort` is descriptive only; it does not drive reporting-period cohort-window logic.**
    Decision: `Cohort` (entry term/year grouping) and `ReportingPeriod.cohort_window_definition` are independent. A student's assignment to a reporting period is derived purely from date fields evaluated against the rule set's window definition.

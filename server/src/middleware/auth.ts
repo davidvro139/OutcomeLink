@@ -39,7 +39,7 @@ const INSTITUTION_WIDE_ROLES: Role[] = ["SYSTEM_ADMINISTRATOR", "INSTITUTIONAL_A
 
 /** Program-scoped roles must hold explicit UserProgramAccess for the program in the route params. */
 export function requireProgramAccess(paramName = "programId") {
-  return asyncHandler(async (req, _res, next) => {
+  return asyncHandler<Record<string, string>>(async (req, _res, next) => {
     if (!req.user) throw ApiError.unauthorized();
     if (INSTITUTION_WIDE_ROLES.includes(req.user.role)) return next();
 
@@ -56,7 +56,7 @@ export function requireProgramAccess(paramName = "programId") {
 
 /** Campus-scoped roles must hold explicit UserCampusAccess for the campus in the route params. */
 export function requireCampusAccess(paramName = "campusId") {
-  return asyncHandler(async (req, _res, next) => {
+  return asyncHandler<Record<string, string>>(async (req, _res, next) => {
     if (!req.user) throw ApiError.unauthorized();
     if (INSTITUTION_WIDE_ROLES.includes(req.user.role)) return next();
 

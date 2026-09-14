@@ -8,6 +8,7 @@ import * as results from "./results";
 import * as ruleSets from "./rules/ruleSets";
 
 const SYSTEM_ADMIN = "SYSTEM_ADMINISTRATOR" as const;
+const CAN_FINALIZE = [SYSTEM_ADMIN, "INSTITUTIONAL_ADMINISTRATOR"] as const;
 
 export const accreditationRouter = Router();
 
@@ -41,6 +42,26 @@ accreditationRouter.post(
   requireRole(SYSTEM_ADMIN),
   validate(reportingPeriods.createReportingPeriodSchema),
   asyncHandler(reportingPeriods.create),
+);
+
+accreditationRouter.post(
+  "/reporting-periods/:id/finalize",
+  requireAuth,
+  requireRole(...CAN_FINALIZE),
+  asyncHandler(reportingPeriods.finalize),
+);
+accreditationRouter.post(
+  "/reporting-periods/:id/submit",
+  requireAuth,
+  requireRole(...CAN_FINALIZE),
+  asyncHandler(reportingPeriods.submit),
+);
+accreditationRouter.post(
+  "/reporting-periods/:id/reopen",
+  requireAuth,
+  requireRole(...CAN_FINALIZE),
+  validate(reportingPeriods.reopenReportingPeriodSchema),
+  asyncHandler(reportingPeriods.reopen),
 );
 
 accreditationRouter.post(

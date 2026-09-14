@@ -102,17 +102,25 @@ export const prisma = rawPrisma.$extends({
           if (before && where?.id) {
             const data = (args as { data?: Record<string, unknown> }).data ?? {};
             for (const [field, newValue] of Object.entries(data)) {
-              if (typeof newValue === "object" && newValue !== null) continue; // skip nested relation writes
-              const previousValue = before[field];
-              if (previousValue !== newValue) {
+              // Skip nested relation writes (e.g. { connect: { id } }), but Date is a
+              // real scalar value here, not a relation payload — typeof would otherwise
+              // silently drop every date-field change from the audit log.
+              if (typeof newValue === "object" && newValue !== null && !(newValue instanceof Date))
+                continue;
+              // Compare the stringified forms, not the raw values: two distinct Date
+              // instances for the same instant are never === by reference, which would
+              // otherwise log a "change" on every no-op resubmission of the same date.
+              const previousValue = stringifyForAudit(before[field]);
+              const nextValue = stringifyForAudit(newValue);
+              if (previousValue !== nextValue) {
                 await writeAuditEntry({
                   model,
                   entityId: where.id,
                   action: AuditAction.UPDATE,
                   userId,
                   fieldChanged: field,
-                  previousValue: stringifyForAudit(previousValue),
-                  newValue: stringifyForAudit(newValue),
+                  previousValue,
+                  newValue: nextValue,
                 });
               }
             }

@@ -46,3 +46,87 @@ export async function create(
   });
   sendData(res, { reportingPeriod }, 201);
 }
+
+async function findOwnedPeriod(institutionId: number, id: number) {
+  const period = await prisma.reportingPeriod.findFirst({ where: { id, institutionId } });
+  if (!period) throw ApiError.notFound("Reporting period not found");
+  return period;
+}
+
+async function actingUserName(userId: number): Promise<string> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+  return user?.name ?? String(userId);
+}
+
+/**
+ * Finalize/reopen/submit — spec §25. Finalizing freezes the period against
+ * further recompute (results.ts's compute() checks this) and outcome-record
+ * edits (outcomes.ts checks this); reopening requires a reason and is picked
+ * up automatically by the audit-log Prisma extension as an UPDATE on every
+ * changed field (status/reopenedAt/reopenedBy/reopenReason), satisfying
+ * "reopening must be recorded in the audit trail" without extra code.
+ */
+export async function finalize(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  const period = await findOwnedPeriod(req.user!.institutionId, id);
+
+  if (!["OPEN", "READY_FOR_REVIEW", "REOPENED"].includes(period.status)) {
+    throw ApiError.conflict(`Cannot finalize a reporting period with status ${period.status}`);
+  }
+
+  const finalizedBy = await actingUserName(req.user!.sub);
+  const reportingPeriod = await prisma.reportingPeriod.update({
+    where: { id },
+    data: { status: "FINALIZED", finalizedAt: new Date(), finalizedBy },
+  });
+  sendData(res, { reportingPeriod });
+}
+
+export async function submit(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  const period = await findOwnedPeriod(req.user!.institutionId, id);
+
+  if (period.status !== "FINALIZED") {
+    throw ApiError.conflict("Only a Finalized reporting period can be marked Submitted");
+  }
+
+  const reportingPeriod = await prisma.reportingPeriod.update({
+    where: { id },
+    data: { status: "SUBMITTED" },
+  });
+  sendData(res, { reportingPeriod });
+}
+
+export const reopenReportingPeriodSchema = z.object({
+  reason: z.string().trim().min(1).max(2000),
+});
+type ReopenReportingPeriodInput = z.infer<typeof reopenReportingPeriodSchema>;
+
+export async function reopen(
+  req: Request<{ id: string }, unknown, ReopenReportingPeriodInput>,
+  res: Response,
+) {
+  const id = Number(req.params.id);
+  const period = await findOwnedPeriod(req.user!.institutionId, id);
+
+  if (period.status !== "FINALIZED" && period.status !== "SUBMITTED") {
+    throw ApiError.conflict(`Cannot reopen a reporting period with status ${period.status}`);
+  }
+
+  const reopenedBy = await actingUserName(req.user!.sub);
+  const reportingPeriod = await prisma.reportingPeriod.update({
+    where: { id },
+    data: { status: "REOPENED", reopenedAt: new Date(), reopenedBy, reopenReason: req.body.reason },
+  });
+  sendData(res, { reportingPeriod });
+}
+
+/** Used by outcomes.ts and results.ts to refuse edits/recompute against a locked period. */
+export async function assertPeriodIsEditable(reportingPeriodId: number) {
+  const period = await prisma.reportingPeriod.findUnique({ where: { id: reportingPeriodId } });
+  if (period && (period.status === "FINALIZED" || period.status === "SUBMITTED")) {
+    throw ApiError.conflict(
+      `Reporting period "${period.label}" is ${period.status.toLowerCase()} and must be reopened before it can be changed`,
+    );
+  }
+}

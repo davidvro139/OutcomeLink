@@ -9,6 +9,7 @@ import { z } from "zod";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { prisma } from "../../lib/prisma";
+import { assertPeriodIsEditable } from "../accreditation/reportingPeriods";
 
 /**
  * `completionClassification` here is the institution's own descriptive note —
@@ -81,6 +82,7 @@ export async function create(
 
   const reportingPeriodId = Number(req.body.reportingPeriodId);
   await findOwnedReportingPeriod(institutionId, reportingPeriodId);
+  await assertPeriodIsEditable(reportingPeriodId);
 
   const existing = await prisma.studentOutcomeRecord.findFirst({
     where: { studentEnrollmentId: enrollmentId, reportingPeriodId },
@@ -120,6 +122,7 @@ export async function update(
     where: { id, studentEnrollmentId: enrollmentId },
   });
   if (!existing) throw ApiError.notFound("Outcome record not found");
+  await assertPeriodIsEditable(existing.reportingPeriodId);
 
   const outcomeRecord = await prisma.studentOutcomeRecord.update({ where: { id }, data: req.body });
   sendData(res, { outcomeRecord });

@@ -5,6 +5,7 @@ import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { prisma } from "../../lib/prisma";
 import { computeReportingPeriod } from "./calculators/cplCalculator";
+import { assertPeriodIsEditable } from "./reportingPeriods";
 
 async function findOwnedPeriod(institutionId: number, reportingPeriodId: number) {
   const period = await prisma.reportingPeriod.findFirst({
@@ -17,6 +18,7 @@ async function findOwnedPeriod(institutionId: number, reportingPeriodId: number)
 export async function compute(req: Request, res: Response) {
   const reportingPeriodId = Number(req.params.id);
   await findOwnedPeriod(req.user!.institutionId, reportingPeriodId);
+  await assertPeriodIsEditable(reportingPeriodId);
   await computeReportingPeriod(reportingPeriodId);
   sendData(res, { computed: true });
 }

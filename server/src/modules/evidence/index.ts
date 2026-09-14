@@ -1,2 +1,1 @@
-// evidence module: routes, controllers, and services live here.
-export {};
+export * from "./evidence.routes";

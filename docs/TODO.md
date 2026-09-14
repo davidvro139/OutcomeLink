@@ -38,14 +38,19 @@ Working checklist toward the Phase 1 / MVP scope defined in the spec (§62), seq
 
 ## 3. Core CRUD (non-accreditation)
 
-- [ ] Institution / Campus / Department / Program
-- [ ] Student, StudentCommunicationPreference, StudentEnrollment
-- [ ] Employer, EmployerContact
-- [ ] EmploymentRecord (historical, never overwritten — spec §8)
-- [ ] FollowUpAttempt + Follow-Up Queue endpoint (filters: program, campus, staff, outcome status, days overdue, attempts, reporting period)
-- [ ] Evidence upload endpoint (multer, local storage adapter)
+- [x] Institution / Campus / Department / Program (`server/src/modules/programs/`) — single-row Institution get/update, full Campus/Department/Program CRUD scoped to institution, nested Cohort under Program. Mutations restricted to System Administrator
+- [x] Student, StudentCommunicationPreference, StudentEnrollment (`server/src/modules/students/`) — per-institution duplicate internal-ID detection (409), name/ID search, nested enrollment and communication-preference (consent/do-not-contact) endpoints
+- [x] Employer, EmployerContact (`server/src/modules/employers/`) — search/filter, nested contacts
+- [x] EmploymentRecord (`server/src/modules/placements/`, historical, never overwritten — spec §8) — a job change is a new record via create(), not a mutation of the old one; no delete endpoint, for the same reason
+- [x] FollowUpAttempt + Follow-Up Queue endpoint (`server/src/modules/followups/`) — program/campus/staff/outcome/minAttempts/minDaysOverdue filters implemented; the spec's "reporting period" filter deferred until the outcomes/accreditation modules exist. Refuses to log an attempt against a do-not-contact student (409)
+- [x] Evidence upload endpoint (`server/src/modules/evidence/`, multer + `server/src/lib/storage.ts`'s `StorageAdapter` interface, local disk for now) — enforces the "exactly one target" invariant (outcomeRecordId/employmentRecordId/licensureResultId) in application code ahead of the database CHECK constraint, with a download route that streams the file back after an institution-ownership check
 
-**Checkpoint:** can create a program, enroll a student, log employment, record a follow-up attempt, and attach evidence — all through the API.
+**Checkpoint reached:** created a program, enrolled a student, logged employment, recorded a follow-up attempt (and verified the do-not-contact refusal), and uploaded + downloaded evidence — all through the API against the live database. Role enforcement verified (403 for a non-admin creating a program, 200 for listing).
+
+**Follow-ups (not yet done):**
+- List endpoints don't yet filter rows by program/campus access scope for program-/campus-scoped roles (e.g., a Program Administrator can currently list all programs, not just their assigned ones) — `requireProgramAccess`/`requireCampusAccess` exist and are ready to apply to single-resource routes, but list-query-level scoping needs its own filter logic.
+- The Follow-Up Queue computes `daysOverdue`/`minAttempts` filtering in application code after a full institution-scoped fetch (documented in `queue.ts`) — fine at this project's data scale, but not a pattern to reuse for a larger dataset without revisiting.
+- Evidence's `outcomeRecordId` and `licensureResultId` targets are validated for shape and institution ownership, but neither `StudentOutcomeRecord` nor `LicensureResult` has an owning CRUD module yet (accreditation engine and Phase 2's licensure workflow, respectively), so only the `employmentRecordId` path is exercised end-to-end so far.
 
 ## 4. Accreditation engine (do not skip the reading)
 

@@ -2,6 +2,7 @@ node_modules/
 dist/
 build/
 coverage/
+server/uploads/
 .env
 .env.*
 !.env.example

@@ -4,12 +4,14 @@ Working checklist toward the Phase 1 / MVP scope defined in the spec (§62), seq
 
 ## 0. Repo & tooling setup
 
-- [ ] Scaffold npm workspaces monorepo: `client/`, `server/`, `shared/` (see `docs/TECH_STACK.md`)
-- [ ] Root `tsconfig.base.json` + per-package `tsconfig.json`
-- [ ] ESLint + Prettier shared config
-- [ ] Husky + lint-staged pre-commit hook (lint + typecheck on staged files)
-- [ ] `.env.example` for `server/` (DB connection, JWT secret, etc.)
-- [ ] `shared/` package: role names, enrollment statuses, outcome classification codes, CPL metric enum (Completion/Placement/Licensure)
+- [x] Scaffold npm workspaces monorepo: `client/`, `server/`, `shared/` (see `docs/TECH_STACK.md`)
+- [x] Root `tsconfig.base.json` + per-package `tsconfig.json`
+- [x] ESLint + Prettier shared config
+- [x] Husky + lint-staged pre-commit hook (lint + typecheck on staged files)
+- [x] `.env.example` for `server/` (DB connection, JWT secret, etc.) — also added for `client/` (`VITE_API_URL`)
+- [x] `shared/` package: role names, enrollment statuses, outcome classification codes, CPL metric enum (Completion/Placement/Licensure) — plus follow-up methods/outcomes and evidence types
+- [x] Express app scaffold with health-check route, standard response/error envelope (spec §59), and the full module folder layout from spec §58 (this was originally listed under stage 2, but landed alongside the rest of the scaffold since it's tooling, not feature work)
+- [x] Vite + React + TS client scaffold with Mantine/TanStack Query/React Router wired up and a connectivity-check dashboard page (originally stage 5 — same reasoning)
 
 ## 1. Database & Prisma
 
@@ -26,7 +28,7 @@ Working checklist toward the Phase 1 / MVP scope defined in the spec (§62), seq
 - [ ] Auth: register/login, JWT access token + httpOnly refresh cookie, bcrypt password hashing
 - [ ] Role-based authorization middleware, including program-level and campus-level scoping (`UserProgramAccess`, `UserCampusAccess`)
 - [ ] Generic audit-log service (`AuditLogEntry` writer) wired as middleware/hook so it's used automatically, not bolted on per-entity later
-- [ ] Health-check endpoint + basic request logging (pino)
+- [x] Health-check endpoint + basic request logging (pino) — done in stage 0
 
 **Checkpoint:** can register a user, log in, and hit an authenticated "who am I" endpoint with roles enforced.
 
@@ -57,9 +59,9 @@ Working checklist toward the Phase 1 / MVP scope defined in the spec (§62), seq
 
 ## 5. Frontend foundation
 
-- [ ] Vite + React + TS scaffold, Mantine provider/theme setup
+- [x] Vite + React + TS scaffold, Mantine provider/theme setup — done in stage 0
 - [ ] React Router layout shell with role-based route guarding
-- [ ] TanStack Query client + typed API client wrapper (reusing `shared/` types)
+- [x] TanStack Query client + typed API client wrapper (reusing `shared/` types) — basic client wired in stage 0 (`src/lib/apiClient.ts`); role-aware/auth-aware version still needed once auth exists
 - [ ] Login page + silent token refresh handling
 - [ ] App shell: nav, global search (spec §54)
 

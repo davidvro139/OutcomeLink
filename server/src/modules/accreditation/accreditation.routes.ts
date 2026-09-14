@@ -6,6 +6,7 @@ import * as frameworks from "./frameworks/frameworks";
 import * as reportingPeriods from "./reportingPeriods";
 import * as results from "./results";
 import * as ruleSets from "./rules/ruleSets";
+import * as validation from "./validation";
 
 const SYSTEM_ADMIN = "SYSTEM_ADMINISTRATOR" as const;
 const CAN_FINALIZE = [SYSTEM_ADMIN, "INSTITUTIONAL_ADMINISTRATOR"] as const;
@@ -86,4 +87,23 @@ accreditationRouter.get(
   "/reporting-periods/:id/enrollments/:enrollmentId/explanation",
   requireAuth,
   asyncHandler(results.studentExplanation),
+);
+
+accreditationRouter.post(
+  "/reporting-periods/:id/validate",
+  requireAuth,
+  requireRole(...CAN_FINALIZE),
+  asyncHandler(validation.validate),
+);
+accreditationRouter.get(
+  "/reporting-periods/:id/validation-issues",
+  requireAuth,
+  validate(validation.listIssuesQuerySchema, "query"),
+  asyncHandler(validation.listIssues),
+);
+accreditationRouter.patch(
+  "/reporting-periods/:id/validation-issues/:issueId/resolve",
+  requireAuth,
+  requireRole(...CAN_FINALIZE),
+  asyncHandler(validation.resolveIssue),
 );

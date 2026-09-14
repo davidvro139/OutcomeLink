@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
 import * as communicationPreference from "./communicationPreference";
 import * as enrollments from "./enrollments";
+import * as merge from "./merge";
 import * as students from "./students";
 
 const CAN_MANAGE_STUDENTS = [
@@ -63,4 +64,12 @@ studentsRouter.patch(
   requireRole(...CAN_MANAGE_STUDENTS),
   validate(enrollments.updateEnrollmentSchema),
   asyncHandler(enrollments.update),
+);
+
+studentsRouter.post(
+  "/:id/merge",
+  requireAuth,
+  requireRole(...CAN_MANAGE_STUDENTS),
+  validate(merge.mergeStudentsSchema),
+  asyncHandler(merge.merge),
 );

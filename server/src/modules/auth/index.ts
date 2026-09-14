@@ -1,2 +1,1 @@
-// auth module: routes, controllers, and services live here.
-export {};
+export * from "./auth.routes";

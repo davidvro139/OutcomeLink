@@ -22,15 +22,19 @@ Working checklist toward the Phase 1 / MVP scope defined in the spec (§62), seq
 
 ## 2. Backend foundation
 
-- [ ] Express + TypeScript app scaffold, module folders per spec §58
-- [ ] API conventions from `docs/TECH_STACK.md`/spec §59: response envelope, pagination params, standard error shape
-- [ ] Zod request-validation middleware
-- [ ] Auth: register/login, JWT access token + httpOnly refresh cookie, bcrypt password hashing
-- [ ] Role-based authorization middleware, including program-level and campus-level scoping (`UserProgramAccess`, `UserCampusAccess`)
-- [ ] Generic audit-log service (`AuditLogEntry` writer) wired as middleware/hook so it's used automatically, not bolted on per-entity later
+- [x] Express + TypeScript app scaffold, module folders per spec §58 — done in stage 0
+- [x] API conventions from `docs/TECH_STACK.md`/spec §59: response envelope, pagination params, standard error shape — done in stage 0
+- [x] Zod request-validation middleware (`server/src/middleware/validate.ts`)
+- [x] Auth: register/login, JWT access token + httpOnly refresh cookie, bcrypt password hashing (`server/src/modules/auth/`) — verified end-to-end against the real database (register, login, /me, /refresh, plus the wrong-password/duplicate-email/short-password error paths)
+- [x] Role-based authorization middleware, including program-level and campus-level scoping (`UserProgramAccess`, `UserCampusAccess`) — `requireAuth`/`requireRole`/`requireProgramAccess`/`requireCampusAccess` in `server/src/middleware/auth.ts`, ready to apply once Program/Campus routes exist in stage 3
+- [x] Generic audit-log service wired as a Prisma Client Extension (`server/src/lib/prisma.ts`) rather than a per-call service — automatically writes one `AuditLogEntry` row per changed field on every create/update/delete through the exported `prisma` client, attributing it to the request's user via `AsyncLocalStorage` (`server/src/lib/requestContext.ts`). Verified with a scripted update. Known scope boundary: only single-record create/update/delete are covered, not `*Many`/`upsert`/nested relation writes
 - [x] Health-check endpoint + basic request logging (pino) — done in stage 0
 
-**Checkpoint:** can register a user, log in, and hit an authenticated "who am I" endpoint with roles enforced.
+**Checkpoint reached:** registered a user, logged in, and hit an authenticated `/api/auth/me` with a real bearer token against the live database. Role enforcement (`requireRole`) is implemented but has no protected route to exercise yet — that arrives with stage 3 CRUD.
+
+**Follow-up (not yet done):** self-registration (`POST /api/auth/register`) is currently open to anyone and lets the caller pick any role, including `SYSTEM_ADMINISTRATOR` — fine for bootstrapping with no user-management UI yet, but must be locked down (admin-created users, or "first user in a new institution only") before this goes anywhere near production.
+
+**Also fixed along the way:** `@types/express` had drifted to v5 (mismatched against the actual Express 4 runtime) both directly and via `@types/cookie-parser`/`@types/multer`'s own nested copies, causing `app.use()` overload errors. Pinned to v4 tree-wide via root `package.json` `overrides`.
 
 ## 3. Core CRUD (non-accreditation)
 

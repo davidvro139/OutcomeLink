@@ -3,8 +3,10 @@ import cors from "cors";
 import express from "express";
 import { pinoHttp } from "pino-http";
 import { env } from "./config/env";
-import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { sendData } from "./lib/apiResponse";
+import { runWithRequestContext } from "./lib/requestContext";
+import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
+import { authRouter } from "./modules/auth";
 
 export function createApp() {
   const app = express();
@@ -14,12 +16,17 @@ export function createApp() {
   app.use(express.json());
   app.use(cookieParser());
 
+  // Establishes the AsyncLocalStorage store this request's async chain runs in;
+  // requireAuth fills in userId once the token is verified, and the Prisma
+  // audit-log extension (src/lib/prisma.ts) reads it from there.
+  app.use((_req, _res, next) => runWithRequestContext({}, next));
+
   app.get("/health", (_req, res) => {
     sendData(res, { status: "ok" });
   });
 
-  // Domain routers are mounted here as each module lands, e.g.:
-  // app.use("/api/auth", authRouter);
+  app.use("/api/auth", authRouter);
+  // Further domain routers are mounted here as each module lands, e.g.:
   // app.use("/api/students", studentsRouter);
 
   app.use(notFoundHandler);

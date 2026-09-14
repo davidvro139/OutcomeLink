@@ -7,6 +7,8 @@ import { sendData } from "./lib/apiResponse";
 import { runWithRequestContext } from "./lib/requestContext";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { authRouter } from "./modules/auth";
+import { employersRouter } from "./modules/employers";
+import { placementsRouter } from "./modules/placements";
 import { programsRouter } from "./modules/programs";
 import { studentsRouter } from "./modules/students";
 
@@ -30,6 +32,8 @@ export function createApp() {
   app.use("/api/auth", authRouter);
   app.use("/api", programsRouter);
   app.use("/api/students", studentsRouter);
+  app.use("/api/students", placementsRouter);
+  app.use("/api/employers", employersRouter);
   // Further domain routers are mounted here as each module lands.
 
   app.use(notFoundHandler);

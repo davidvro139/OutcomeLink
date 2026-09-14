@@ -1,2 +1,1 @@
-// placements module: routes, controllers, and services live here.
-export {};
+export * from "./placements.routes";

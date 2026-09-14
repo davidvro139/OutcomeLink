@@ -6,10 +6,12 @@ import { env } from "./config/env";
 import { sendData } from "./lib/apiResponse";
 import { runWithRequestContext } from "./lib/requestContext";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
+import { accreditationRouter } from "./modules/accreditation";
 import { authRouter } from "./modules/auth";
 import { employersRouter } from "./modules/employers";
 import { evidenceRouter } from "./modules/evidence";
 import { followupsRouter } from "./modules/followups";
+import { outcomesRouter } from "./modules/outcomes";
 import { placementsRouter } from "./modules/placements";
 import { programsRouter } from "./modules/programs";
 import { studentsRouter } from "./modules/students";
@@ -35,9 +37,11 @@ export function createApp() {
   app.use("/api", programsRouter);
   app.use("/api/students", studentsRouter);
   app.use("/api/students", placementsRouter);
+  app.use("/api", outcomesRouter);
   app.use("/api/employers", employersRouter);
   app.use("/api/followups", followupsRouter);
   app.use("/api/evidence", evidenceRouter);
+  app.use("/api/accreditation", accreditationRouter);
   // Further domain routers are mounted here as each module lands.
 
   app.use(notFoundHandler);

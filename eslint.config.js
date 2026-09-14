@@ -32,6 +32,14 @@ export default [
     },
   },
   {
+    // Jest config/setup files (jest.config.cjs, jest.setup-env.cjs, etc.) run
+    // directly under Node, not through the TS toolchain above.
+    files: ["**/*.cjs"],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
+  {
     files: ["client/**/*.{ts,tsx}"],
     plugins: {
       "react-hooks": reactHooks,

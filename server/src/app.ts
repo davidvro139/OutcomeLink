@@ -21,7 +21,7 @@ import { studentsRouter } from "./modules/students";
 export function createApp() {
   const app = express();
 
-  app.use(pinoHttp());
+  app.use(pinoHttp({ level: env.NODE_ENV === "test" ? "silent" : "info" }));
   app.use(cors({ origin: env.CLIENT_ORIGIN, credentials: true }));
   app.use(express.json());
   app.use(cookieParser());

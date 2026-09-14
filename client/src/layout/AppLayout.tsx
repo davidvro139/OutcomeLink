@@ -1,14 +1,41 @@
-import { AppShell, Avatar, Group, Menu, Text, Title, UnstyledButton } from "@mantine/core";
-import { IconChevronDown, IconLogout } from "@tabler/icons-react";
-import { Outlet, useNavigate } from "react-router-dom";
-import { useAuth } from "../auth/AuthContext";
+import {
+  AppShell,
+  Avatar,
+  Group,
+  Menu,
+  NavLink,
+  Stack,
+  Text,
+  Title,
+  UnstyledButton,
+} from "@mantine/core";
+import {
+  IconBriefcase,
+  IconChartBar,
+  IconChevronDown,
+  IconClipboardCheck,
+  IconLogout,
+  IconSchool,
+  IconUsers,
+} from "@tabler/icons-react";
 import { ROLE_LABELS } from "@outcomelink/shared";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
 import { GlobalSearch } from "../components/GlobalSearch";
 
-/** The authenticated app shell: header with search + user menu, content area for routed pages. */
+const NAV_ITEMS = [
+  { to: "/programs", label: "Programs", icon: IconSchool },
+  { to: "/students", label: "Students", icon: IconUsers },
+  { to: "/employers", label: "Employers", icon: IconBriefcase },
+  { to: "/followups", label: "Follow-Up Queue", icon: IconClipboardCheck },
+  { to: "/accreditation/reporting-periods", label: "Accreditation", icon: IconChartBar },
+];
+
+/** The authenticated app shell: header with search + user menu, navbar, content area for routed pages. */
 export function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   async function handleLogout() {
     await logout();
@@ -16,7 +43,7 @@ export function AppLayout() {
   }
 
   return (
-    <AppShell header={{ height: 60 }} padding="md">
+    <AppShell header={{ height: 60 }} navbar={{ width: 220, breakpoint: "sm" }} padding="md">
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
           <Title order={4}>OutcomeLink</Title>
@@ -56,6 +83,21 @@ export function AppLayout() {
           )}
         </Group>
       </AppShell.Header>
+
+      <AppShell.Navbar p="md">
+        <Stack gap={4}>
+          {NAV_ITEMS.map((item) => (
+            <NavLink
+              key={item.to}
+              component={Link}
+              to={item.to}
+              label={item.label}
+              leftSection={<item.icon size={18} />}
+              active={location.pathname.startsWith(item.to)}
+            />
+          ))}
+        </Stack>
+      </AppShell.Navbar>
 
       <AppShell.Main>
         <Outlet />

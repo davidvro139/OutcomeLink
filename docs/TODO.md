@@ -88,17 +88,22 @@ Working checklist toward the Phase 1 / MVP scope defined in the spec (§62), seq
 
 ## 6. MVP feature screens
 
-- [ ] Program list/detail
-- [ ] Student list/detail, enrollment, outcome record entry
-- [ ] Employer CRM screens (list/detail, contacts)
-- [ ] Follow-up queue screen with filters and overdue highlighting
-- [ ] Evidence upload/viewer on outcome and employment records
-- [ ] CPL dashboard with full drill-down (metric → records → student → classification → evidence → audit history, spec §53)
-- [ ] Program comparison view (spec §28, MVP-scoped subset)
-- [ ] Data validation / readiness screen (ERROR/WARNING/INFORMATION list, clickable)
-- [ ] Basic audit history view on a record
+- [x] Program list/detail — `client/src/pages/programs/`: list with a create-program modal (campus select, System Administrator only), detail page with audit history
+- [x] Student list/detail, enrollment, outcome record entry — `client/src/pages/students/`: search-as-you-type list; detail page with tabs for Enrollments (add enrollment, change status, add outcome records with the full COE-relevant field set), Employment, Follow-ups, and Audit History; do-not-contact toggle in the header
+- [x] Employer CRM screens (list/detail, contacts) — `client/src/pages/employers/`: list with search/create, detail page with contacts table and add-contact form
+- [x] Follow-up queue screen with filters and overdue highlighting — `client/src/pages/followups/FollowUpQueuePage.tsx`: minimum-days-overdue filter, overdue rows highlighted red with a day-count badge
+- [x] Evidence upload/viewer on outcome and employment records — `client/src/components/EvidencePanel.tsx`, reused wherever evidence attaches; upload goes through `apiRequest`'s FormData path, viewing fetches the file as an authenticated blob (`apiRequestBlob`) rather than a plain link, since the download route requires a Bearer token a raw `<a href>` can't carry
+- [x] CPL dashboard with full drill-down (metric → records → student → classification → evidence → audit history, spec §53) — `client/src/pages/accreditation/CplDashboardTab.tsx`: every non-N/A percentage is clickable into a numerator/denominator/excluded drill-down modal showing each student's classification and the classifier's own reasoning text
+- [x] Program comparison view (spec §28, MVP-scoped subset) — folded into the same CPL Dashboard table rather than a separate screen: rows are programs plus an institution-wide summary row, columns are the three metrics, so program comparison and drill-down share one view instead of duplicating the same numbers in two places
+- [x] Data validation / readiness screen (ERROR/WARNING/INFORMATION list, clickable) — `client/src/pages/accreditation/ValidationTab.tsx`: severity-badged issue list, clickable through to the student, with a Resolve action
+- [x] Basic audit history view on a record — `client/src/components/AuditHistory.tsx`, reused on Program/Student/Employer/ReportingPeriod detail pages; needed a new backend endpoint (`GET /api/audit`) since only the automatic *write* side existed before this stage
 
-**Checkpoint:** MVP scope (spec §62) is feature-complete end to end.
+**Checkpoint reached — verified in a real browser across the whole surface**, not just typechecked: two Playwright passes drove login → Programs (list, create, detail, audit history) → Students (list, detail, all four tabs) → Employers (list, detail, add contact) → Follow-Up Queue → Accreditation (reporting period detail, CPL dashboard, drill-down modal with real numerator/denominator/excluded data and reasoning text, Data Validation tab showing the real issues from earlier backend testing) → Audit History. Screenshots taken throughout; final passes showed zero console errors.
+
+**Three real bugs the browser runs caught that tsc/eslint didn't:**
+1. Several create/edit forms rendered a field via `getInputProps(...)` that wasn't declared in the form's `initialValues` (email, industry/city/state, notes, several outcome-record Select fields) — React warned about an input silently flipping from uncontrolled to controlled the moment a value was set. Fixed by declaring every bound field in `initialValues`; for Mantine `Select`s specifically, that meant `null` rather than `undefined`, since `undefined` is what triggers the uncontrolled state in the first place.
+2. Fixing bug #1 by defaulting `email` to `""` created a second bug: Mantine always sends every declared field on submit, so a blank email now sent literally `email: ""` to the server — which fails Zod's `.email()` format check even though the field is optional (`undefined` would have passed). Added `client/src/lib/forms.ts`'s `stripEmptyStrings()` and applied it at both call sites (student creation, employer contact creation) — the general lesson being that "optional" and "empty string" are not the same thing to a format validator, and a form library that always includes every field papers over that difference.
+3. The evidence "view" action almost shipped as a plain link/URL to the authenticated download route — which would silently fail (no way to attach a Bearer token) or, worse, appear to work in a manual click-test while actually failing for any viewer without a live session cookie. Caught before shipping by re-reading the backend route's `requireAuth` middleware while writing the frontend call; fixed with `apiRequestBlob()` fetching the file with the header attached and handing the browser a `blob:` URL instead.
 
 ## 7. Testing
 

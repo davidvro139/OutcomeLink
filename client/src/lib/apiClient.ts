@@ -1,3 +1,5 @@
+import type { Pagination } from "../api/types";
+
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
 export class ApiRequestError extends Error {
@@ -21,12 +23,18 @@ export function setAccessToken(token: string | null): void {
   accessToken = token;
 }
 
-/** Thin fetch wrapper matching the server's { data } / { error } envelope (spec §59). */
-export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
+async function rawRequest(
+  path: string,
+  init?: RequestInit,
+): Promise<{ data: unknown; meta?: { pagination: Pagination } }> {
+  const isFormData = init?.body instanceof FormData;
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     credentials: "include",
     headers: {
-      "Content-Type": "application/json",
+      // Letting the browser set Content-Type (with the multipart boundary) for
+      // FormData bodies — evidence uploads go through this path.
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...init?.headers,
     },
@@ -40,5 +48,39 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
     throw new ApiRequestError(response.status, message, body?.error?.details);
   }
 
-  return body.data as T;
+  return body ?? { data: undefined };
+}
+
+/** Thin fetch wrapper matching the server's { data } / { error } envelope (spec §59). */
+export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const { data } = await rawRequest(path, init);
+  return data as T;
+}
+
+/** For list endpoints that return { data: T[], meta: { pagination } }. */
+export async function apiRequestPaginated<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<{ items: T[]; pagination: Pagination }> {
+  const { data, meta } = await rawRequest(path, init);
+  return { items: (data as T[]) ?? [], pagination: meta!.pagination };
+}
+
+/**
+ * For binary responses (evidence file download) that don't use the { data }
+ * envelope. A plain <a href> or window.open to an authenticated route won't
+ * carry the Authorization header, so the caller must fetch the bytes here
+ * first and hand the browser a blob: URL instead.
+ */
+export async function apiRequestBlob(path: string): Promise<Blob> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    credentials: "include",
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+  });
+
+  if (!response.ok) {
+    throw new ApiRequestError(response.status, response.statusText);
+  }
+
+  return response.blob();
 }

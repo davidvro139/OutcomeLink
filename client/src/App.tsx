@@ -1,8 +1,17 @@
 import { Route, Routes } from "react-router-dom";
 import { RequireAuth } from "./auth/RequireAuth";
 import { AppLayout } from "./layout/AppLayout";
+import { ReportingPeriodDetailPage } from "./pages/accreditation/ReportingPeriodDetailPage";
+import { ReportingPeriodsPage } from "./pages/accreditation/ReportingPeriodsPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { EmployerDetailPage } from "./pages/employers/EmployerDetailPage";
+import { EmployersListPage } from "./pages/employers/EmployersListPage";
+import { FollowUpQueuePage } from "./pages/followups/FollowUpQueuePage";
 import { LoginPage } from "./pages/LoginPage";
+import { ProgramDetailPage } from "./pages/programs/ProgramDetailPage";
+import { ProgramsListPage } from "./pages/programs/ProgramsListPage";
+import { StudentDetailPage } from "./pages/students/StudentDetailPage";
+import { StudentsListPage } from "./pages/students/StudentsListPage";
 
 function App() {
   return (
@@ -16,6 +25,23 @@ function App() {
         }
       >
         <Route path="/" element={<DashboardPage />} />
+
+        <Route path="/programs" element={<ProgramsListPage />} />
+        <Route path="/programs/:id" element={<ProgramDetailPage />} />
+
+        <Route path="/students" element={<StudentsListPage />} />
+        <Route path="/students/:id" element={<StudentDetailPage />} />
+
+        <Route path="/employers" element={<EmployersListPage />} />
+        <Route path="/employers/:id" element={<EmployerDetailPage />} />
+
+        <Route path="/followups" element={<FollowUpQueuePage />} />
+
+        <Route path="/accreditation/reporting-periods" element={<ReportingPeriodsPage />} />
+        <Route
+          path="/accreditation/reporting-periods/:id"
+          element={<ReportingPeriodDetailPage />}
+        />
       </Route>
     </Routes>
   );

@@ -17,6 +17,7 @@ import {
   IconClipboardCheck,
   IconLogout,
   IconSchool,
+  IconTrendingUp,
   IconUsers,
 } from "@tabler/icons-react";
 import { ROLE_LABELS } from "@outcomelink/shared";
@@ -31,6 +32,7 @@ const NAV_ITEMS = [
   { to: "/followups", label: "Follow-Up Queue", icon: IconClipboardCheck },
   { to: "/licensure", label: "Licensure Queue", icon: IconCertificate },
   { to: "/accreditation/reporting-periods", label: "Accreditation", icon: IconChartBar },
+  { to: "/accreditation/trends", label: "Trends", icon: IconTrendingUp },
 ];
 
 /** The authenticated app shell: header with search + user menu, navbar, content area for routed pages. */

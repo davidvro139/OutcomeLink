@@ -246,6 +246,39 @@ export function useValidationIssues(reportingPeriodId: number | undefined) {
   });
 }
 
+export interface ReadinessMetric {
+  numerator: number;
+  denominator: number;
+  percentage: number;
+  benchmark: number;
+  negotiated: boolean;
+  meetsBenchmark: boolean;
+}
+
+export interface ReadinessRow {
+  program: { id: number; name: string };
+  metrics: Partial<Record<CplMetric, ReadinessMetric>>;
+  openIssueCount: number;
+  ready: boolean;
+}
+
+export interface ReadinessSummary {
+  totalPrograms: number;
+  readyPrograms: number;
+  programsWithOpenIssues: number;
+}
+
+export function useReadiness(reportingPeriodId: number | undefined) {
+  return useQuery({
+    queryKey: ["accreditation", "readiness", reportingPeriodId],
+    queryFn: () =>
+      apiRequest<{ readiness: ReadinessRow[]; summary: ReadinessSummary }>(
+        `/api/accreditation/reporting-periods/${reportingPeriodId}/readiness`,
+      ),
+    enabled: reportingPeriodId !== undefined,
+  });
+}
+
 export function useResolveValidationIssue(reportingPeriodId: number) {
   const queryClient = useQueryClient();
   return useMutation({

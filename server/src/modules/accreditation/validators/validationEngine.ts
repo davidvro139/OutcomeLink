@@ -1,5 +1,6 @@
 import { ValidationSeverity } from "@prisma/client";
 import { prisma } from "../../../lib/prisma";
+import { getEffectiveBenchmark } from "../benchmarks/negotiatedBenchmarks";
 
 interface Issue {
   studentId?: number;
@@ -203,16 +204,22 @@ export async function runValidation(reportingPeriodId: number): Promise<void> {
       where: { reportingPeriodId, programId: { not: null } },
     });
     for (const result of results) {
-      const benchmark = benchmarks[result.metric.toLowerCase()];
+      const standardBenchmark = benchmarks[result.metric.toLowerCase()];
+      if (standardBenchmark === undefined || !result.programId) continue;
+
+      // A negotiated rate (docs/COE_RULE_MATRIX.md's negotiated-benchmark note)
+      // overrides the standard institution-wide benchmark for this program+metric.
+      const { value: benchmark } = await getEffectiveBenchmark(
+        result.programId,
+        result.metric,
+        standardBenchmark,
+        reportingPeriod.endDate,
+      );
+
       // A zero denominator means the metric doesn't apply to this program this period
       // (e.g. no licensure-required completers) — that's not the same as failing to
       // meet the benchmark, so it must not be flagged as if it were.
-      if (
-        benchmark !== undefined &&
-        result.denominator > 0 &&
-        Number(result.percentage) < benchmark &&
-        result.programId
-      ) {
+      if (result.denominator > 0 && Number(result.percentage) < benchmark) {
         issues.push({
           programId: result.programId,
           issueType: `BELOW_BENCHMARK_${result.metric}`,

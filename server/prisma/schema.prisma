@@ -230,8 +230,32 @@ model Program {
   validationIssues      ValidationIssue[]
   improvementPlans      ImprovementPlan[]
   userAccess            UserProgramAccess[]
+  negotiatedBenchmarks  NegotiatedBenchmark[]
 
   @@map("programs")
+}
+
+/// A Commission-approved alternate benchmark for one program+metric, per
+/// docs/COE_RULE_MATRIX.md's negotiated-rate note — e.g. a court reporting
+/// program's completion rate. Distinct from RuleSet.rule_definition's
+/// institution-wide standard benchmarks; this overrides them for exactly the
+/// program+metric+date range specified, with a required record of the
+/// Commission's approval. See server/src/modules/accreditation/benchmarks
+/// for where this is applied.
+model NegotiatedBenchmark {
+  id                 Int       @id @default(autoincrement())
+  programId          Int       @map("program_id")
+  metric             CplMetric
+  approvedPercentage Decimal   @db.Decimal(5, 2) @map("approved_percentage")
+  effectiveStartDate DateTime  @map("effective_start_date")
+  effectiveEndDate   DateTime? @map("effective_end_date")
+  approvalReference  String    @db.Text @map("approval_reference")
+  createdBy          String    @map("created_by")
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  program Program @relation(fields: [programId], references: [id])
+
+  @@map("negotiated_benchmarks")
 }
 
 model Cohort {

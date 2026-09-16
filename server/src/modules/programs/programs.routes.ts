@@ -2,6 +2,7 @@ import { Router } from "express";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { requireAuth, requireRole } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
+import { negotiatedBenchmarks } from "../accreditation/benchmarks";
 import * as campuses from "./campuses";
 import * as cohorts from "./cohorts";
 import * as departments from "./departments";
@@ -130,4 +131,19 @@ programsRouter.delete(
   requireAuth,
   requireRole(SYSTEM_ADMIN),
   asyncHandler(cohorts.remove),
+);
+
+// Negotiated benchmarks (nested under a program) — Commission-approved
+// alternate rates, per docs/COE_RULE_MATRIX.md's negotiated-rate note.
+programsRouter.get(
+  "/programs/:programId/negotiated-benchmarks",
+  requireAuth,
+  asyncHandler(negotiatedBenchmarks.list),
+);
+programsRouter.post(
+  "/programs/:programId/negotiated-benchmarks",
+  requireAuth,
+  requireRole(SYSTEM_ADMIN),
+  validate(negotiatedBenchmarks.createNegotiatedBenchmarkSchema),
+  asyncHandler(negotiatedBenchmarks.create),
 );

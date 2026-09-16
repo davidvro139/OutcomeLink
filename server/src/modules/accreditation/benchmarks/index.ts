@@ -1,2 +1,2 @@
-// accreditation/benchmarks: no accreditation logic belongs in controllers (spec §58).
-export {};
+export * as negotiatedBenchmarks from "./negotiatedBenchmarks";
+export { getEffectiveBenchmark } from "./negotiatedBenchmarks";

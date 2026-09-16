@@ -1,3 +1,4 @@
+import type { CplMetric } from "@outcomelink/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, apiRequestPaginated } from "../lib/apiClient";
 
@@ -86,5 +87,49 @@ export function useCreateProgram() {
         body: JSON.stringify(input),
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["programs"] }),
+  });
+}
+
+export interface NegotiatedBenchmark {
+  id: number;
+  programId: number;
+  metric: CplMetric;
+  approvedPercentage: string;
+  effectiveStartDate: string;
+  effectiveEndDate: string | null;
+  approvalReference: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface CreateNegotiatedBenchmarkInput {
+  metric: CplMetric;
+  approvedPercentage: number;
+  effectiveStartDate: string;
+  effectiveEndDate?: string;
+  approvalReference: string;
+}
+
+export function useNegotiatedBenchmarks(programId: number | undefined) {
+  return useQuery({
+    queryKey: ["programs", programId, "negotiated-benchmarks"],
+    queryFn: () =>
+      apiRequest<{ negotiatedBenchmarks: NegotiatedBenchmark[] }>(
+        `/api/programs/${programId}/negotiated-benchmarks`,
+      ).then((r) => r.negotiatedBenchmarks),
+    enabled: programId !== undefined,
+  });
+}
+
+export function useCreateNegotiatedBenchmark(programId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateNegotiatedBenchmarkInput) =>
+      apiRequest<{ negotiatedBenchmark: NegotiatedBenchmark }>(
+        `/api/programs/${programId}/negotiated-benchmarks`,
+        { method: "POST", body: JSON.stringify(input) },
+      ),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["programs", programId, "negotiated-benchmarks"] }),
   });
 }

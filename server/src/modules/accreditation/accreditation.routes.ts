@@ -3,6 +3,7 @@ import { asyncHandler } from "../../lib/asyncHandler";
 import { requireAuth, requireRole } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
 import * as frameworks from "./frameworks/frameworks";
+import * as readiness from "./readiness";
 import * as reportingPeriods from "./reportingPeriods";
 import * as results from "./results";
 import * as ruleSets from "./rules/ruleSets";
@@ -87,6 +88,11 @@ accreditationRouter.get(
   "/reporting-periods/:id/enrollments/:enrollmentId/explanation",
   requireAuth,
   asyncHandler(results.studentExplanation),
+);
+accreditationRouter.get(
+  "/reporting-periods/:id/readiness",
+  requireAuth,
+  asyncHandler(readiness.readiness),
 );
 
 accreditationRouter.post(

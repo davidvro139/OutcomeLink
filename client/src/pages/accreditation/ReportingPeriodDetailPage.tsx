@@ -24,6 +24,7 @@ import {
 } from "../../api/accreditation";
 import { AuditHistory } from "../../components/AuditHistory";
 import { CplDashboardTab } from "./CplDashboardTab";
+import { ReadinessTab } from "./ReadinessTab";
 import { ValidationTab } from "./ValidationTab";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -168,11 +169,15 @@ export function ReportingPeriodDetailPage() {
       <Tabs defaultValue="dashboard">
         <Tabs.List>
           <Tabs.Tab value="dashboard">CPL Dashboard</Tabs.Tab>
+          <Tabs.Tab value="readiness">Readiness</Tabs.Tab>
           <Tabs.Tab value="validation">Data Validation</Tabs.Tab>
           <Tabs.Tab value="audit">Audit History</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value="dashboard" pt="md">
           <CplDashboardTab reportingPeriodId={periodId} />
+        </Tabs.Panel>
+        <Tabs.Panel value="readiness" pt="md">
+          <ReadinessTab reportingPeriodId={periodId} />
         </Tabs.Panel>
         <Tabs.Panel value="validation" pt="md">
           <ValidationTab reportingPeriodId={periodId} />

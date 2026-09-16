@@ -29,10 +29,10 @@ export function StudentExplanationPanel({
         <Table>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Metric</Table.Th>
-              <Table.Th>Classification</Table.Th>
-              <Table.Th>Numerator</Table.Th>
-              <Table.Th>Denominator</Table.Th>
+              <Table.Th style={{ whiteSpace: "nowrap" }}>Metric</Table.Th>
+              <Table.Th style={{ whiteSpace: "nowrap" }}>Classification</Table.Th>
+              <Table.Th style={{ whiteSpace: "nowrap" }}>Numerator</Table.Th>
+              <Table.Th style={{ whiteSpace: "nowrap" }}>Denominator</Table.Th>
               <Table.Th>Why</Table.Th>
             </Table.Tr>
           </Table.Thead>

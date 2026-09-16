@@ -55,13 +55,14 @@ export interface CreateEnrollmentInput {
   credentialEarned?: string;
 }
 
-export function useStudents(search?: string) {
-  const query = new URLSearchParams({ pageSize: "50" });
+export function useStudents(search?: string, page = 1) {
+  const query = new URLSearchParams({ pageSize: "50", page: String(page) });
   if (search) query.set("search", search);
 
   return useQuery({
-    queryKey: ["students", search],
+    queryKey: ["students", search, page],
     queryFn: () => apiRequestPaginated<Student>(`/api/students?${query.toString()}`),
+    placeholderData: (previousData) => previousData,
   });
 }
 

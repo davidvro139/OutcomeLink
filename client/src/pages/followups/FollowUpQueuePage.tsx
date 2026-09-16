@@ -42,7 +42,10 @@ export function FollowUpQueuePage() {
           </Table.Thead>
           <Table.Tbody>
             {data.items.map((row) => (
-              <Table.Tr key={row.student.id} bg={row.daysOverdue > 0 ? "red.0" : undefined}>
+              <Table.Tr
+                key={row.student.id}
+                bg={row.daysOverdue > 0 ? "var(--mantine-color-red-light)" : undefined}
+              >
                 <Table.Td>
                   <Anchor component={Link} to={`/students/${row.student.id}`}>
                     {row.student.firstName} {row.student.lastName}

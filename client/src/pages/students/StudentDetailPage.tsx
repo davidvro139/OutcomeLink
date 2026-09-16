@@ -6,6 +6,7 @@ import { AuditHistory } from "../../components/AuditHistory";
 import { EmploymentTab } from "./EmploymentTab";
 import { EnrollmentsTab } from "./EnrollmentsTab";
 import { FollowUpsTab } from "./FollowUpsTab";
+import { LicensureTab } from "./LicensureTab";
 
 export function StudentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -58,6 +59,7 @@ export function StudentDetailPage() {
         <Tabs.List>
           <Tabs.Tab value="enrollments">Enrollments & Outcomes</Tabs.Tab>
           <Tabs.Tab value="employment">Employment</Tabs.Tab>
+          <Tabs.Tab value="licensure">Licensure</Tabs.Tab>
           <Tabs.Tab value="followups">Follow-ups</Tabs.Tab>
           <Tabs.Tab value="audit">Audit History</Tabs.Tab>
         </Tabs.List>
@@ -67,6 +69,9 @@ export function StudentDetailPage() {
         </Tabs.Panel>
         <Tabs.Panel value="employment" pt="md">
           <EmploymentTab studentId={studentId} />
+        </Tabs.Panel>
+        <Tabs.Panel value="licensure" pt="md">
+          <LicensureTab studentId={studentId} />
         </Tabs.Panel>
         <Tabs.Panel value="followups" pt="md">
           <FollowUpsTab studentId={studentId} />

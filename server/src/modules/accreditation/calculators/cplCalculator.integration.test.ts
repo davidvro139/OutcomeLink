@@ -62,13 +62,15 @@ describe("computeReportingPeriod (integration)", () => {
     reportingPeriodId = period.id;
 
     // The nine documented classification scenarios, matching docs/COE_RULE_MATRIX.md,
-    // plus a tenth covering the allowable-subtraction exclusion (docs/TODO.md §9).
+    // plus a tenth and eleventh covering the allowable-subtraction and
+    // not-reportable exclusions (docs/TODO.md §9).
     const scenarios: Array<{
       status: "GRADUATE_COMPLETER" | "NON_GRADUATE_COMPLETER" | "WITHDRAWN" | "ACTIVE";
       completionDate: string | null;
       outcome?: Record<string, unknown>;
       licensure?: "PASSED" | "WAITING";
       allowableSubtractionReason?: "DOCUMENTED_UNAVAILABLE";
+      reportableForAccreditation?: boolean;
     }> = [
       { status: "GRADUATE_COMPLETER", completionDate: "2026-01-15", outcome: { employmentStatus: "EMPLOYED", relatedToTraining: true } },
       { status: "GRADUATE_COMPLETER", completionDate: "2026-01-15", outcome: { employmentStatus: "EMPLOYED", relatedToTraining: false } },
@@ -98,6 +100,15 @@ describe("computeReportingPeriod (integration)", () => {
         completionDate: "2026-01-15",
         allowableSubtractionReason: "DOCUMENTED_UNAVAILABLE",
       },
+      // Not reportable at all (e.g. a secondary/dual-enrolled student) — must be
+      // excluded even though it's a graduate completer with a related job.
+      // Should NOT change the 7/8 completion ratio or the 4/5 placement ratio.
+      {
+        status: "GRADUATE_COMPLETER",
+        completionDate: "2026-01-15",
+        outcome: { employmentStatus: "EMPLOYED", relatedToTraining: true },
+        reportableForAccreditation: false,
+      },
     ];
 
     for (const [i, scenario] of scenarios.entries()) {
@@ -113,6 +124,7 @@ describe("computeReportingPeriod (integration)", () => {
           actualCompletionDate: scenario.completionDate ? new Date(scenario.completionDate) : null,
           enrollmentStatus: scenario.status,
           allowableSubtractionReason: scenario.allowableSubtractionReason,
+          reportableForAccreditation: scenario.reportableForAccreditation ?? true,
         },
       });
 
@@ -157,6 +169,25 @@ describe("computeReportingPeriod (integration)", () => {
 
     const result = await prisma.cplCalculationResult.findFirst({ where: { reportingPeriodId, programId, metric: "COMPLETION" } });
     expect(result).toMatchObject({ numerator: 7, denominator: 8 });
+  });
+
+  it("excludes an enrollment that isn't reportable for accreditation at all, even a graduate completer with related employment (still 7/8 and 4/5, not 8/9 and 5/6)", async () => {
+    const student = await prisma.student.findFirst({ where: { internalStudentId: "CALC-10" } });
+    const enrollment = await prisma.studentEnrollment.findFirst({ where: { studentId: student!.id } });
+    const classification = await prisma.studentClassification.findFirst({
+      where: { studentEnrollmentId: enrollment!.id, reportingPeriodId, metric: "COMPLETION" },
+      include: { explanation: true },
+    });
+    expect(classification?.classificationCode).toBe("NOT_REPORTABLE");
+    expect(classification?.explanation).toMatchObject({
+      countsInNumerator: false,
+      countsInDenominator: false,
+    });
+
+    const completionResult = await prisma.cplCalculationResult.findFirst({ where: { reportingPeriodId, programId, metric: "COMPLETION" } });
+    expect(completionResult).toMatchObject({ numerator: 7, denominator: 8 });
+    const placementResult = await prisma.cplCalculationResult.findFirst({ where: { reportingPeriodId, programId, metric: "PLACEMENT" } });
+    expect(placementResult).toMatchObject({ numerator: 4, denominator: 5 });
   });
 
   it("computes Placement as 4/5 (related-employed x1 + continuing-ed x1 + licensure-passed x1 = 3 numerator... plus non-graduate completer)", async () => {

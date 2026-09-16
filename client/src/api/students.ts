@@ -35,6 +35,8 @@ export interface StudentEnrollment {
   credentialEarned: string | null;
   exitReason: string | null;
   allowableSubtractionReason: AllowableSubtractionReason | null;
+  enrollmentObjective: string | null;
+  reportableForAccreditation: boolean;
 }
 
 export interface CreateStudentInput {
@@ -55,6 +57,8 @@ export interface CreateEnrollmentInput {
   enrollmentStatus: EnrollmentStatus;
   credentialEarned?: string;
   allowableSubtractionReason?: AllowableSubtractionReason | null;
+  enrollmentObjective?: string;
+  reportableForAccreditation?: boolean;
 }
 
 export function useStudents(search?: string, page = 1) {

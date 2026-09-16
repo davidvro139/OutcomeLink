@@ -364,6 +364,16 @@ model StudentEnrollment {
   exitReason             String?          @map("exit_reason")
   // Only meaningful when enrollmentStatus is WITHDRAWN — see the enum's own doc comment.
   allowableSubtractionReason AllowableSubtractionReason? @map("allowable_subtraction_reason")
+  // Free-text, institution/SIS-defined label (e.g. "Certificate Seeker",
+  // "Occupational Upgrade", "Secondary") — descriptive only, not a controlled
+  // vocabulary, since COE doesn't mandate specific category names here (per
+  // docs/TODO.md §9 investigation). What actually gates the classifier is
+  // reportableForAccreditation below.
+  enrollmentObjective        String?                      @map("enrollment_objective")
+  // Whether this enrollment is in scope for CPL reporting at all — e.g. false
+  // for a secondary/dual-enrolled high-school student or one enrolled purely
+  // for personal enrichment. Defaults true since most enrollments are reportable.
+  reportableForAccreditation Boolean                      @default(true) @map("reportable_for_accreditation")
 
   student Student @relation(fields: [studentId], references: [id])
   program Program @relation(fields: [programId], references: [id])

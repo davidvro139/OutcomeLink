@@ -32,6 +32,10 @@ export interface ClassifierContext {
     actualCompletionDate: Date | null;
     /** Only meaningful when enrollmentStatus is WITHDRAWN — see shared/src/enrollment.ts. */
     allowableSubtractionReason: AllowableSubtractionReason | null;
+    /** Whether this enrollment is in scope for CPL reporting at all — see the Prisma schema's doc comment. */
+    reportableForAccreditation: boolean;
+    /** Free-text, institution-defined label — descriptive only, used just for the explanation text. */
+    enrollmentObjective: string | null;
   };
   reportingPeriod: {
     startDate: Date;

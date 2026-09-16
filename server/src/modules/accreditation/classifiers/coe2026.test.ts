@@ -9,6 +9,8 @@ function buildContext(overrides: Partial<ClassifierContext> = {}): ClassifierCon
       enrollmentStatus: "ACTIVE",
       actualCompletionDate: null,
       allowableSubtractionReason: null,
+      reportableForAccreditation: true,
+      enrollmentObjective: null,
     },
     reportingPeriod: PERIOD,
     outcomeRecord: null,
@@ -33,6 +35,8 @@ describe("coe2026Classifier — Completion (docs/COE_RULE_MATRIX.md §3)", () =>
         enrollmentStatus: "GRADUATE_COMPLETER",
         actualCompletionDate: new Date("2026-01-15"),
         allowableSubtractionReason: null,
+        reportableForAccreditation: true,
+        enrollmentObjective: null,
       },
     });
     const completion = findMetric(coe2026Classifier.classify(ctx), "COMPLETION");
@@ -47,6 +51,8 @@ describe("coe2026Classifier — Completion (docs/COE_RULE_MATRIX.md §3)", () =>
         enrollmentStatus: "NON_GRADUATE_COMPLETER",
         actualCompletionDate: new Date("2026-01-15"),
         allowableSubtractionReason: null,
+        reportableForAccreditation: true,
+        enrollmentObjective: null,
       },
     });
     const completion = findMetric(coe2026Classifier.classify(ctx), "COMPLETION");
@@ -61,6 +67,8 @@ describe("coe2026Classifier — Completion (docs/COE_RULE_MATRIX.md §3)", () =>
         enrollmentStatus: "WITHDRAWN",
         actualCompletionDate: new Date("2026-01-15"),
         allowableSubtractionReason: null,
+        reportableForAccreditation: true,
+        enrollmentObjective: null,
       },
     });
     const completion = findMetric(coe2026Classifier.classify(ctx), "COMPLETION");
@@ -75,6 +83,8 @@ describe("coe2026Classifier — Completion (docs/COE_RULE_MATRIX.md §3)", () =>
         enrollmentStatus: "WITHDRAWN",
         actualCompletionDate: new Date("2026-01-15"),
         allowableSubtractionReason: "DOCUMENTED_UNAVAILABLE",
+        reportableForAccreditation: true,
+        enrollmentObjective: null,
       },
     });
     const completion = findMetric(coe2026Classifier.classify(ctx), "COMPLETION");
@@ -83,12 +93,31 @@ describe("coe2026Classifier — Completion (docs/COE_RULE_MATRIX.md §3)", () =>
     expect(completion.countsInDenominator).toBe(false);
   });
 
+  it("excludes an enrollment whose objective isn't reportable at all, even a graduate completer, before any other check", () => {
+    const ctx = buildContext({
+      enrollment: {
+        enrollmentStatus: "GRADUATE_COMPLETER",
+        actualCompletionDate: new Date("2026-01-15"),
+        allowableSubtractionReason: null,
+        reportableForAccreditation: false,
+        enrollmentObjective: "Secondary",
+      },
+    });
+    const completion = findMetric(coe2026Classifier.classify(ctx), "COMPLETION");
+    expect(completion.classificationCode).toBe("NOT_REPORTABLE");
+    expect(completion.countsInNumerator).toBe(false);
+    expect(completion.countsInDenominator).toBe(false);
+    expect(completion.reasonText).toContain("Secondary");
+  });
+
   it("excludes a student still actively enrolled entirely", () => {
     const ctx = buildContext({
       enrollment: {
       enrollmentStatus: "ACTIVE",
       actualCompletionDate: null,
       allowableSubtractionReason: null,
+      reportableForAccreditation: true,
+      enrollmentObjective: null,
     },
     });
     const completion = findMetric(coe2026Classifier.classify(ctx), "COMPLETION");
@@ -102,6 +131,8 @@ describe("coe2026Classifier — Completion (docs/COE_RULE_MATRIX.md §3)", () =>
         enrollmentStatus: "GRADUATE_COMPLETER",
         actualCompletionDate: new Date("2024-01-15"),
         allowableSubtractionReason: null,
+        reportableForAccreditation: true,
+        enrollmentObjective: null,
       },
     });
     const completion = findMetric(coe2026Classifier.classify(ctx), "COMPLETION");
@@ -119,6 +150,8 @@ describe("coe2026Classifier — Placement (docs/COE_RULE_MATRIX.md §4)", () => 
         enrollmentStatus: "GRADUATE_COMPLETER",
         actualCompletionDate: new Date("2026-01-15"),
         allowableSubtractionReason: null,
+        reportableForAccreditation: true,
+        enrollmentObjective: null,
       },
       outcomeRecord,
       licensureResult,
@@ -130,6 +163,8 @@ describe("coe2026Classifier — Placement (docs/COE_RULE_MATRIX.md §4)", () => 
       enrollmentStatus: "ACTIVE",
       actualCompletionDate: null,
       allowableSubtractionReason: null,
+      reportableForAccreditation: true,
+      enrollmentObjective: null,
     },
     });
     expect(findMetric(coe2026Classifier.classify(ctx), "PLACEMENT").classificationCode).toBe(
@@ -143,6 +178,8 @@ describe("coe2026Classifier — Placement (docs/COE_RULE_MATRIX.md §4)", () => 
         enrollmentStatus: "NON_GRADUATE_COMPLETER",
         actualCompletionDate: new Date("2026-01-15"),
         allowableSubtractionReason: null,
+        reportableForAccreditation: true,
+        enrollmentObjective: null,
       },
       outcomeRecord: null,
     });
@@ -311,6 +348,8 @@ describe("coe2026Classifier — Licensure (docs/COE_RULE_MATRIX.md §5)", () => 
         enrollmentStatus: "GRADUATE_COMPLETER",
         actualCompletionDate: new Date("2026-01-15"),
         allowableSubtractionReason: null,
+        reportableForAccreditation: true,
+        enrollmentObjective: null,
       },
       outcomeRecord: {
         employmentStatus: "EMPLOYED",
@@ -359,6 +398,8 @@ describe("coe2026Classifier — Licensure (docs/COE_RULE_MATRIX.md §5)", () => 
         enrollmentStatus: "NON_GRADUATE_COMPLETER",
         actualCompletionDate: new Date("2026-01-15"),
         allowableSubtractionReason: null,
+        reportableForAccreditation: true,
+        enrollmentObjective: null,
       },
       outcomeRecord: {
         employmentStatus: "EMPLOYED",

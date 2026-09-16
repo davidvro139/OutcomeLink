@@ -16,6 +16,16 @@ function classifyCompletion(ctx: ClassifierContext): ClassificationResult {
   const { enrollment, reportingPeriod } = ctx;
   const concludedThisPeriod = isWithinPeriod(enrollment.actualCompletionDate, reportingPeriod);
 
+  if (!enrollment.reportableForAccreditation) {
+    return {
+      metric: "COMPLETION",
+      classificationCode: "NOT_REPORTABLE",
+      countsInNumerator: false,
+      countsInDenominator: false,
+      reasonText: `Enrollment objective (${enrollment.enrollmentObjective ?? "not specified"}) is not in scope for accreditation reporting.`,
+    };
+  }
+
   if (enrollment.enrollmentStatus === "GRADUATE_COMPLETER" && concludedThisPeriod) {
     return {
       metric: "COMPLETION",

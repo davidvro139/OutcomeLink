@@ -32,12 +32,17 @@ export type AvailabilityStatus = (typeof AVAILABILITY_STATUSES)[number];
  * enrollment-stage "Allowable Subtraction" reasons (enrollment.ts) — excluded
  * from the completion rate entirely, distinct from an ordinary WITHDRAWAL
  * which counts against the institution.
+ * NOT_REPORTABLE covers an enrollment whose objective isn't in scope for
+ * accreditation reporting at all (e.g. a secondary/high-school student, or
+ * one enrolled purely for personal enrichment) — see
+ * StudentEnrollment.reportableForAccreditation in the Prisma schema.
  */
 export const COMPLETION_CLASSIFICATIONS = [
   "GRADUATE_COMPLETER",
   "NON_GRADUATE_COMPLETER",
   "WITHDRAWAL",
   "ALLOWABLE_SUBTRACTION",
+  "NOT_REPORTABLE",
   "NOT_APPLICABLE",
 ] as const;
 export type CompletionClassification = (typeof COMPLETION_CLASSIFICATIONS)[number];

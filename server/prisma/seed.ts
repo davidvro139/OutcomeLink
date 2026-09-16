@@ -592,11 +592,30 @@ async function main() {
           }
         }
 
+        // Enrollment objective (docs/TODO.md §9) — mostly ordinary postsecondary
+        // enrollees, with a small minority of dual-enrolled secondary students and
+        // personal-enrichment enrollees who are entirely out of scope for CPL
+        // reporting. These labels are this fictional college's own SIS
+        // vocabulary, not COE-mandated terminology — see the schema's doc comment.
+        const objectiveRoll = faker.number.float({ min: 0, max: 1 });
+        const enrollmentObjective =
+          objectiveRoll < 0.03
+            ? "Secondary"
+            : objectiveRoll < 0.05
+              ? "Personal Enrichment"
+              : chance(0.15)
+                ? "Occupational Upgrade"
+                : "Certificate Seeker";
+        const reportableForAccreditation =
+          enrollmentObjective !== "Secondary" && enrollmentObjective !== "Personal Enrichment";
+
         const enrollment = await prisma.studentEnrollment.create({
           data: {
             studentId: student.id,
             programId,
             campusId: campusByName[config.campus].id,
+            enrollmentObjective,
+            reportableForAccreditation,
             cohortId: cohort.id,
             startDate,
             expectedCompletionDate,

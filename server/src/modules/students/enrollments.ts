@@ -17,6 +17,10 @@ export const createEnrollmentSchema = z.object({
   exitReason: z.string().trim().max(500).optional(),
   // Only meaningful when enrollmentStatus is WITHDRAWN — see shared/src/enrollment.ts.
   allowableSubtractionReason: z.enum(ALLOWABLE_SUBTRACTION_REASONS).optional(),
+  // Free-text, institution-defined label (e.g. "Certificate Seeker", "Secondary")
+  // — see the Prisma schema's doc comment on StudentEnrollment.
+  enrollmentObjective: z.string().trim().max(100).optional(),
+  reportableForAccreditation: z.boolean().optional(),
 });
 type CreateEnrollmentInput = z.infer<typeof createEnrollmentSchema>;
 

@@ -21,6 +21,7 @@ import {
   Stack,
   Table,
   Text,
+  TextInput,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
@@ -39,6 +40,7 @@ import {
   useCreateOutcomeRecord,
   useOutcomeRecords,
 } from "../../api/outcomes";
+import { stripEmptyStrings } from "../../lib/forms";
 import { StudentExplanationPanel } from "./StudentExplanationPanel";
 
 export function EnrollmentsTab({ studentId }: { studentId: number }) {
@@ -49,7 +51,14 @@ export function EnrollmentsTab({ studentId }: { studentId: number }) {
   const [formOpened, { toggle: toggleForm }] = useDisclosure(false);
 
   const form = useForm<CreateEnrollmentInput>({
-    initialValues: { programId: 0, campusId: 0, startDate: "", enrollmentStatus: "ACTIVE" },
+    initialValues: {
+      programId: 0,
+      campusId: 0,
+      startDate: "",
+      enrollmentStatus: "ACTIVE",
+      enrollmentObjective: "",
+      reportableForAccreditation: true,
+    },
     validate: {
       programId: (value) => (value ? null : "Program is required"),
       campusId: (value) => (value ? null : "Campus is required"),
@@ -59,7 +68,7 @@ export function EnrollmentsTab({ studentId }: { studentId: number }) {
 
   async function handleSubmit(values: CreateEnrollmentInput) {
     try {
-      await createEnrollment.mutateAsync(values);
+      await createEnrollment.mutateAsync(stripEmptyStrings(values) as CreateEnrollmentInput);
       notifications.show({ message: "Enrollment created", color: "green" });
       form.reset();
       toggleForm();
@@ -108,6 +117,20 @@ export function EnrollmentsTab({ studentId }: { studentId: number }) {
                 {...form.getInputProps("enrollmentStatus")}
               />
             </Group>
+            <TextInput
+              label="Enrollment objective"
+              description="Whatever your SIS calls it (e.g. Certificate Seeker, Occupational Upgrade, Secondary) — for your own records"
+              placeholder="Optional"
+              {...form.getInputProps("enrollmentObjective")}
+            />
+            <Checkbox
+              label="Reportable for accreditation"
+              description="Uncheck for enrollments out of scope for CPL reporting (e.g. a secondary/dual-enrolled student, or one enrolled purely for personal enrichment)"
+              checked={form.values.reportableForAccreditation ?? true}
+              onChange={(e) =>
+                form.setFieldValue("reportableForAccreditation", e.currentTarget.checked)
+              }
+            />
             <Button type="submit" loading={createEnrollment.isPending} size="sm">
               Save Enrollment
             </Button>
@@ -132,6 +155,8 @@ export function EnrollmentsTab({ studentId }: { studentId: number }) {
                 enrollmentId={enrollment.id}
                 enrollmentStatus={enrollment.enrollmentStatus}
                 allowableSubtractionReason={enrollment.allowableSubtractionReason}
+                enrollmentObjective={enrollment.enrollmentObjective}
+                reportableForAccreditation={enrollment.reportableForAccreditation}
               />
             </Accordion.Panel>
           </Accordion.Item>
@@ -146,11 +171,15 @@ function EnrollmentDetail({
   enrollmentId,
   enrollmentStatus,
   allowableSubtractionReason,
+  enrollmentObjective,
+  reportableForAccreditation,
 }: {
   studentId: number;
   enrollmentId: number;
   enrollmentStatus: EnrollmentStatus;
   allowableSubtractionReason: AllowableSubtractionReason | null;
+  enrollmentObjective: string | null;
+  reportableForAccreditation: boolean;
 }) {
   const updateEnrollment = useUpdateEnrollment(studentId);
   const { data: reportingPeriods } = useReportingPeriods();
@@ -191,6 +220,13 @@ function EnrollmentDetail({
     await updateEnrollment.mutateAsync({
       id: enrollmentId,
       input: { enrollmentStatus: newStatus as EnrollmentStatus },
+    });
+  }
+
+  async function handleReportableChange(reportable: boolean) {
+    await updateEnrollment.mutateAsync({
+      id: enrollmentId,
+      input: { reportableForAccreditation: reportable },
     });
   }
 
@@ -273,6 +309,18 @@ function EnrollmentDetail({
             w={360}
           />
         )}
+      </Group>
+
+      <Group>
+        <Text size="sm" c="dimmed">
+          Objective: {enrollmentObjective ?? "not specified"}
+        </Text>
+        <Checkbox
+          label="Reportable for accreditation"
+          description="Uncheck for enrollments out of scope for CPL reporting"
+          checked={reportableForAccreditation}
+          onChange={(e) => handleReportableChange(e.currentTarget.checked)}
+        />
       </Group>
 
       <Group justify="space-between">

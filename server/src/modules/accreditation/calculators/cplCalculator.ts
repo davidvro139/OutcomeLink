@@ -55,6 +55,8 @@ export async function computeReportingPeriod(reportingPeriodId: number): Promise
         enrollmentStatus: enrollment.enrollmentStatus,
         actualCompletionDate: enrollment.actualCompletionDate,
         allowableSubtractionReason: enrollment.allowableSubtractionReason,
+        reportableForAccreditation: enrollment.reportableForAccreditation,
+        enrollmentObjective: enrollment.enrollmentObjective,
       },
       reportingPeriod: { startDate: reportingPeriod.startDate, endDate: reportingPeriod.endDate },
       outcomeRecord: outcomeRecord

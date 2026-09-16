@@ -1,8 +1,19 @@
-import { Button, Group, Loader, Modal, Stack, Table, TextInput, Title } from "@mantine/core";
+import {
+  Button,
+  Group,
+  Loader,
+  Modal,
+  Pagination,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+  Title,
+} from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDebouncedValue, useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { type CreateStudentInput, useCreateStudent, useStudents } from "../../api/students";
 import { stripEmptyStrings } from "../../lib/forms";
@@ -10,7 +21,9 @@ import { stripEmptyStrings } from "../../lib/forms";
 export function StudentsListPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebouncedValue(search, 300);
-  const { data, isLoading } = useStudents(debouncedSearch || undefined);
+  const [page, setPage] = useState(1);
+  useEffect(() => setPage(1), [debouncedSearch]);
+  const { data, isLoading } = useStudents(debouncedSearch || undefined, page);
   const [opened, { open, close }] = useDisclosure(false);
   const createStudent = useCreateStudent();
 
@@ -54,28 +67,38 @@ export function StudentsListPage() {
       {isLoading && <Loader />}
 
       {data && (
-        <Table striped highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Name</Table.Th>
-              <Table.Th>Student ID</Table.Th>
-              <Table.Th>Email</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {data.items.map((student) => (
-              <Table.Tr key={student.id}>
-                <Table.Td>
-                  <Link to={`/students/${student.id}`}>
-                    {student.firstName} {student.lastName}
-                  </Link>
-                </Table.Td>
-                <Table.Td>{student.internalStudentId}</Table.Td>
-                <Table.Td>{student.email ?? "—"}</Table.Td>
+        <>
+          <Text size="sm" c="dimmed">
+            {data.pagination.totalItems} student{data.pagination.totalItems === 1 ? "" : "s"}
+          </Text>
+          <Table striped highlightOnHover>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Name</Table.Th>
+                <Table.Th>Student ID</Table.Th>
+                <Table.Th>Email</Table.Th>
               </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+            </Table.Thead>
+            <Table.Tbody>
+              {data.items.map((student) => (
+                <Table.Tr key={student.id}>
+                  <Table.Td>
+                    <Link to={`/students/${student.id}`}>
+                      {student.firstName} {student.lastName}
+                    </Link>
+                  </Table.Td>
+                  <Table.Td>{student.internalStudentId}</Table.Td>
+                  <Table.Td>{student.email ?? "—"}</Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+          {data.pagination.totalPages > 1 && (
+            <Group justify="center">
+              <Pagination total={data.pagination.totalPages} value={page} onChange={setPage} />
+            </Group>
+          )}
+        </>
       )}
 
       <Modal opened={opened} onClose={close} title="New Student">

@@ -30,6 +30,7 @@ export function ProgramsListPage() {
   const { data: campuses } = useCampuses();
   const [opened, { open, close }] = useDisclosure(false);
   const createProgram = useCreateProgram();
+  const campusNameById = new Map(campuses?.items.map((c) => [c.id, c.name]) ?? []);
 
   const form = useForm<CreateProgramInput>({
     initialValues: { campusId: 0, name: "", code: "", credentialType: "" },
@@ -69,6 +70,7 @@ export function ProgramsListPage() {
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Name</Table.Th>
+              <Table.Th>Campus</Table.Th>
               <Table.Th>Code</Table.Th>
               <Table.Th>Credential</Table.Th>
               <Table.Th>Licensure Required</Table.Th>
@@ -81,6 +83,7 @@ export function ProgramsListPage() {
                 <Table.Td>
                   <Link to={`/programs/${program.id}`}>{program.name}</Link>
                 </Table.Td>
+                <Table.Td>{campusNameById.get(program.campusId) ?? "—"}</Table.Td>
                 <Table.Td>{program.code}</Table.Td>
                 <Table.Td>{program.credentialType}</Table.Td>
                 <Table.Td>{program.licensureRequired ? "Yes" : "No"}</Table.Td>

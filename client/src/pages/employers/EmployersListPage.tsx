@@ -1,15 +1,28 @@
-import { Button, Group, Loader, Modal, Stack, Table, TextInput, Title } from "@mantine/core";
+import {
+  Button,
+  Group,
+  Loader,
+  Modal,
+  Pagination,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+  Title,
+} from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDebouncedValue, useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { type CreateEmployerInput, useCreateEmployer, useEmployers } from "../../api/employers";
 
 export function EmployersListPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebouncedValue(search, 300);
-  const { data, isLoading } = useEmployers(debouncedSearch || undefined);
+  const [page, setPage] = useState(1);
+  useEffect(() => setPage(1), [debouncedSearch]);
+  const { data, isLoading } = useEmployers(debouncedSearch || undefined, page);
   const [opened, { open, close }] = useDisclosure(false);
   const createEmployer = useCreateEmployer();
 
@@ -49,29 +62,39 @@ export function EmployersListPage() {
       {isLoading && <Loader />}
 
       {data && (
-        <Table striped highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Name</Table.Th>
-              <Table.Th>Industry</Table.Th>
-              <Table.Th>City/State</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {data.items.map((employer) => (
-              <Table.Tr key={employer.id}>
-                <Table.Td>
-                  <Link to={`/employers/${employer.id}`}>{employer.name}</Link>
-                </Table.Td>
-                <Table.Td>{employer.industry ?? "—"}</Table.Td>
-                <Table.Td>
-                  {employer.city ?? "—"}
-                  {employer.state ? `, ${employer.state}` : ""}
-                </Table.Td>
+        <>
+          <Text size="sm" c="dimmed">
+            {data.pagination.totalItems} employer{data.pagination.totalItems === 1 ? "" : "s"}
+          </Text>
+          <Table striped highlightOnHover>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Name</Table.Th>
+                <Table.Th>Industry</Table.Th>
+                <Table.Th>City/State</Table.Th>
               </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+            </Table.Thead>
+            <Table.Tbody>
+              {data.items.map((employer) => (
+                <Table.Tr key={employer.id}>
+                  <Table.Td>
+                    <Link to={`/employers/${employer.id}`}>{employer.name}</Link>
+                  </Table.Td>
+                  <Table.Td>{employer.industry ?? "—"}</Table.Td>
+                  <Table.Td>
+                    {employer.city ?? "—"}
+                    {employer.state ? `, ${employer.state}` : ""}
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+          {data.pagination.totalPages > 1 && (
+            <Group justify="center">
+              <Pagination total={data.pagination.totalPages} value={page} onChange={setPage} />
+            </Group>
+          )}
+        </>
       )}
 
       <Modal opened={opened} onClose={close} title="New Employer">

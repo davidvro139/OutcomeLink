@@ -50,7 +50,12 @@ export function EmployersListPage() {
     <Stack p="xl" gap="md">
       <Group justify="space-between">
         <Title order={2}>Employers</Title>
-        <Button onClick={open}>New Employer</Button>
+        <Group>
+          <Button variant="light" component={Link} to="/employers/analytics">
+            View Analytics
+          </Button>
+          <Button onClick={open}>New Employer</Button>
+        </Group>
       </Group>
 
       <TextInput

@@ -124,13 +124,28 @@ Working checklist toward the Phase 1 / MVP scope defined in the spec (§62), seq
 
 ---
 
+## 9. Accreditation rule corrections & fields (from `docs/Outcomes and CPL slides.pdf`)
+
+An institution's internal outcomes-training deck (2017, COE member college) was reviewed against `docs/COE_RULE_MATRIX.md`. Most of it confirms the current classifier is already correct (military/National Guard and continuing-education-at-any-institution both counting as related placement, the three "refused employment" sub-reasons, awaiting-licensure/unavailable exclusions). These items are the real, actionable gaps it surfaced:
+
+- [ ] **Enrollment Objective scoping** — the deck states the Annual Report only includes enrollments with an objective of "Certificate Seeker" or "Occupational Upgrade," implying other objectives (e.g. personal enrichment) are excluded from CPL reporting entirely. `StudentEnrollment` has no such field today, so nothing currently filters non-reportable enrollments out of the classifier. Not documented anywhere else in this project — needs its own source-verification pass (official Help Manual / Handbook of Accreditation) before modeling, same standard as everything else in `COE_RULE_MATRIX.md`.
+- [ ] **Implement the enrollment-stage "allowable subtraction" categories** that `COE_RULE_MATRIX.md` §2 already documents from the official Help Manual (transferred internally, 100%-refund/first-day-only, documented unavailability — pregnancy/health/incarceration/death, church-mission/foreign-aid/military-activation, secondary students) but `coe2026.ts`'s classifier never actually checks. Today a withdrawn student who left to serve a church mission or due to documented incarceration/illness is counted as a negative `WITHDRAWAL`; they should be excluded from the completion denominator entirely. The slide deck's "Neutral" completion category is real-world confirmation this is a live gap, not just a manual footnote — it was already flagged as an open TODO in §2's own text but never built.
+- [ ] **Outcome relatedness provenance** — capture whether `relatedToTraining` was "Student Reported" or "Instructor Reported" (the deck's own distinction), alongside the existing `relatedToTrainingJustification` field. Small addition, but it's exactly the kind of evidentiary detail this app exists to preserve.
+- [ ] **Verifiable-employer-contact validation check** — the deck's concrete rule ("must be able to find the employer's address or phone number, at least") could become a new `validationEngine.ts` check: flag a verified `EMPLOYED` outcome whose linked `Employer` has no address/phone on file at all.
+
 ## Phase 2 (after MVP checkpoint above)
 
 Per spec §63: Licensure workflow and dashboard, Accreditation readiness dashboard, Historical trend reporting, Improvement plans, Employer relationship analytics, Administrative dashboards (Executive, Program Health, Data Quality), Excel exports, advanced drill-down reports (Time-to-Employment, Placement Quality, Outcome Funnel, Unknown Outcome, Follow-Up Effectiveness, Employer Concentration/Pipeline), survey system (Graduate + Employer), Duplicate student merge UI polish, bulk verification/follow-up actions, saved import mapping profiles, Unified Student Communication Timeline.
 
+- Per-reporting-period **outcomes follow-up deadline** (distinct from the period's own end date) with a dashboard countdown/reminder — modeled on the training deck's real-world "outcomes due Dec 1, annual report due first week of December" workflow.
+- A scheduled **"missing outcomes" digest** pushed to staff, rather than only the pull-based Validation tab that exists today.
+- A **quarterly outreach campaign** mode for the (currently unused) Graduate Survey tables, targeting completers with no resolved outcome yet.
+
 ## Phase 3
 
 Per spec §64: Skills-gap analysis, Geographic placement reporting (Leaflet), custom Report Builder, Scheduled reports, advanced workflow automation, additional accreditation frameworks beyond COE, SIS/API integrations.
+
+- **State workforce-agency wage-record match-file import** as a third-party outcome-verification source (the training deck's "DWS/USHE match files reviewed each Fall") — a common, valuable COE compliance workflow, called out explicitly under the existing SIS/API integrations item above.
 
 ## Not yet scheduled (explicitly deferred, not forgotten)
 

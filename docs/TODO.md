@@ -141,11 +141,24 @@ The Enrollment Objective work above (new-enrollment form's objective text input 
 
 ## Phase 2 (after MVP checkpoint above)
 
-Per spec §63: Licensure workflow and dashboard, Accreditation readiness dashboard, Historical trend reporting, Improvement plans, Employer relationship analytics, Administrative dashboards (Executive, Program Health, Data Quality), Excel exports, advanced drill-down reports (Time-to-Employment, Placement Quality, Outcome Funnel, Unknown Outcome, Follow-Up Effectiveness, Employer Concentration/Pipeline), survey system (Graduate + Employer), Duplicate student merge UI polish, bulk verification/follow-up actions, saved import mapping profiles, Unified Student Communication Timeline.
+Per spec §63. Broken into stages the same way the MVP was, ordered roughly by dependency and value. `server/src/modules/{imports,licensure,notifications,reports,surveys}` already exist as empty placeholder scaffolds (`export {};`) from early setup — noted per stage below since it's easy to assume something's further along than it is just because the folder exists.
 
-- Per-reporting-period **outcomes follow-up deadline** (distinct from the period's own end date) with a dashboard countdown/reminder — modeled on the training deck's real-world "outcomes due Dec 1, annual report due first week of December" workflow.
-- A scheduled **"missing outcomes" digest** pushed to staff, rather than only the pull-based Validation tab that exists today.
-- A **quarterly outreach campaign** mode for the (currently unused) Graduate Survey tables, targeting completers with no resolved outcome yet.
+- [ ] **P1. Licensure workflow & dashboard** — currently `LicensureResult` rows only exist via `seed.ts`; there is no way for a real user to record an exam attempt/result or see pass-rate trends. Backend: real routes in the empty `licensure` module (create/update a result per student+program, list by program/period). Frontend: a Licensure tab on the student detail page, and a per-program pass-rate dashboard view (reusing the CPL Dashboard's drill-down pattern).
+- [ ] **P2. Accreditation readiness dashboard** — a rollup view: per program × reporting period, which of the 3 benchmarks are met, negotiated-rate overrides applied, open validation issue counts, and (once P-outcomes-deadline below exists) days until the outcomes follow-up deadline.
+- [ ] **P3. Historical trend reporting** — CPL metrics charted across all reporting periods per program/institution-wide, using `@mantine/charts` (already a dependency, unused so far).
+- [ ] **P4. Improvement plans** — `ImprovementPlan`/`ImprovementPlanUpdate` are fully modeled but have no backend routes or UI at all. Build both, linked from the CPL Dashboard's below-benchmark badges and the Validation tab.
+- [ ] **P5. Employer relationship analytics** — top employers by placement count, employer concentration risk (spec's "Employer Concentration/Pipeline" drill-down), industry breakdown.
+- [ ] **P6. Administrative dashboards** (Executive, Program Health, Data Quality) — role-based landing dashboards replacing today's placeholder `DashboardPage` ("Stage 5 checkpoint..." filler text left over from early development).
+- [ ] **P7. Excel exports** — CPL results, validation issues, and student lists as downloadable `.xlsx`.
+- [ ] **P8. Advanced drill-down reports** — Time-to-Employment, Placement Quality, Outcome Funnel, Unknown Outcome, Follow-Up Effectiveness (Employer Concentration/Pipeline folds into P5).
+- [ ] **P9. Survey system** (Graduate + Employer) — `GraduateSurvey(Response)`/`EmployerSurvey(Response)` are modeled but the `surveys` module is an empty placeholder; no send/response flow exists yet.
+- [ ] **P10. Duplicate student merge UI** — `server/src/modules/students/merge.ts` and `StudentMergeLog` already work (built + tested in the MVP), but nothing in the UI actually surfaces a "Merge" action from a `POSSIBLE_DUPLICATE_STUDENT` validation issue — it's a backend capability with no way to trigger it.
+- [ ] **P11. Bulk verification/follow-up actions** — act on multiple follow-up-queue rows or outcome records at once instead of one at a time.
+- [ ] **P12. Bulk student import + saved mapping profiles** — `imports` module is an empty placeholder; `ImportBatch`/`ImportMappingProfile`/`ImportRowError` are modeled but nothing reads a CSV yet. This is a bigger, more foundational item than its "saved mapping profiles" framing in the spec suggests, since the import pipeline itself doesn't exist.
+- [ ] **P13. Unified Student Communication Timeline** — `CommunicationEvent` is modeled but nothing writes to it yet (follow-up attempts, surveys, notifications each stay in their own table); needs both the write-side wiring and a timeline view on the student page.
+- [ ] **Outcomes follow-up deadline** — per-reporting-period deadline distinct from the period's own end date, with a dashboard countdown/reminder (modeled on the training deck's "outcomes due Dec 1, annual report due first week of December" workflow). Fits naturally into P2's readiness dashboard.
+- [ ] **Missing-outcomes digest** — a scheduled push to staff, vs. today's pull-based Validation tab. Depends on P6's admin dashboards existing as a natural home, and `notifications` (currently an empty placeholder) as the delivery mechanism.
+- [ ] **Quarterly graduate outreach campaign** — a scheduled/batched mode for P9's survey system, targeting completers with no resolved outcome yet.
 
 ## Phase 3
 

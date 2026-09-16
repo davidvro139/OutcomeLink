@@ -22,7 +22,9 @@ import {
   useCreateImprovementPlan,
   useDrillDown,
   useReadiness,
+  useReportingPeriod,
 } from "../../api/accreditation";
+import { downloadFile } from "../../lib/apiClient";
 import { useUsers } from "../../api/users";
 
 const METRICS: CplMetric[] = ["COMPLETION", "PLACEMENT", "LICENSURE"];
@@ -59,8 +61,27 @@ interface CreatePlanState {
 export function CplDashboardTab({ reportingPeriodId }: { reportingPeriodId: number }) {
   const { data: results, isLoading } = useCplResults(reportingPeriodId);
   const { data: readinessData } = useReadiness(reportingPeriodId);
+  const { data: period } = useReportingPeriod(reportingPeriodId);
   const [drillDown, setDrillDown] = useState<DrillDownState | null>(null);
   const [createPlanState, setCreatePlanState] = useState<CreatePlanState | null>(null);
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      await downloadFile(
+        `/api/accreditation/reporting-periods/${reportingPeriodId}/results/export`,
+        `cpl-results-${period?.label ?? reportingPeriodId}.xlsx`,
+      );
+    } catch (err) {
+      notifications.show({
+        message: err instanceof Error ? err.message : "Failed to export CPL results",
+        color: "red",
+      });
+    } finally {
+      setExporting(false);
+    }
+  }
 
   if (isLoading) return <Loader />;
   if (!results || results.length === 0) {
@@ -151,6 +172,11 @@ export function CplDashboardTab({ reportingPeriodId }: { reportingPeriodId: numb
 
   return (
     <>
+      <Group justify="flex-end" mb="sm">
+        <Button size="xs" variant="light" onClick={handleExport} loading={exporting}>
+          Export to Excel
+        </Button>
+      </Group>
       <Table striped>
         <Table.Thead>
           <Table.Tr>

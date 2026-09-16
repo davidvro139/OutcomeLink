@@ -17,6 +17,7 @@ import { notifications } from "@mantine/notifications";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { type CreateStudentInput, useCreateStudent, useStudents } from "../../api/students";
+import { downloadFile } from "../../lib/apiClient";
 import { stripEmptyStrings } from "../../lib/forms";
 
 export function StudentsListPage() {
@@ -27,6 +28,22 @@ export function StudentsListPage() {
   const { data, isLoading } = useStudents(debouncedSearch || undefined, page);
   const [opened, { open, close }] = useDisclosure(false);
   const createStudent = useCreateStudent();
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const query = debouncedSearch ? `?search=${encodeURIComponent(debouncedSearch)}` : "";
+      await downloadFile(`/api/students/export${query}`, "students.xlsx");
+    } catch (err) {
+      notifications.show({
+        message: err instanceof Error ? err.message : "Failed to export students",
+        color: "red",
+      });
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const form = useForm<CreateStudentInput>({
     initialValues: { internalStudentId: "", firstName: "", lastName: "", email: "" },
@@ -55,7 +72,12 @@ export function StudentsListPage() {
     <Stack p="xl" gap="md">
       <Group justify="space-between">
         <Title order={2}>Students</Title>
-        <Button onClick={open}>New Student</Button>
+        <Group>
+          <Button variant="light" onClick={handleExport} loading={exporting}>
+            Export to Excel
+          </Button>
+          <Button onClick={open}>New Student</Button>
+        </Group>
       </Group>
 
       <TextInput

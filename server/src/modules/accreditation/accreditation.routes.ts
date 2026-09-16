@@ -89,6 +89,11 @@ accreditationRouter.get(
   asyncHandler(results.listResults),
 );
 accreditationRouter.get(
+  "/reporting-periods/:id/results/export",
+  requireAuth,
+  asyncHandler(results.exportResults),
+);
+accreditationRouter.get(
   "/reporting-periods/:id/drill-down",
   requireAuth,
   validate(results.drillDownQuerySchema, "query"),
@@ -116,6 +121,12 @@ accreditationRouter.get(
   requireAuth,
   validate(validation.listIssuesQuerySchema, "query"),
   asyncHandler(validation.listIssues),
+);
+accreditationRouter.get(
+  "/reporting-periods/:id/validation-issues/export",
+  requireAuth,
+  validate(validation.listIssuesQuerySchema, "query"),
+  asyncHandler(validation.exportIssues),
 );
 accreditationRouter.patch(
   "/reporting-periods/:id/validation-issues/:issueId/resolve",

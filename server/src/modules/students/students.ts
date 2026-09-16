@@ -5,6 +5,7 @@ import { sendData } from "../../lib/apiResponse";
 import { paginatedResponse } from "../../lib/crudHelpers";
 import { paginationQuerySchema } from "../../lib/pagination";
 import { prisma } from "../../lib/prisma";
+import { sendXlsx } from "../../lib/xlsx";
 
 export const createStudentSchema = z.object({
   internalStudentId: z.string().trim().min(1).max(100),
@@ -52,6 +53,49 @@ export async function list(req: Request, res: Response) {
     (skip, take) => prisma.student.findMany({ where, skip, take, orderBy: { lastName: "asc" } }),
     () => prisma.student.count({ where }),
   );
+}
+
+/** Phase 2 P7 (docs/TODO.md): the institution's student roster as a downloadable .xlsx. */
+export async function exportStudents(req: Request, res: Response) {
+  const { search } = req.query as unknown as ListStudentsQuery;
+  const institutionId = req.user!.institutionId;
+
+  const students = await prisma.student.findMany({
+    where: {
+      institutionId,
+      ...(search && {
+        OR: [
+          { firstName: { contains: search } },
+          { lastName: { contains: search } },
+          { internalStudentId: { contains: search } },
+        ],
+      }),
+    },
+    include: { communicationPreference: true },
+    orderBy: { lastName: "asc" },
+  });
+
+  await sendXlsx(res, "students.xlsx", [
+    {
+      name: "Students",
+      columns: [
+        { header: "Internal Student ID", key: "internalStudentId", width: 20 },
+        { header: "First Name", key: "firstName", width: 18 },
+        { header: "Last Name", key: "lastName", width: 18 },
+        { header: "Email", key: "email", width: 28 },
+        { header: "Phone", key: "phone", width: 16 },
+        { header: "Do Not Contact", key: "doNotContact", width: 16 },
+      ],
+      rows: students.map((s) => ({
+        internalStudentId: s.internalStudentId,
+        firstName: s.firstName,
+        lastName: s.lastName,
+        email: s.email ?? "",
+        phone: s.phone ?? "",
+        doNotContact: s.communicationPreference?.doNotContact ? "Yes" : "No",
+      })),
+    },
+  ]);
 }
 
 export async function show(req: Request, res: Response) {

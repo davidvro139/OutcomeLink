@@ -74,6 +74,41 @@ export function useCreateEmployer() {
   });
 }
 
+export interface EmployerAnalyticsRow {
+  employer: { id: number; name: string; industry: string | null };
+  placementCount: number;
+  relatedPlacementCount: number;
+}
+
+export interface IndustryBreakdownRow {
+  industry: string;
+  placementCount: number;
+  employerCount: number;
+}
+
+export interface EmployerConcentration {
+  totalPlacements: number;
+  distinctEmployerCount: number;
+  topEmployerShare: number;
+  top5Share: number;
+  risk: "LOW" | "MODERATE" | "HIGH";
+}
+
+export function useEmployerAnalytics(reportingPeriodId: number | undefined) {
+  const query = new URLSearchParams();
+  if (reportingPeriodId) query.set("reportingPeriodId", String(reportingPeriodId));
+
+  return useQuery({
+    queryKey: ["employers", "analytics", reportingPeriodId],
+    queryFn: () =>
+      apiRequest<{
+        topEmployers: EmployerAnalyticsRow[];
+        industryBreakdown: IndustryBreakdownRow[];
+        concentration: EmployerConcentration;
+      }>(`/api/employers/analytics?${query.toString()}`),
+  });
+}
+
 export function useCreateContact(employerId: number) {
   const queryClient = useQueryClient();
   return useMutation({

@@ -5,6 +5,7 @@ import { ReportingPeriodDetailPage } from "./pages/accreditation/ReportingPeriod
 import { ReportingPeriodsPage } from "./pages/accreditation/ReportingPeriodsPage";
 import { TrendsPage } from "./pages/accreditation/TrendsPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { EmployerAnalyticsPage } from "./pages/employers/EmployerAnalyticsPage";
 import { EmployerDetailPage } from "./pages/employers/EmployerDetailPage";
 import { EmployersListPage } from "./pages/employers/EmployersListPage";
 import { FollowUpQueuePage } from "./pages/followups/FollowUpQueuePage";
@@ -35,6 +36,7 @@ function App() {
         <Route path="/students/:id" element={<StudentDetailPage />} />
 
         <Route path="/employers" element={<EmployersListPage />} />
+        <Route path="/employers/analytics" element={<EmployerAnalyticsPage />} />
         <Route path="/employers/:id" element={<EmployerDetailPage />} />
 
         <Route path="/followups" element={<FollowUpQueuePage />} />

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { requireAuth, requireRole } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
+import * as analytics from "./analytics";
 import * as contacts from "./employerContacts";
 import * as employers from "./employers";
 
@@ -18,6 +19,13 @@ employersRouter.get(
   requireAuth,
   validate(employers.listEmployersQuerySchema, "query"),
   asyncHandler(employers.list),
+);
+// Registered before "/:id" so "analytics" isn't swallowed as an :id value.
+employersRouter.get(
+  "/analytics",
+  requireAuth,
+  validate(analytics.employerAnalyticsQuerySchema, "query"),
+  asyncHandler(analytics.analytics),
 );
 employersRouter.get("/:id", requireAuth, asyncHandler(employers.show));
 employersRouter.post(

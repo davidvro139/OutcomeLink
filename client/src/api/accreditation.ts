@@ -1,4 +1,9 @@
-import type { CplMetric, ReportingPeriodStatus, ValidationSeverity } from "@outcomelink/shared";
+import type {
+  CplMetric,
+  ImprovementPlanStatus,
+  ReportingPeriodStatus,
+  ValidationSeverity,
+} from "@outcomelink/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../lib/apiClient";
 
@@ -317,5 +322,114 @@ export function useResolveValidationIssue(reportingPeriodId: number) {
       queryClient.invalidateQueries({
         queryKey: ["accreditation", "validation-issues", reportingPeriodId],
       }),
+  });
+}
+
+export interface ImprovementPlanUpdate {
+  id: number;
+  improvementPlanId: number;
+  updateText: string;
+  correctiveAction: string | null;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface ImprovementPlan {
+  id: number;
+  programId: number;
+  metric: CplMetric;
+  reportingPeriodId: number;
+  currentResult: string | null;
+  target: string | null;
+  problemDescription: string | null;
+  rootCause: string | null;
+  responsibleUserId: number;
+  dueDate: string | null;
+  status: ImprovementPlanStatus;
+  program: { id: number; name: string };
+  reportingPeriod: { id: number; label: string };
+  responsibleUser: { id: number; name: string };
+  updates?: ImprovementPlanUpdate[];
+  _count?: { updates: number };
+}
+
+export interface CreateImprovementPlanInput {
+  programId: number;
+  metric: CplMetric;
+  reportingPeriodId: number;
+  currentResult?: number;
+  target?: number;
+  problemDescription?: string;
+  rootCause?: string;
+  responsibleUserId: number;
+  dueDate?: string;
+}
+
+export function useImprovementPlans(filters: {
+  reportingPeriodId?: number;
+  programId?: number;
+  status?: ImprovementPlanStatus;
+}) {
+  const query = new URLSearchParams();
+  if (filters.reportingPeriodId) query.set("reportingPeriodId", String(filters.reportingPeriodId));
+  if (filters.programId) query.set("programId", String(filters.programId));
+  if (filters.status) query.set("status", filters.status);
+
+  return useQuery({
+    queryKey: ["accreditation", "improvement-plans", filters],
+    queryFn: () =>
+      apiRequest<{ improvementPlans: ImprovementPlan[] }>(
+        `/api/accreditation/improvement-plans?${query.toString()}`,
+      ).then((r) => r.improvementPlans),
+  });
+}
+
+export function useImprovementPlan(id: number | undefined) {
+  return useQuery({
+    queryKey: ["accreditation", "improvement-plans", id],
+    queryFn: () =>
+      apiRequest<{ improvementPlan: ImprovementPlan }>(
+        `/api/accreditation/improvement-plans/${id}`,
+      ).then((r) => r.improvementPlan),
+    enabled: id !== undefined,
+  });
+}
+
+export function useCreateImprovementPlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateImprovementPlanInput) =>
+      apiRequest<{ improvementPlan: ImprovementPlan }>("/api/accreditation/improvement-plans", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["accreditation", "improvement-plans"] }),
+  });
+}
+
+export function useUpdateImprovementPlan(id: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Partial<CreateImprovementPlanInput> & { status?: ImprovementPlanStatus }) =>
+      apiRequest<{ improvementPlan: ImprovementPlan }>(
+        `/api/accreditation/improvement-plans/${id}`,
+        { method: "PATCH", body: JSON.stringify(input) },
+      ),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["accreditation", "improvement-plans"] }),
+  });
+}
+
+export function useAddImprovementPlanUpdate(id: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { updateText: string; correctiveAction?: string }) =>
+      apiRequest<{ update: ImprovementPlanUpdate }>(
+        `/api/accreditation/improvement-plans/${id}/updates`,
+        { method: "POST", body: JSON.stringify(input) },
+      ),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["accreditation", "improvement-plans", id] }),
   });
 }

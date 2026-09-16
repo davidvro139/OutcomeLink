@@ -1,16 +1,53 @@
 import type { CplMetric } from "@outcomelink/shared";
-import { Badge, Button, Group, Loader, Modal, Table, Text } from "@mantine/core";
+import {
+  Badge,
+  Button,
+  Group,
+  Loader,
+  Modal,
+  NumberInput,
+  Select,
+  Stack,
+  Table,
+  Text,
+  Textarea,
+  Tooltip,
+} from "@mantine/core";
+import { useForm } from "@mantine/form";
+import { notifications } from "@mantine/notifications";
 import { useState } from "react";
-import { useCplResults, useDrillDown } from "../../api/accreditation";
+import {
+  type CreateImprovementPlanInput,
+  useCplResults,
+  useCreateImprovementPlan,
+  useDrillDown,
+  useReadiness,
+} from "../../api/accreditation";
+import { useUsers } from "../../api/users";
 
 const METRICS: CplMetric[] = ["COMPLETION", "PLACEMENT", "LICENSURE"];
-const BENCHMARKS: Record<CplMetric, number> = { COMPLETION: 60, PLACEMENT: 70, LICENSURE: 70 };
+// Only a fallback for the institution-wide summary row, which has no single
+// program to look up a negotiated rate for. Per-program cells use the
+// Readiness endpoint's effective benchmark (getEffectiveBenchmark on the
+// server), which accounts for negotiated rates — this used to be hardcoded
+// here too, which meant a program with an approved negotiated rate it
+// actually met could still show as "Below benchmark" here while the
+// Readiness tab correctly showed it as ready. Two views of the same fact
+// must never disagree.
+const STANDARD_BENCHMARKS: Record<CplMetric, number> = { COMPLETION: 60, PLACEMENT: 70, LICENSURE: 70 };
 
 interface DrillDownState {
   metric: CplMetric;
   programId?: number;
   bucket: "numerator" | "denominator" | "excluded";
   label: string;
+}
+
+interface CreatePlanState {
+  programId: number;
+  programName: string;
+  metric: CplMetric;
+  currentResult: number;
 }
 
 /**
@@ -21,7 +58,9 @@ interface DrillDownState {
  */
 export function CplDashboardTab({ reportingPeriodId }: { reportingPeriodId: number }) {
   const { data: results, isLoading } = useCplResults(reportingPeriodId);
+  const { data: readinessData } = useReadiness(reportingPeriodId);
   const [drillDown, setDrillDown] = useState<DrillDownState | null>(null);
+  const [createPlanState, setCreatePlanState] = useState<CreatePlanState | null>(null);
 
   if (isLoading) return <Loader />;
   if (!results || results.length === 0) {
@@ -43,6 +82,15 @@ export function CplDashboardTab({ reportingPeriodId }: { reportingPeriodId: numb
     return results!.find((r) => r.programId === programId && r.metric === metric);
   }
 
+  function effectiveBenchmarkFor(programId: number | null, metric: CplMetric) {
+    if (programId !== null) {
+      const row = readinessData?.readiness.find((r) => r.program.id === programId);
+      const m = row?.metrics[metric];
+      if (m) return { benchmark: m.benchmark, negotiated: m.negotiated };
+    }
+    return { benchmark: STANDARD_BENCHMARKS[metric], negotiated: false };
+  }
+
   function renderCell(programId: number | null, metric: CplMetric, label: string) {
     const result = resultFor(programId, metric);
     if (!result || result.denominator === 0) {
@@ -53,23 +101,51 @@ export function CplDashboardTab({ reportingPeriodId }: { reportingPeriodId: numb
       );
     }
     const percentage = Number(result.percentage);
-    const belowBenchmark = percentage < BENCHMARKS[metric];
+    const { benchmark, negotiated } = effectiveBenchmarkFor(programId, metric);
+    const belowBenchmark = percentage < benchmark;
     return (
-      <Button
-        variant="subtle"
-        color={belowBenchmark ? "red" : "green"}
-        size="compact-sm"
-        onClick={() =>
-          setDrillDown({ metric, programId: programId ?? undefined, bucket: "denominator", label })
-        }
-      >
-        {percentage}%{" "}
-        {belowBenchmark && (
-          <Badge color="red" size="xs" ml={4}>
-            Below benchmark
-          </Badge>
+      <Group gap={4} wrap="nowrap">
+        <Button
+          variant="subtle"
+          color={belowBenchmark ? "red" : "green"}
+          size="compact-sm"
+          onClick={() =>
+            setDrillDown({ metric, programId: programId ?? undefined, bucket: "denominator", label })
+          }
+        >
+          {percentage}%{" "}
+          {belowBenchmark && (
+            <Badge color="red" size="xs" ml={4}>
+              Below benchmark
+            </Badge>
+          )}
+          {negotiated && (
+            <Badge color="grape" size="xs" ml={4} variant="outline">
+              negotiated {benchmark}%
+            </Badge>
+          )}
+        </Button>
+        {belowBenchmark && programId !== null && (
+          <Tooltip label="Create improvement plan">
+            <Button
+              variant="subtle"
+              color="red"
+              size="compact-xs"
+              px={6}
+              onClick={() =>
+                setCreatePlanState({
+                  programId,
+                  programName: programNames.get(programId) ?? `Program ${programId}`,
+                  metric,
+                  currentResult: percentage,
+                })
+              }
+            >
+              +
+            </Button>
+          </Tooltip>
         )}
-      </Button>
+      </Group>
     );
   }
 
@@ -120,7 +196,113 @@ export function CplDashboardTab({ reportingPeriodId }: { reportingPeriodId: numb
           />
         )}
       </Modal>
+
+      <Modal
+        opened={createPlanState !== null}
+        onClose={() => setCreatePlanState(null)}
+        title={createPlanState ? `Improvement Plan — ${createPlanState.programName} (${createPlanState.metric})` : ""}
+        size="lg"
+      >
+        {createPlanState && (
+          <QuickCreatePlanForm
+            reportingPeriodId={reportingPeriodId}
+            state={createPlanState}
+            onDone={() => setCreatePlanState(null)}
+          />
+        )}
+      </Modal>
     </>
+  );
+}
+
+function QuickCreatePlanForm({
+  reportingPeriodId,
+  state,
+  onDone,
+}: {
+  reportingPeriodId: number;
+  state: CreatePlanState;
+  onDone: () => void;
+}) {
+  const { data: users } = useUsers();
+  const createPlan = useCreateImprovementPlan();
+
+  const form = useForm<{
+    programId: number;
+    metric: CreateImprovementPlanInput["metric"];
+    reportingPeriodId: number;
+    currentResult: number;
+    target: number | "";
+    responsibleUserId: number;
+    problemDescription: string;
+    rootCause: string;
+    dueDate: string;
+  }>({
+    initialValues: {
+      programId: state.programId,
+      metric: state.metric,
+      reportingPeriodId,
+      currentResult: state.currentResult,
+      target: "",
+      responsibleUserId: 0,
+      problemDescription: "",
+      rootCause: "",
+      dueDate: "",
+    },
+    validate: {
+      responsibleUserId: (value) => (value ? null : "A responsible person is required"),
+    },
+  });
+
+  async function handleSubmit(values: typeof form.values) {
+    try {
+      await createPlan.mutateAsync({
+        ...values,
+        target: values.target === "" ? undefined : values.target,
+        dueDate: values.dueDate || undefined,
+      });
+      notifications.show({ message: "Improvement plan created", color: "green" });
+      onDone();
+    } catch (err) {
+      notifications.show({
+        message: err instanceof Error ? err.message : "Failed to create improvement plan",
+        color: "red",
+      });
+    }
+  }
+
+  return (
+    <form onSubmit={form.onSubmit(handleSubmit)}>
+      <Stack gap="sm">
+        <NumberInput label="Target (%)" min={0} max={100} {...form.getInputProps("target")} />
+        <Textarea
+          label="Problem description"
+          autosize
+          minRows={2}
+          {...form.getInputProps("problemDescription")}
+        />
+        <Textarea label="Root cause" autosize minRows={2} {...form.getInputProps("rootCause")} />
+        <Select
+          label="Responsible person"
+          required
+          data={users?.map((u) => ({ value: String(u.id), label: u.name })) ?? []}
+          value={form.values.responsibleUserId ? String(form.values.responsibleUserId) : null}
+          onChange={(v) => form.setFieldValue("responsibleUserId", v ? Number(v) : 0)}
+        />
+        <div>
+          <Text size="sm" fw={500} mb={4}>
+            Due date
+          </Text>
+          <input type="date" {...form.getInputProps("dueDate")} style={{ padding: 8, width: "100%" }} />
+        </div>
+        <Text size="xs" c="dimmed">
+          See the "Improvement Plans" tab for the full plan, including status and progress updates.
+        </Text>
+        <Button type="submit" loading={createPlan.isPending}>
+          Create Plan
+        </Button>
+      </Stack>
+    </form>
   );
 }
 

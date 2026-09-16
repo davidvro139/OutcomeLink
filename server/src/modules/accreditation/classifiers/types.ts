@@ -1,4 +1,5 @@
 import type {
+  AllowableSubtractionReason,
   AvailabilityStatus,
   CompletionClassification,
   ContinuingEducationStatus,
@@ -29,6 +30,8 @@ export interface ClassifierContext {
   enrollment: {
     enrollmentStatus: EnrollmentStatus;
     actualCompletionDate: Date | null;
+    /** Only meaningful when enrollmentStatus is WITHDRAWN — see shared/src/enrollment.ts. */
+    allowableSubtractionReason: AllowableSubtractionReason | null;
   };
   reportingPeriod: {
     startDate: Date;

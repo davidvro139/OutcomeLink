@@ -142,6 +142,16 @@ enum CommunicationEventType {
   NOTIFICATION
 }
 
+/// COE's enrollment-stage "Allowable Subtraction" categories that apply to a
+/// WITHDRAWN enrollment — see shared/src/enrollment.ts for the full rationale
+/// and docs/COE_RULE_MATRIX.md §2 for the source. Meaningful only when
+/// enrollmentStatus is WITHDRAWN.
+enum AllowableSubtractionReason {
+  FULL_REFUND_OR_FIRST_DAY_ONLY
+  DOCUMENTED_UNAVAILABLE
+  MISSION_FOREIGN_AID_OR_MILITARY_ACTIVATION
+}
+
 // ---------------------------------------------------------------------------
 // 2. Org structure
 // ---------------------------------------------------------------------------
@@ -352,6 +362,8 @@ model StudentEnrollment {
   enrollmentStatus       EnrollmentStatus @map("enrollment_status")
   credentialEarned       String?          @map("credential_earned")
   exitReason             String?          @map("exit_reason")
+  // Only meaningful when enrollmentStatus is WITHDRAWN — see the enum's own doc comment.
+  allowableSubtractionReason AllowableSubtractionReason? @map("allowable_subtraction_reason")
 
   student Student @relation(fields: [studentId], references: [id])
   program Program @relation(fields: [programId], references: [id])
@@ -509,6 +521,10 @@ model StudentOutcomeRecord {
   employmentStartDate             DateTime? @map("employment_start_date")
   relatedToTraining               Boolean?  @map("related_to_training")
   relatedToTrainingJustification  String?   @map("related_to_training_justification") @db.Text
+  // "STUDENT_REPORTED" | "INSTRUCTOR_REPORTED" — see shared/src/outcomes.ts's
+  // RELATED_TO_TRAINING_SOURCES. Plain string like the other outcome-record
+  // vocab fields, validated at the Zod layer.
+  relatedToTrainingSource          String?   @map("related_to_training_source")
   continuingEducationStatus       String?   @map("continuing_education_status")
   militaryStatus                  String?   @map("military_status")
   availabilityForEmploymentStatus String?   @map("availability_for_employment_status")

@@ -4,6 +4,7 @@ import {
   CONTINUING_EDUCATION_STATUSES,
   EMPLOYMENT_STATUSES,
   MILITARY_STATUSES,
+  RELATED_TO_TRAINING_SOURCES,
 } from "@outcomelink/shared";
 import { z } from "zod";
 import { ApiError } from "../../lib/apiError";
@@ -28,6 +29,7 @@ export const createOutcomeRecordSchema = z.object({
   employmentStartDate: z.coerce.date().optional(),
   relatedToTraining: z.boolean().optional(),
   relatedToTrainingJustification: z.string().trim().max(2000).optional(),
+  relatedToTrainingSource: z.enum(RELATED_TO_TRAINING_SOURCES).optional(),
   continuingEducationStatus: z.enum(CONTINUING_EDUCATION_STATUSES).optional(),
   militaryStatus: z.enum(MILITARY_STATUSES).optional(),
   availabilityForEmploymentStatus: z.enum(AVAILABILITY_STATUSES).optional(),

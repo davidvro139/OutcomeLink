@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { ENROLLMENT_STATUSES } from "@outcomelink/shared";
+import { ALLOWABLE_SUBTRACTION_REASONS, ENROLLMENT_STATUSES } from "@outcomelink/shared";
 import { z } from "zod";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
@@ -15,10 +15,16 @@ export const createEnrollmentSchema = z.object({
   enrollmentStatus: z.enum(ENROLLMENT_STATUSES),
   credentialEarned: z.string().trim().max(200).optional(),
   exitReason: z.string().trim().max(500).optional(),
+  // Only meaningful when enrollmentStatus is WITHDRAWN — see shared/src/enrollment.ts.
+  allowableSubtractionReason: z.enum(ALLOWABLE_SUBTRACTION_REASONS).optional(),
 });
 type CreateEnrollmentInput = z.infer<typeof createEnrollmentSchema>;
 
-export const updateEnrollmentSchema = createEnrollmentSchema.partial();
+export const updateEnrollmentSchema = createEnrollmentSchema.partial().extend({
+  // Nullable (not just optional) here specifically, so a previously-set reason
+  // can be explicitly cleared rather than only ever replaced.
+  allowableSubtractionReason: z.enum(ALLOWABLE_SUBTRACTION_REASONS).nullable().optional(),
+});
 type UpdateEnrollmentInput = z.infer<typeof updateEnrollmentSchema>;
 
 async function findOwnedStudent(institutionId: number, studentId: number) {

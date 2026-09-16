@@ -61,12 +61,14 @@ describe("computeReportingPeriod (integration)", () => {
     });
     reportingPeriodId = period.id;
 
-    // The nine documented classification scenarios, matching docs/COE_RULE_MATRIX.md.
+    // The nine documented classification scenarios, matching docs/COE_RULE_MATRIX.md,
+    // plus a tenth covering the allowable-subtraction exclusion (docs/TODO.md §9).
     const scenarios: Array<{
       status: "GRADUATE_COMPLETER" | "NON_GRADUATE_COMPLETER" | "WITHDRAWN" | "ACTIVE";
       completionDate: string | null;
       outcome?: Record<string, unknown>;
       licensure?: "PASSED" | "WAITING";
+      allowableSubtractionReason?: "DOCUMENTED_UNAVAILABLE";
     }> = [
       { status: "GRADUATE_COMPLETER", completionDate: "2026-01-15", outcome: { employmentStatus: "EMPLOYED", relatedToTraining: true } },
       { status: "GRADUATE_COMPLETER", completionDate: "2026-01-15", outcome: { employmentStatus: "EMPLOYED", relatedToTraining: false } },
@@ -87,6 +89,15 @@ describe("computeReportingPeriod (integration)", () => {
         outcome: { employmentStatus: "UNEMPLOYED", licensureRequired: true },
         licensure: "WAITING",
       },
+      // Withdrew for a documented allowable-subtraction reason: must be excluded
+      // from Completion entirely (neither numerator nor denominator) — distinct
+      // from the plain WITHDRAWN scenario above, which counts against the
+      // institution. Should NOT change the 7/8 completion ratio below.
+      {
+        status: "WITHDRAWN",
+        completionDate: "2026-01-15",
+        allowableSubtractionReason: "DOCUMENTED_UNAVAILABLE",
+      },
     ];
 
     for (const [i, scenario] of scenarios.entries()) {
@@ -101,6 +112,7 @@ describe("computeReportingPeriod (integration)", () => {
           startDate: new Date("2025-01-01"),
           actualCompletionDate: scenario.completionDate ? new Date(scenario.completionDate) : null,
           enrollmentStatus: scenario.status,
+          allowableSubtractionReason: scenario.allowableSubtractionReason,
         },
       });
 
@@ -128,6 +140,23 @@ describe("computeReportingPeriod (integration)", () => {
     const result = await prisma.cplCalculationResult.findFirst({ where: { reportingPeriodId, programId, metric: "COMPLETION" } });
     expect(result).toMatchObject({ numerator: 7, denominator: 8 });
     expect(Number(result!.percentage)).toBeCloseTo(87.5);
+  });
+
+  it("excludes a withdrawal for a documented allowable-subtraction reason from Completion entirely, unlike an ordinary withdrawal (still 7/8, not 7/9)", async () => {
+    const student = await prisma.student.findFirst({ where: { internalStudentId: "CALC-9" } });
+    const enrollment = await prisma.studentEnrollment.findFirst({ where: { studentId: student!.id } });
+    const classification = await prisma.studentClassification.findFirst({
+      where: { studentEnrollmentId: enrollment!.id, reportingPeriodId, metric: "COMPLETION" },
+      include: { explanation: true },
+    });
+    expect(classification?.classificationCode).toBe("ALLOWABLE_SUBTRACTION");
+    expect(classification?.explanation).toMatchObject({
+      countsInNumerator: false,
+      countsInDenominator: false,
+    });
+
+    const result = await prisma.cplCalculationResult.findFirst({ where: { reportingPeriodId, programId, metric: "COMPLETION" } });
+    expect(result).toMatchObject({ numerator: 7, denominator: 8 });
   });
 
   it("computes Placement as 4/5 (related-employed x1 + continuing-ed x1 + licensure-passed x1 = 3 numerator... plus non-graduate completer)", async () => {

@@ -1,8 +1,10 @@
 import { Router } from "express";
 import { asyncHandler } from "../../lib/asyncHandler";
+import { OPERATIONAL_ROLES } from "../../lib/roles";
 import { requireAuth, requireRole } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
 import * as frameworks from "./frameworks/frameworks";
+import * as improvementPlans from "./improvementPlans";
 import * as readiness from "./readiness";
 import * as reportingPeriods from "./reportingPeriods";
 import * as results from "./results";
@@ -120,4 +122,37 @@ accreditationRouter.patch(
   requireAuth,
   requireRole(...CAN_FINALIZE),
   asyncHandler(validation.resolveIssue),
+);
+
+accreditationRouter.get(
+  "/improvement-plans",
+  requireAuth,
+  validate(improvementPlans.listImprovementPlansQuerySchema, "query"),
+  asyncHandler(improvementPlans.list),
+);
+accreditationRouter.post(
+  "/improvement-plans",
+  requireAuth,
+  requireRole(...OPERATIONAL_ROLES),
+  validate(improvementPlans.createImprovementPlanSchema),
+  asyncHandler(improvementPlans.create),
+);
+accreditationRouter.get(
+  "/improvement-plans/:id",
+  requireAuth,
+  asyncHandler(improvementPlans.show),
+);
+accreditationRouter.patch(
+  "/improvement-plans/:id",
+  requireAuth,
+  requireRole(...OPERATIONAL_ROLES),
+  validate(improvementPlans.updateImprovementPlanSchema),
+  asyncHandler(improvementPlans.update),
+);
+accreditationRouter.post(
+  "/improvement-plans/:id/updates",
+  requireAuth,
+  requireRole(...OPERATIONAL_ROLES),
+  validate(improvementPlans.createImprovementPlanUpdateSchema),
+  asyncHandler(improvementPlans.addUpdate),
 );

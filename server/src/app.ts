@@ -18,6 +18,7 @@ import { placementsRouter } from "./modules/placements";
 import { programsRouter } from "./modules/programs";
 import { searchRouter } from "./modules/search";
 import { studentsRouter } from "./modules/students";
+import { usersRouter } from "./modules/users";
 
 export function createApp() {
   const app = express();
@@ -48,6 +49,7 @@ export function createApp() {
   app.use("/api/accreditation", accreditationRouter);
   app.use("/api/search", searchRouter);
   app.use("/api/audit", auditRouter);
+  app.use("/api/users", usersRouter);
   // Further domain routers are mounted here as each module lands.
 
   app.use(notFoundHandler);

@@ -24,6 +24,7 @@ import {
 } from "../../api/accreditation";
 import { AuditHistory } from "../../components/AuditHistory";
 import { CplDashboardTab } from "./CplDashboardTab";
+import { ImprovementPlansTab } from "./ImprovementPlansTab";
 import { ReadinessTab } from "./ReadinessTab";
 import { ValidationTab } from "./ValidationTab";
 
@@ -171,6 +172,7 @@ export function ReportingPeriodDetailPage() {
           <Tabs.Tab value="dashboard">CPL Dashboard</Tabs.Tab>
           <Tabs.Tab value="readiness">Readiness</Tabs.Tab>
           <Tabs.Tab value="validation">Data Validation</Tabs.Tab>
+          <Tabs.Tab value="improvement-plans">Improvement Plans</Tabs.Tab>
           <Tabs.Tab value="audit">Audit History</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value="dashboard" pt="md">
@@ -181,6 +183,9 @@ export function ReportingPeriodDetailPage() {
         </Tabs.Panel>
         <Tabs.Panel value="validation" pt="md">
           <ValidationTab reportingPeriodId={periodId} />
+        </Tabs.Panel>
+        <Tabs.Panel value="improvement-plans" pt="md">
+          <ImprovementPlansTab reportingPeriodId={periodId} />
         </Tabs.Panel>
         <Tabs.Panel value="audit" pt="md">
           <AuditHistory entityType="ReportingPeriod" entityId={periodId} />

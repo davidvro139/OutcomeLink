@@ -21,6 +21,13 @@ studentsRouter.get(
   validate(students.listStudentsQuerySchema, "query"),
   asyncHandler(students.list),
 );
+// Registered before "/:id" so "export" isn't swallowed as an :id value.
+studentsRouter.get(
+  "/export",
+  requireAuth,
+  validate(students.listStudentsQuerySchema, "query"),
+  asyncHandler(students.exportStudents),
+);
 studentsRouter.get("/:id", requireAuth, asyncHandler(students.show));
 studentsRouter.post(
   "/",

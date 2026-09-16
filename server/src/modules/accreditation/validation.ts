@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { prisma } from "../../lib/prisma";
+import { sendXlsx } from "../../lib/xlsx";
 import { runValidation } from "./validators/validationEngine";
 
 async function findOwnedPeriod(institutionId: number, reportingPeriodId: number) {
@@ -44,6 +45,50 @@ export async function listIssues(req: Request, res: Response) {
     orderBy: [{ severity: "asc" }, { id: "asc" }],
   });
   sendData(res, { issues });
+}
+
+/** Phase 2 P7 (docs/TODO.md): the Validation tab's issue list as a downloadable .xlsx. */
+export async function exportIssues(req: Request, res: Response) {
+  const reportingPeriodId = Number(req.params.id);
+  const period = await findOwnedPeriod(req.user!.institutionId, reportingPeriodId);
+  const { severity, includeResolved } = req.query as unknown as ListIssuesQuery;
+
+  const issues = await prisma.validationIssue.findMany({
+    where: {
+      reportingPeriodId,
+      severity,
+      ...(includeResolved ? {} : { resolvedAt: null }),
+    },
+    include: {
+      student: { select: { id: true, firstName: true, lastName: true } },
+      program: { select: { id: true, name: true } },
+    },
+    orderBy: [{ severity: "asc" }, { id: "asc" }],
+  });
+
+  await sendXlsx(res, `validation-issues-${period.label}.xlsx`, [
+    {
+      name: "Validation Issues",
+      columns: [
+        { header: "Issue Type", key: "issueType", width: 34 },
+        { header: "Severity", key: "severity", width: 14 },
+        { header: "Student", key: "student", width: 26 },
+        { header: "Program", key: "program", width: 26 },
+        { header: "Detected At", key: "detectedAt", width: 20 },
+        { header: "Resolved At", key: "resolvedAt", width: 20 },
+        { header: "Resolved By", key: "resolvedBy", width: 20 },
+      ],
+      rows: issues.map((i) => ({
+        issueType: i.issueType,
+        severity: i.severity,
+        student: i.student ? `${i.student.firstName} ${i.student.lastName}` : "",
+        program: i.program?.name ?? "",
+        detectedAt: i.detectedAt.toISOString(),
+        resolvedAt: i.resolvedAt ? i.resolvedAt.toISOString() : "",
+        resolvedBy: i.resolvedBy ?? "",
+      })),
+    },
+  ]);
 }
 
 export async function resolveIssue(req: Request, res: Response) {

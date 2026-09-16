@@ -4,6 +4,7 @@ import { z } from "zod";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { prisma } from "../../lib/prisma";
+import { sendXlsx } from "../../lib/xlsx";
 import { computeReportingPeriod } from "./calculators/cplCalculator";
 import { assertPeriodIsEditable } from "./reportingPeriods";
 
@@ -38,6 +39,38 @@ export async function listResults(req: Request, res: Response) {
     orderBy: [{ programId: "asc" }, { metric: "asc" }],
   });
   sendData(res, { results });
+}
+
+/** Phase 2 P7 (docs/TODO.md): the CPL Dashboard's numbers as a downloadable .xlsx. */
+export async function exportResults(req: Request, res: Response) {
+  const reportingPeriodId = Number(req.params.id);
+  const period = await findOwnedPeriod(req.user!.institutionId, reportingPeriodId);
+
+  const results = await prisma.cplCalculationResult.findMany({
+    where: { reportingPeriodId },
+    include: { program: { select: { id: true, name: true } } },
+    orderBy: [{ programId: "asc" }, { metric: "asc" }],
+  });
+
+  await sendXlsx(res, `cpl-results-${period.label}.xlsx`, [
+    {
+      name: "CPL Results",
+      columns: [
+        { header: "Program", key: "program", width: 32 },
+        { header: "Metric", key: "metric", width: 14 },
+        { header: "Numerator", key: "numerator", width: 12 },
+        { header: "Denominator", key: "denominator", width: 12 },
+        { header: "Percentage", key: "percentage", width: 12 },
+      ],
+      rows: results.map((r) => ({
+        program: r.program?.name ?? "Institution-wide",
+        metric: r.metric,
+        numerator: r.numerator,
+        denominator: r.denominator,
+        percentage: Number(r.percentage),
+      })),
+    },
+  ]);
 }
 
 export const drillDownQuerySchema = z.object({

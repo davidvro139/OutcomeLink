@@ -1,7 +1,13 @@
 import { Anchor, Badge, Button, Group, Loader, Stack, Table, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useResolveValidationIssue, useValidationIssues } from "../../api/accreditation";
+import {
+  useReportingPeriod,
+  useResolveValidationIssue,
+  useValidationIssues,
+} from "../../api/accreditation";
+import { downloadFile } from "../../lib/apiClient";
 
 const SEVERITY_COLORS: Record<string, string> = {
   ERROR: "red",
@@ -12,7 +18,9 @@ const SEVERITY_COLORS: Record<string, string> = {
 /** Spec §21-22: ERROR/WARNING/INFORMATION list, clickable through to the record. */
 export function ValidationTab({ reportingPeriodId }: { reportingPeriodId: number }) {
   const { data: issues, isLoading } = useValidationIssues(reportingPeriodId);
+  const { data: period } = useReportingPeriod(reportingPeriodId);
   const resolveIssue = useResolveValidationIssue(reportingPeriodId);
+  const [exporting, setExporting] = useState(false);
 
   async function handleResolve(issueId: number) {
     try {
@@ -26,6 +34,23 @@ export function ValidationTab({ reportingPeriodId }: { reportingPeriodId: number
     }
   }
 
+  async function handleExport() {
+    setExporting(true);
+    try {
+      await downloadFile(
+        `/api/accreditation/reporting-periods/${reportingPeriodId}/validation-issues/export`,
+        `validation-issues-${period?.label ?? reportingPeriodId}.xlsx`,
+      );
+    } catch (err) {
+      notifications.show({
+        message: err instanceof Error ? err.message : "Failed to export validation issues",
+        color: "red",
+      });
+    } finally {
+      setExporting(false);
+    }
+  }
+
   if (isLoading) return <Loader />;
 
   const errorCount = issues?.filter((i) => i.severity === "ERROR").length ?? 0;
@@ -33,13 +58,18 @@ export function ValidationTab({ reportingPeriodId }: { reportingPeriodId: number
 
   return (
     <Stack gap="md">
-      <Group>
-        <Badge color="red" size="lg">
-          {errorCount} errors
-        </Badge>
-        <Badge color="yellow" size="lg">
-          {warningCount} warnings
-        </Badge>
+      <Group justify="space-between">
+        <Group>
+          <Badge color="red" size="lg">
+            {errorCount} errors
+          </Badge>
+          <Badge color="yellow" size="lg">
+            {warningCount} warnings
+          </Badge>
+        </Group>
+        <Button size="xs" variant="light" onClick={handleExport} loading={exporting}>
+          Export to Excel
+        </Button>
       </Group>
 
       {issues && issues.length === 0 && (

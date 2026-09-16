@@ -84,3 +84,22 @@ export async function apiRequestBlob(path: string): Promise<Blob> {
 
   return response.blob();
 }
+
+/**
+ * Fetches a file (e.g. an Excel export) with the Authorization header
+ * attached, then prompts the browser to save it under the given filename —
+ * a plain <a href> to an authenticated route can't carry that header, same
+ * reasoning as apiRequestBlob above, but this one triggers a save rather
+ * than opening the file inline.
+ */
+export async function downloadFile(path: string, filename: string): Promise<void> {
+  const blob = await apiRequestBlob(path);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}

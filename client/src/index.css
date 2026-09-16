@@ -2,6 +2,23 @@
   color-scheme: light dark;
 }
 
+/*
+ * Native form controls (date/time inputs, scrollbars) only follow the CSS
+ * color-scheme property, not Mantine's theme — they don't read
+ * --mantine-color-* variables at all. Without this, a raw <input type="date">
+ * always renders with light-mode chrome (white box, black text) even when
+ * Mantine's own theme is dark, which reads as a broken/unstyled control.
+ * Mantine sets data-mantine-color-scheme on <html> to reflect the actual
+ * active scheme, so mirror it here rather than hardcoding one value.
+ */
+html[data-mantine-color-scheme="dark"] {
+  color-scheme: dark;
+}
+
+html[data-mantine-color-scheme="light"] {
+  color-scheme: light;
+}
+
 body {
   margin: 0;
 }

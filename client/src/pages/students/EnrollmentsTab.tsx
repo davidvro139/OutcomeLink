@@ -91,7 +91,7 @@ export function EnrollmentsTab({ studentId }: { studentId: number }) {
 
       {formOpened && (
         <form onSubmit={form.onSubmit(handleSubmit)}>
-          <Stack gap="sm" p="md" bg="gray.0" style={{ borderRadius: 8 }}>
+          <Stack gap="sm" p="md" bg="var(--mantine-color-default)" style={{ borderRadius: 8 }}>
             <Select
               label="Program"
               required
@@ -334,7 +334,7 @@ function EnrollmentDetail({
 
       {outcomeFormOpen && (
         <form onSubmit={form.onSubmit(handleOutcomeSubmit)}>
-          <Stack gap="sm" p="md" bg="gray.0" style={{ borderRadius: 8 }}>
+          <Stack gap="sm" p="md" bg="var(--mantine-color-default)" style={{ borderRadius: 8 }}>
             <Select
               label="Reporting period"
               required

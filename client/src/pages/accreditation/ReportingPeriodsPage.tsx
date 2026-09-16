@@ -1,4 +1,5 @@
 import {
+  Anchor,
   Badge,
   Button,
   Group,
@@ -152,7 +153,9 @@ export function ReportingPeriodsPage() {
             {periods.map((period) => (
               <Table.Tr key={period.id}>
                 <Table.Td>
-                  <Link to={`/accreditation/reporting-periods/${period.id}`}>{period.label}</Link>
+                  <Anchor component={Link} to={`/accreditation/reporting-periods/${period.id}`}>
+                    {period.label}
+                  </Anchor>
                 </Table.Td>
                 <Table.Td>{new Date(period.startDate).toLocaleDateString()}</Table.Td>
                 <Table.Td>{new Date(period.endDate).toLocaleDateString()}</Table.Td>

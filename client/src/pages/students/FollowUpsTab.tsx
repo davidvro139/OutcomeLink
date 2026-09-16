@@ -51,7 +51,7 @@ export function FollowUpsTab({ studentId }: { studentId: number }) {
 
       {formOpened && (
         <form onSubmit={form.onSubmit(handleSubmit)}>
-          <Stack gap="sm" p="md" bg="gray.0" style={{ borderRadius: 8 }}>
+          <Stack gap="sm" p="md" bg="var(--mantine-color-default)" style={{ borderRadius: 8 }}>
             <input
               type="datetime-local"
               {...form.getInputProps("attemptedAt")}

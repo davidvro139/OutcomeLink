@@ -1,4 +1,5 @@
 import {
+  Anchor,
   Button,
   Group,
   Loader,
@@ -83,9 +84,9 @@ export function StudentsListPage() {
               {data.items.map((student) => (
                 <Table.Tr key={student.id}>
                   <Table.Td>
-                    <Link to={`/students/${student.id}`}>
+                    <Anchor component={Link} to={`/students/${student.id}`}>
                       {student.firstName} {student.lastName}
-                    </Link>
+                    </Anchor>
                   </Table.Td>
                   <Table.Td>{student.internalStudentId}</Table.Td>
                   <Table.Td>{student.email ?? "—"}</Table.Td>

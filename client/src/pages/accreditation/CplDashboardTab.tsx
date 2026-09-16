@@ -95,7 +95,7 @@ export function CplDashboardTab({ reportingPeriodId }: { reportingPeriodId: numb
               ))}
             </Table.Tr>
           ))}
-          <Table.Tr bg="gray.1">
+          <Table.Tr bg="var(--mantine-color-default-hover)">
             <Table.Td fw={700}>Institution-wide</Table.Td>
             {METRICS.map((metric) => (
               <Table.Td key={metric}>

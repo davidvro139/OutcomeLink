@@ -1,4 +1,5 @@
 import {
+  Anchor,
   Badge,
   Button,
   Group,
@@ -81,7 +82,9 @@ export function ProgramsListPage() {
             {data.items.map((program) => (
               <Table.Tr key={program.id}>
                 <Table.Td>
-                  <Link to={`/programs/${program.id}`}>{program.name}</Link>
+                  <Anchor component={Link} to={`/programs/${program.id}`}>
+                    {program.name}
+                  </Anchor>
                 </Table.Td>
                 <Table.Td>{campusNameById.get(program.campusId) ?? "—"}</Table.Td>
                 <Table.Td>{program.code}</Table.Td>

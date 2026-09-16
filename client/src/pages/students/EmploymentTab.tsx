@@ -1,9 +1,14 @@
-import { Button, Checkbox, Group, Select, Stack, Table, Text, TextInput } from "@mantine/core";
+import { Button, Checkbox, Group, Modal, Select, Stack, Table, Text, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
-import { useEmployers } from "../../api/employers";
+import {
+  type CreateEmployerInput,
+  type Employer,
+  useCreateEmployer,
+  useEmployers,
+} from "../../api/employers";
 import {
   type CreateEmploymentRecordInput,
   useCreateEmploymentRecord,
@@ -15,8 +20,17 @@ export function EmploymentTab({ studentId }: { studentId: number }) {
   const { data: records, isLoading } = useEmploymentRecords(studentId);
   const { data: employers } = useEmployers();
   const createRecord = useCreateEmploymentRecord(studentId);
+  const createEmployer = useCreateEmployer();
   const [formOpened, { toggle: toggleForm }] = useDisclosure(false);
+  const [employerModalOpened, { open: openEmployerModal, close: closeEmployerModal }] =
+    useDisclosure(false);
   const [expandedRecordId, setExpandedRecordId] = useState<number | null>(null);
+  // The Employer Select's data comes from a single paginated (50-item,
+  // alphabetical) page of employers — a just-created employer very often
+  // sorts past that page and wouldn't appear there even after the list
+  // refetches. Tracked separately so it's always selectable regardless of
+  // where it lands once the full list catches up.
+  const [justCreatedEmployer, setJustCreatedEmployer] = useState<Employer | null>(null);
 
   const form = useForm<CreateEmploymentRecordInput>({
     initialValues: {
@@ -34,6 +48,11 @@ export function EmploymentTab({ studentId }: { studentId: number }) {
     },
   });
 
+  const employerForm = useForm<CreateEmployerInput>({
+    initialValues: { name: "", industry: "", city: "", state: "" },
+    validate: { name: (value) => (value.trim() ? null : "Name is required") },
+  });
+
   async function handleSubmit(values: CreateEmploymentRecordInput) {
     try {
       await createRecord.mutateAsync(values);
@@ -48,6 +67,29 @@ export function EmploymentTab({ studentId }: { studentId: number }) {
     }
   }
 
+  async function handleCreateEmployer(values: CreateEmployerInput) {
+    try {
+      const { employer } = await createEmployer.mutateAsync(values);
+      notifications.show({ message: "Employer created", color: "green" });
+      setJustCreatedEmployer(employer);
+      form.setFieldValue("employerId", employer.id);
+      employerForm.reset();
+      closeEmployerModal();
+    } catch (err) {
+      notifications.show({
+        message: err instanceof Error ? err.message : "Failed to create employer",
+        color: "red",
+      });
+    }
+  }
+
+  const employerOptions = [
+    ...(justCreatedEmployer && !employers?.items.some((e) => e.id === justCreatedEmployer.id)
+      ? [justCreatedEmployer]
+      : []),
+    ...(employers?.items ?? []),
+  ].map((e) => ({ value: String(e.id), label: e.name }));
+
   return (
     <Stack gap="md">
       <Group justify="space-between">
@@ -59,14 +101,21 @@ export function EmploymentTab({ studentId }: { studentId: number }) {
 
       {formOpened && (
         <form onSubmit={form.onSubmit(handleSubmit)}>
-          <Stack gap="sm" p="md" bg="gray.0" style={{ borderRadius: 8 }}>
-            <Select
-              label="Employer"
-              required
-              data={employers?.items.map((e) => ({ value: String(e.id), label: e.name })) ?? []}
-              value={form.values.employerId ? String(form.values.employerId) : null}
-              onChange={(v) => form.setFieldValue("employerId", v ? Number(v) : 0)}
-            />
+          <Stack gap="sm" p="md" bg="var(--mantine-color-default)" style={{ borderRadius: 8 }}>
+            <Group align="flex-end" gap="xs">
+              <Select
+                label="Employer"
+                required
+                data={employerOptions}
+                value={form.values.employerId ? String(form.values.employerId) : null}
+                onChange={(v) => form.setFieldValue("employerId", v ? Number(v) : 0)}
+                searchable
+                style={{ flex: 1 }}
+              />
+              <Button variant="light" size="sm" onClick={openEmployerModal}>
+                New employer
+              </Button>
+            </Group>
             <TextInput label="Job title" required {...form.getInputProps("jobTitle")} />
             <input type="date" {...form.getInputProps("startDate")} style={{ padding: 8 }} />
             <Checkbox
@@ -117,6 +166,20 @@ export function EmploymentTab({ studentId }: { studentId: number }) {
       </Table>
 
       {expandedRecordId && <EvidencePanel target={{ employmentRecordId: expandedRecordId }} />}
+
+      <Modal opened={employerModalOpened} onClose={closeEmployerModal} title="New Employer">
+        <form onSubmit={employerForm.onSubmit(handleCreateEmployer)}>
+          <Stack gap="md">
+            <TextInput label="Name" required {...employerForm.getInputProps("name")} />
+            <TextInput label="Industry" {...employerForm.getInputProps("industry")} />
+            <TextInput label="City" {...employerForm.getInputProps("city")} />
+            <TextInput label="State" {...employerForm.getInputProps("state")} />
+            <Button type="submit" loading={createEmployer.isPending}>
+              Create
+            </Button>
+          </Stack>
+        </form>
+      </Modal>
     </Stack>
   );
 }

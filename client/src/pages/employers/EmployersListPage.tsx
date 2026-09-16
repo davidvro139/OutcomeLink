@@ -1,4 +1,5 @@
 import {
+  Anchor,
   Button,
   Group,
   Loader,
@@ -78,7 +79,9 @@ export function EmployersListPage() {
               {data.items.map((employer) => (
                 <Table.Tr key={employer.id}>
                   <Table.Td>
-                    <Link to={`/employers/${employer.id}`}>{employer.name}</Link>
+                    <Anchor component={Link} to={`/employers/${employer.id}`}>
+                      {employer.name}
+                    </Anchor>
                   </Table.Td>
                   <Table.Td>{employer.industry ?? "—"}</Table.Td>
                   <Table.Td>

@@ -1,4 +1,4 @@
-import { Badge, Button, Group, Loader, Stack, Table, Text } from "@mantine/core";
+import { Anchor, Badge, Button, Group, Loader, Stack, Table, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { Link } from "react-router-dom";
 import { useResolveValidationIssue, useValidationIssues } from "../../api/accreditation";
@@ -68,9 +68,9 @@ export function ValidationTab({ reportingPeriodId }: { reportingPeriodId: number
                 <Table.Td>{issue.issueType.replaceAll("_", " ")}</Table.Td>
                 <Table.Td>
                   {issue.student ? (
-                    <Link to={`/students/${issue.student.id}`}>
+                    <Anchor component={Link} to={`/students/${issue.student.id}`}>
                       {issue.student.firstName} {issue.student.lastName}
-                    </Link>
+                    </Anchor>
                   ) : (
                     "—"
                   )}

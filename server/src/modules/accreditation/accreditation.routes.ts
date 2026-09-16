@@ -6,6 +6,7 @@ import * as frameworks from "./frameworks/frameworks";
 import * as readiness from "./readiness";
 import * as reportingPeriods from "./reportingPeriods";
 import * as results from "./results";
+import * as trends from "./trends";
 import * as ruleSets from "./rules/ruleSets";
 import * as validation from "./validation";
 
@@ -34,6 +35,13 @@ accreditationRouter.post(
   requireRole(SYSTEM_ADMIN),
   validate(ruleSets.createRuleSetSchema),
   asyncHandler(ruleSets.create),
+);
+
+accreditationRouter.get(
+  "/trends",
+  requireAuth,
+  validate(trends.trendsQuerySchema, "query"),
+  asyncHandler(trends.trends),
 );
 
 accreditationRouter.get("/reporting-periods", requireAuth, asyncHandler(reportingPeriods.list));

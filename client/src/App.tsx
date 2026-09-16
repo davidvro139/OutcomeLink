@@ -3,6 +3,7 @@ import { RequireAuth } from "./auth/RequireAuth";
 import { AppLayout } from "./layout/AppLayout";
 import { ReportingPeriodDetailPage } from "./pages/accreditation/ReportingPeriodDetailPage";
 import { ReportingPeriodsPage } from "./pages/accreditation/ReportingPeriodsPage";
+import { TrendsPage } from "./pages/accreditation/TrendsPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { EmployerDetailPage } from "./pages/employers/EmployerDetailPage";
 import { EmployersListPage } from "./pages/employers/EmployersListPage";
@@ -40,6 +41,7 @@ function App() {
         <Route path="/licensure" element={<LicensureQueuePage />} />
 
         <Route path="/accreditation/reporting-periods" element={<ReportingPeriodsPage />} />
+        <Route path="/accreditation/trends" element={<TrendsPage />} />
         <Route
           path="/accreditation/reporting-periods/:id"
           element={<ReportingPeriodDetailPage />}

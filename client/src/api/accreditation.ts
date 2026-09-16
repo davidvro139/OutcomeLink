@@ -279,6 +279,30 @@ export function useReadiness(reportingPeriodId: number | undefined) {
   });
 }
 
+export interface TrendPoint {
+  reportingPeriod: {
+    id: number;
+    label: string;
+    startDate: string;
+    endDate: string;
+    status: ReportingPeriodStatus;
+  };
+  metrics: Partial<Record<CplMetric, { numerator: number; denominator: number; percentage: number }>>;
+}
+
+export function useTrends(programId: number | undefined) {
+  const query = new URLSearchParams();
+  if (programId) query.set("programId", String(programId));
+
+  return useQuery({
+    queryKey: ["accreditation", "trends", programId],
+    queryFn: () =>
+      apiRequest<{ trends: TrendPoint[] }>(`/api/accreditation/trends?${query.toString()}`).then(
+        (r) => r.trends,
+      ),
+  });
+}
+
 export function useResolveValidationIssue(reportingPeriodId: number) {
   const queryClient = useQueryClient();
   return useMutation({

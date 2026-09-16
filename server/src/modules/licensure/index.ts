@@ -1,2 +1,1 @@
-// licensure module: routes, controllers, and services live here.
-export {};
+export { licensureRouter } from "./licensure.routes";

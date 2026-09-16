@@ -12,6 +12,7 @@ import { authRouter } from "./modules/auth";
 import { employersRouter } from "./modules/employers";
 import { evidenceRouter } from "./modules/evidence";
 import { followupsRouter } from "./modules/followups";
+import { licensureRouter } from "./modules/licensure";
 import { outcomesRouter } from "./modules/outcomes";
 import { placementsRouter } from "./modules/placements";
 import { programsRouter } from "./modules/programs";
@@ -40,6 +41,7 @@ export function createApp() {
   app.use("/api/students", studentsRouter);
   app.use("/api/students", placementsRouter);
   app.use("/api", outcomesRouter);
+  app.use("/api", licensureRouter);
   app.use("/api/employers", employersRouter);
   app.use("/api/followups", followupsRouter);
   app.use("/api/evidence", evidenceRouter);

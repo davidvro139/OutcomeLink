@@ -11,6 +11,7 @@ import {
 } from "@mantine/core";
 import {
   IconBriefcase,
+  IconCertificate,
   IconChartBar,
   IconChevronDown,
   IconClipboardCheck,
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { to: "/students", label: "Students", icon: IconUsers },
   { to: "/employers", label: "Employers", icon: IconBriefcase },
   { to: "/followups", label: "Follow-Up Queue", icon: IconClipboardCheck },
+  { to: "/licensure", label: "Licensure Queue", icon: IconCertificate },
   { to: "/accreditation/reporting-periods", label: "Accreditation", icon: IconChartBar },
 ];
 

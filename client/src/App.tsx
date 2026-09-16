@@ -7,6 +7,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { EmployerDetailPage } from "./pages/employers/EmployerDetailPage";
 import { EmployersListPage } from "./pages/employers/EmployersListPage";
 import { FollowUpQueuePage } from "./pages/followups/FollowUpQueuePage";
+import { LicensureQueuePage } from "./pages/licensure/LicensureQueuePage";
 import { LoginPage } from "./pages/LoginPage";
 import { ProgramDetailPage } from "./pages/programs/ProgramDetailPage";
 import { ProgramsListPage } from "./pages/programs/ProgramsListPage";
@@ -36,6 +37,7 @@ function App() {
         <Route path="/employers/:id" element={<EmployerDetailPage />} />
 
         <Route path="/followups" element={<FollowUpQueuePage />} />
+        <Route path="/licensure" element={<LicensureQueuePage />} />
 
         <Route path="/accreditation/reporting-periods" element={<ReportingPeriodsPage />} />
         <Route

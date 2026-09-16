@@ -78,6 +78,29 @@ export async function runValidation(reportingPeriodId: number): Promise<void> {
       });
     }
 
+    // Employer on file isn't independently verifiable — per an institution's own
+    // outcomes-training material (docs/Outcomes and CPL slides.pdf): "we must be
+    // able to find the employer's address or phone number (at least) ... must be
+    // verifiable." An employer with neither is a data-quality gap even before
+    // anyone attempts verification.
+    if (outcome.employmentStatus === "EMPLOYED" && outcome.employerId) {
+      const employer = await prisma.employer.findUnique({
+        where: { id: outcome.employerId },
+        include: { contacts: true },
+      });
+      const hasFindableContact =
+        Boolean(employer?.address || employer?.city) ||
+        (employer?.contacts.some((c) => c.phone) ?? false);
+      if (employer && !hasFindableContact) {
+        issues.push({
+          studentId: enrollment.studentId,
+          programId: enrollment.programId,
+          issueType: "EMPLOYER_MISSING_VERIFIABLE_CONTACT",
+          severity: ValidationSeverity.WARNING,
+        });
+      }
+    }
+
     // Related employment without justification
     if (outcome.relatedToTraining === true && !outcome.relatedToTrainingJustification) {
       issues.push({

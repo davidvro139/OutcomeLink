@@ -1,4 +1,4 @@
-import type { EnrollmentStatus } from "@outcomelink/shared";
+import type { AllowableSubtractionReason, EnrollmentStatus } from "@outcomelink/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, apiRequestPaginated } from "../lib/apiClient";
 
@@ -34,6 +34,7 @@ export interface StudentEnrollment {
   enrollmentStatus: EnrollmentStatus;
   credentialEarned: string | null;
   exitReason: string | null;
+  allowableSubtractionReason: AllowableSubtractionReason | null;
 }
 
 export interface CreateStudentInput {
@@ -53,6 +54,7 @@ export interface CreateEnrollmentInput {
   actualCompletionDate?: string;
   enrollmentStatus: EnrollmentStatus;
   credentialEarned?: string;
+  allowableSubtractionReason?: AllowableSubtractionReason | null;
 }
 
 export function useStudents(search?: string, page = 1) {

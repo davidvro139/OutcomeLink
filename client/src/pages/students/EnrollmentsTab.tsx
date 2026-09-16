@@ -1,10 +1,14 @@
 import {
+  ALLOWABLE_SUBTRACTION_REASON_LABELS,
+  ALLOWABLE_SUBTRACTION_REASONS,
   AVAILABILITY_STATUSES,
   CONTINUING_EDUCATION_STATUSES,
   ENROLLMENT_STATUSES,
   ENROLLMENT_STATUS_LABELS,
   EMPLOYMENT_STATUSES,
   MILITARY_STATUSES,
+  RELATED_TO_TRAINING_SOURCES,
+  type AllowableSubtractionReason,
   type EnrollmentStatus,
 } from "@outcomelink/shared";
 import {
@@ -127,6 +131,7 @@ export function EnrollmentsTab({ studentId }: { studentId: number }) {
                 studentId={studentId}
                 enrollmentId={enrollment.id}
                 enrollmentStatus={enrollment.enrollmentStatus}
+                allowableSubtractionReason={enrollment.allowableSubtractionReason}
               />
             </Accordion.Panel>
           </Accordion.Item>
@@ -140,10 +145,12 @@ function EnrollmentDetail({
   studentId,
   enrollmentId,
   enrollmentStatus,
+  allowableSubtractionReason,
 }: {
   studentId: number;
   enrollmentId: number;
   enrollmentStatus: EnrollmentStatus;
+  allowableSubtractionReason: AllowableSubtractionReason | null;
 }) {
   const updateEnrollment = useUpdateEnrollment(studentId);
   const { data: reportingPeriods } = useReportingPeriods();
@@ -151,6 +158,7 @@ function EnrollmentDetail({
   const createOutcome = useCreateOutcomeRecord(studentId, enrollmentId);
   const [outcomeFormOpen, { toggle: toggleOutcomeForm }] = useDisclosure(false);
   const [selectedPeriodId, setSelectedPeriodId] = useState<number | null>(null);
+  const [currentStatus, setCurrentStatus] = useState(enrollmentStatus);
 
   // Mantine's Select needs `null` (not `undefined`) as its controlled "nothing
   // selected" state, or React warns about an uncontrolled input becoming
@@ -164,6 +172,7 @@ function EnrollmentDetail({
     availabilityForEmploymentStatus: string | null;
     licensureRequired: boolean;
     relatedToTraining?: boolean;
+    relatedToTrainingSource: string | null;
   }>({
     initialValues: {
       reportingPeriodId: 0,
@@ -172,14 +181,23 @@ function EnrollmentDetail({
       militaryStatus: null,
       availabilityForEmploymentStatus: null,
       licensureRequired: false,
+      relatedToTrainingSource: null,
     },
   });
 
   async function handleStatusChange(newStatus: string | null) {
     if (!newStatus) return;
+    setCurrentStatus(newStatus as EnrollmentStatus);
     await updateEnrollment.mutateAsync({
       id: enrollmentId,
       input: { enrollmentStatus: newStatus as EnrollmentStatus },
+    });
+  }
+
+  async function handleAllowableSubtractionReasonChange(reason: string | null) {
+    await updateEnrollment.mutateAsync({
+      id: enrollmentId,
+      input: { allowableSubtractionReason: reason as AllowableSubtractionReason | null },
     });
   }
 
@@ -209,6 +227,12 @@ function EnrollmentDetail({
               values.availabilityForEmploymentStatus as CreateOutcomeRecordInput["availabilityForEmploymentStatus"],
           }
         : {}),
+      ...(values.relatedToTrainingSource
+        ? {
+            relatedToTrainingSource:
+              values.relatedToTrainingSource as CreateOutcomeRecordInput["relatedToTrainingSource"],
+          }
+        : {}),
     };
     try {
       await createOutcome.mutateAsync(payload);
@@ -225,13 +249,31 @@ function EnrollmentDetail({
 
   return (
     <Stack gap="md">
-      <Select
-        label="Update status"
-        data={ENROLLMENT_STATUSES.map((s) => ({ value: s, label: ENROLLMENT_STATUS_LABELS[s] }))}
-        defaultValue={enrollmentStatus}
-        onChange={handleStatusChange}
-        w={260}
-      />
+      <Group align="flex-end">
+        <Select
+          label="Update status"
+          data={ENROLLMENT_STATUSES.map((s) => ({ value: s, label: ENROLLMENT_STATUS_LABELS[s] }))}
+          defaultValue={enrollmentStatus}
+          onChange={handleStatusChange}
+          w={260}
+        />
+        {currentStatus === "WITHDRAWN" && (
+          <Select
+            label="Allowable subtraction reason (if any)"
+            description="Excludes this withdrawal from the completion rate entirely, rather than counting it against the institution"
+            placeholder="None — counts as an ordinary withdrawal"
+            data={ALLOWABLE_SUBTRACTION_REASONS.map((r) => ({
+              value: r,
+              label: ALLOWABLE_SUBTRACTION_REASON_LABELS[r],
+            }))}
+            defaultValue={allowableSubtractionReason}
+            onChange={handleAllowableSubtractionReasonChange}
+            clearable
+            allowDeselect={false}
+            w={360}
+          />
+        )}
+      </Group>
 
       <Group justify="space-between">
         <Text fw={500} size="sm">
@@ -261,6 +303,18 @@ function EnrollmentDetail({
               checked={form.values.relatedToTraining ?? false}
               onChange={(e) => form.setFieldValue("relatedToTraining", e.currentTarget.checked)}
             />
+            {form.values.relatedToTraining && (
+              <Select
+                label="Who determined relatedness?"
+                data={RELATED_TO_TRAINING_SOURCES.map((s) => ({
+                  value: s,
+                  label: s === "STUDENT_REPORTED" ? "Student reported" : "Instructor reported",
+                }))}
+                {...form.getInputProps("relatedToTrainingSource")}
+                clearable
+                allowDeselect={false}
+              />
+            )}
             <Select
               label="Continuing education"
               data={CONTINUING_EDUCATION_STATUSES.map((s) => ({ value: s, label: s }))}

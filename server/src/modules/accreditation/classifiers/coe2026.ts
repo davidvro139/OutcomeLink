@@ -1,3 +1,4 @@
+import { ALLOWABLE_SUBTRACTION_REASON_LABELS } from "@outcomelink/shared";
 import type { ClassificationResult, Classifier, ClassifierContext } from "./types";
 
 function isWithinPeriod(date: Date | null, period: { startDate: Date; endDate: Date }): boolean {
@@ -37,6 +38,16 @@ function classifyCompletion(ctx: ClassifierContext): ClassificationResult {
   }
 
   if (enrollment.enrollmentStatus === "WITHDRAWN" && concludedThisPeriod) {
+    if (enrollment.allowableSubtractionReason) {
+      return {
+        metric: "COMPLETION",
+        classificationCode: "ALLOWABLE_SUBTRACTION",
+        countsInNumerator: false,
+        countsInDenominator: false,
+        reasonText: `Withdrew for a documented allowable-subtraction reason (${ALLOWABLE_SUBTRACTION_REASON_LABELS[enrollment.allowableSubtractionReason]}); excluded from the completion rate entirely per COE rules rather than counted as a withdrawal.`,
+      };
+    }
+
     return {
       metric: "COMPLETION",
       classificationCode: "WITHDRAWAL",

@@ -36,16 +36,18 @@ A confirmed change between the two Annual Report Help Manual editions: the Commi
 
 → **OutcomeLink**: these are exclusions from the **enrollment count itself**, not from completion/placement — a subtracted student never enters the cumulative-enrollment denominator at all. This needs to be a distinct concept from the placement-specific exclusions in §4 below. Model as a `classification_code` value (or a dedicated exclusion-reason field) on `StudentClassification`/`StudentEnrollment` distinguishing "excluded from enrollment count" from "counted but excluded from placement denominator."
 
+→ **Implemented** (docs/TODO.md §9, cross-checked against an institution's own outcomes-training material, `docs/Outcomes and CPL slides.pdf`, which independently confirmed these categories function as *Completion*-rate exclusions in practice — not just enrollment-count ones — since a subtracted student's cumulative-enrollment reduction flows through to the Completion Rate's denominator too, per §3's formula below): `StudentEnrollment.allowableSubtractionReason` (`AllowableSubtractionReason` enum: `FULL_REFUND_OR_FIRST_DAY_ONLY` / `DOCUMENTED_UNAVAILABLE` / `MISSION_FOREIGN_AID_OR_MILITARY_ACTIVATION`), meaningful only when `enrollmentStatus` is `WITHDRAWN`. Categories **A** (transferred internally) and **E** (secondary students) are deliberately not separate reason values: A is already handled for free by the existing `TRANSFERRED` enrollment status (never entering completion classification at all), and E is out of scope since this schema doesn't model secondary/high-school programs. The classifier (`coe2026.ts`) checks this before the ordinary `WITHDRAWN` branch and returns a new `ALLOWABLE_SUBTRACTION` completion classification — counted in neither numerator nor denominator — instead of the negative `WITHDRAWAL`.
+
 ## 3. Completion
 
 - **Completers** = Non-Graduate Completers + Graduate Completers.
   - **Graduate Completer**: demonstrated the competencies required for the program (or an exit point within it) and was awarded the credential (certificate/diploma/degree).
   - **Non-Graduate Completer**: left before graduating but acquired sufficient competencies for employment in the field (or a related field), **as evidenced by that employment**. (A non-graduate completer is, by this definition, always employed-related — there's no such thing as a non-graduate completer who isn't employed.)
-  - **Withdrawal**: left without earning a credential *and* without securing related employment. Withdrawals are not completers and are not an allowable subtraction — they count against the institution.
+  - **Withdrawal**: left without earning a credential *and* without securing related employment. Withdrawals are not completers and are not an allowable subtraction — they count against the institution, **unless** the withdrawal itself falls into one of §2's Allowable Subtraction categories (C or D), in which case it's excluded from this rate entirely instead — see the implementation note under §2.
 - **Completion Rate** = Total Completers ÷ (Cumulative Enrollment − Still Enrolled) × 100.
 - Secondary-program completion uses a simpler single form (Enrollment, Still Enrolled, Completers, Withdrawals) with the same rate formula; secondary completers include the same "credential OR credit toward graduation OR competencies evidenced by employment" definition.
 
-→ **OutcomeLink**: `StudentClassification.classificationCode` for the `COMPLETION` metric should be one of `GRADUATE_COMPLETER` / `NON_GRADUATE_COMPLETER` / `WITHDRAWAL` (plus whatever "excluded from enrollment" state applies from §2, which removes the student from this calculation entirely rather than classifying them here).
+→ **Implemented**: `StudentClassification.classificationCode` for the `COMPLETION` metric is one of `GRADUATE_COMPLETER` / `NON_GRADUATE_COMPLETER` / `WITHDRAWAL` / `ALLOWABLE_SUBTRACTION` (the §2 exclusion, both numerator and denominator false) / `NOT_APPLICABLE` (not concluded this period at all).
 
 ## 4. Placement
 
@@ -66,6 +68,8 @@ The critical, easy-to-get-wrong rule: **military service and continuing educatio
 - A "Total Placement Rate" variant additionally includes Non-Graduate Completers (who are always employed-related by definition) in both numerator and denominator alongside the Graduate figures; a "Graduate Placement Rate" variant uses Graduate Completers only.
 
 → **OutcomeLink**: `StudentClassification.classificationCode` for the `PLACEMENT` metric should be one of `EMPLOYED_RELATED` (covers direct related employment, military entry, and continuing education — these are **not** separate codes for calculation purposes, though it may be worth preserving *which* of the three applied as a sub-detail for the explanation panel, since "How This Student Counts" should say *why*, e.g. "counts as related placement: continuing education" rather than just "counts"), `EMPLOYED_UNRELATED`, `SEEKING_OR_UNKNOWN`, `AWAITING_LICENSURE` (excluded), `UNAVAILABLE` (excluded), `REFUSED` (excluded). The `CplCalculationExplanation.reasonText` generator must be able to state which of these applied and why — this is exactly the traceability spec §19-20 demand.
+
+→ **Implemented** (docs/TODO.md §9): `StudentOutcomeRecord.relatedToTrainingSource` (`RelatedToTrainingSource`: `STUDENT_REPORTED` / `INSTRUCTOR_REPORTED`) captures who determined `relatedToTraining`, per an institution's own outcomes-training material (`docs/Outcomes and CPL slides.pdf`): a student's own claim about relatedness carries different evidentiary weight than an instructor's expert determination. Provenance only — it does not affect classification.
 
 ## 5. Licensure
 

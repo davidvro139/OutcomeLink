@@ -3,6 +3,7 @@ import type {
   ContinuingEducationStatus,
   EmploymentStatus,
   MilitaryStatus,
+  RelatedToTrainingSource,
 } from "@outcomelink/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../lib/apiClient";
@@ -16,6 +17,7 @@ export interface OutcomeRecord {
   jobTitle: string | null;
   relatedToTraining: boolean | null;
   relatedToTrainingJustification: string | null;
+  relatedToTrainingSource: RelatedToTrainingSource | null;
   continuingEducationStatus: ContinuingEducationStatus | null;
   militaryStatus: MilitaryStatus | null;
   availabilityForEmploymentStatus: AvailabilityStatus | null;
@@ -29,6 +31,7 @@ export interface CreateOutcomeRecordInput {
   employerId?: number;
   relatedToTraining?: boolean;
   relatedToTrainingJustification?: string;
+  relatedToTrainingSource?: RelatedToTrainingSource;
   continuingEducationStatus?: ContinuingEducationStatus;
   militaryStatus?: MilitaryStatus;
   availabilityForEmploymentStatus?: AvailabilityStatus;

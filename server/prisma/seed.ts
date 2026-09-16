@@ -454,15 +454,19 @@ async function main() {
   const employers: { id: number }[] = [];
   for (let i = 0; i < 130; i++) {
     const region = faker.helpers.arrayElement(REGIONS);
+    // A small minority have no findable address or phone on file at all —
+    // deliberate edge case for the EMPLOYER_MISSING_VERIFIABLE_CONTACT
+    // validation check (docs/TODO.md §9).
+    const unverifiable = chance(0.05);
     const employer = await prisma.employer.create({
       data: {
         institutionId: institution.id,
         name: faker.company.name(),
         industry: faker.helpers.arrayElement(INDUSTRIES),
-        address: faker.location.streetAddress(),
-        city: region.city,
-        state: region.state,
-        zip: faker.location.zipCode(),
+        address: unverifiable ? undefined : faker.location.streetAddress(),
+        city: unverifiable ? undefined : region.city,
+        state: unverifiable ? undefined : region.state,
+        zip: unverifiable ? undefined : faker.location.zipCode(),
         website: faker.internet.url(),
       },
     });
@@ -475,7 +479,7 @@ async function main() {
           employerId: employer.id,
           name: faker.person.fullName(),
           title: faker.person.jobTitle(),
-          phone: faker.phone.number(),
+          phone: unverifiable ? undefined : faker.phone.number(),
           email: faker.internet.email(),
           isPrimaryContact: c === 0,
           isVerificationContact: c === 0 || chance(0.3),
@@ -557,6 +561,37 @@ async function main() {
           ? completionDate
           : addMonths(new Date(), randomInt(2, 10));
 
+        // A minority of withdrawals fall into a documented "Allowable Subtraction"
+        // category (docs/COE_RULE_MATRIX.md §2 / docs/TODO.md §9) — excluded from
+        // the completion rate entirely rather than counted against the program.
+        let exitReason: string | undefined;
+        let allowableSubtractionReason:
+          | "DOCUMENTED_UNAVAILABLE"
+          | "MISSION_FOREIGN_AID_OR_MILITARY_ACTIVATION"
+          | "FULL_REFUND_OR_FIRST_DAY_ONLY"
+          | undefined;
+        if (enrollmentStatus === "WITHDRAWN") {
+          const r = faker.number.float({ min: 0, max: 1 });
+          if (r < 0.08) {
+            exitReason = "Documented serious health issue";
+            allowableSubtractionReason = "DOCUMENTED_UNAVAILABLE";
+          } else if (r < 0.14) {
+            exitReason = "Military/National Guard activation";
+            allowableSubtractionReason = "MISSION_FOREIGN_AID_OR_MILITARY_ACTIVATION";
+          } else if (r < 0.18) {
+            exitReason = "Withdrew during the first week (full tuition refund)";
+            allowableSubtractionReason = "FULL_REFUND_OR_FIRST_DAY_ONLY";
+          } else {
+            exitReason = faker.helpers.arrayElement([
+              "Personal/family reasons",
+              "Financial hardship",
+              "Relocated",
+              "Academic difficulty",
+              "Employment conflict",
+            ]);
+          }
+        }
+
         const enrollment = await prisma.studentEnrollment.create({
           data: {
             studentId: student.id,
@@ -568,13 +603,8 @@ async function main() {
             actualCompletionDate: completionDate,
             enrollmentStatus,
             credentialEarned: enrollmentStatus === "GRADUATE_COMPLETER" ? config.credentialType : undefined,
-            exitReason: enrollmentStatus === "WITHDRAWN" ? faker.helpers.arrayElement([
-              "Personal/family reasons",
-              "Financial hardship",
-              "Relocated",
-              "Academic difficulty",
-              "Employment conflict",
-            ]) : undefined,
+            exitReason,
+            allowableSubtractionReason,
           },
         });
 
@@ -640,6 +670,7 @@ async function main() {
               relatedToTrainingJustification: chance(0.85)
                 ? `Job duties directly use skills taught in the ${config.name} program.`
                 : undefined,
+              relatedToTrainingSource: faker.helpers.arrayElement(["STUDENT_REPORTED", "INSTRUCTOR_REPORTED"]),
               verificationStatus: verified ? "VERIFIED" : undefined,
               verificationMethod: verified ? faker.helpers.arrayElement(["Employer contact", "Graduate self-report", "LinkedIn"]) : undefined,
               verifiedBy: verified ? faker.helpers.arrayElement(careerServicesStaff)?.name : undefined,

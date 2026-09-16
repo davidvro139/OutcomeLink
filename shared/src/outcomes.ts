@@ -26,11 +26,18 @@ export const AVAILABILITY_STATUSES = [
 ] as const;
 export type AvailabilityStatus = (typeof AVAILABILITY_STATUSES)[number];
 
-/** Output of the Completion classifier — see docs/COE_RULE_MATRIX.md §3. */
+/**
+ * Output of the Completion classifier — see docs/COE_RULE_MATRIX.md §3.
+ * ALLOWABLE_SUBTRACTION covers a withdrawal for one of the documented
+ * enrollment-stage "Allowable Subtraction" reasons (enrollment.ts) — excluded
+ * from the completion rate entirely, distinct from an ordinary WITHDRAWAL
+ * which counts against the institution.
+ */
 export const COMPLETION_CLASSIFICATIONS = [
   "GRADUATE_COMPLETER",
   "NON_GRADUATE_COMPLETER",
   "WITHDRAWAL",
+  "ALLOWABLE_SUBTRACTION",
   "NOT_APPLICABLE",
 ] as const;
 export type CompletionClassification = (typeof COMPLETION_CLASSIFICATIONS)[number];
@@ -50,3 +57,13 @@ export type PlacementClassification = (typeof PLACEMENT_CLASSIFICATIONS)[number]
 /** Output of the Licensure classifier — docs/COE_RULE_MATRIX.md §5. */
 export const LICENSURE_CLASSIFICATIONS = ["PASSED", "FAILED", "AWAITING", "NOT_APPLICABLE"] as const;
 export type LicensureClassification = (typeof LICENSURE_CLASSIFICATIONS)[number];
+
+/**
+ * Who determined that a student's employment is (or isn't) related to their
+ * field of instruction — staff self-report vs. an instructor's expert
+ * determination carry different evidentiary weight, per an institution's own
+ * outcomes-training material (docs/Outcomes and CPL slides.pdf). Purely a
+ * provenance/evidence field; it does not affect classification.
+ */
+export const RELATED_TO_TRAINING_SOURCES = ["STUDENT_REPORTED", "INSTRUCTOR_REPORTED"] as const;
+export type RelatedToTrainingSource = (typeof RELATED_TO_TRAINING_SOURCES)[number];

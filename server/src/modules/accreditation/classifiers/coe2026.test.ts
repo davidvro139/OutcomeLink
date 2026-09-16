@@ -5,7 +5,11 @@ const PERIOD = { startDate: new Date("2025-07-01"), endDate: new Date("2026-06-3
 
 function buildContext(overrides: Partial<ClassifierContext> = {}): ClassifierContext {
   return {
-    enrollment: { enrollmentStatus: "ACTIVE", actualCompletionDate: null },
+    enrollment: {
+      enrollmentStatus: "ACTIVE",
+      actualCompletionDate: null,
+      allowableSubtractionReason: null,
+    },
     reportingPeriod: PERIOD,
     outcomeRecord: null,
     licensureResult: null,
@@ -28,6 +32,7 @@ describe("coe2026Classifier — Completion (docs/COE_RULE_MATRIX.md §3)", () =>
       enrollment: {
         enrollmentStatus: "GRADUATE_COMPLETER",
         actualCompletionDate: new Date("2026-01-15"),
+        allowableSubtractionReason: null,
       },
     });
     const completion = findMetric(coe2026Classifier.classify(ctx), "COMPLETION");
@@ -41,6 +46,7 @@ describe("coe2026Classifier — Completion (docs/COE_RULE_MATRIX.md §3)", () =>
       enrollment: {
         enrollmentStatus: "NON_GRADUATE_COMPLETER",
         actualCompletionDate: new Date("2026-01-15"),
+        allowableSubtractionReason: null,
       },
     });
     const completion = findMetric(coe2026Classifier.classify(ctx), "COMPLETION");
@@ -51,7 +57,11 @@ describe("coe2026Classifier — Completion (docs/COE_RULE_MATRIX.md §3)", () =>
 
   it("classifies a withdrawal within the period as denominator-only", () => {
     const ctx = buildContext({
-      enrollment: { enrollmentStatus: "WITHDRAWN", actualCompletionDate: new Date("2026-01-15") },
+      enrollment: {
+        enrollmentStatus: "WITHDRAWN",
+        actualCompletionDate: new Date("2026-01-15"),
+        allowableSubtractionReason: null,
+      },
     });
     const completion = findMetric(coe2026Classifier.classify(ctx), "COMPLETION");
     expect(completion.classificationCode).toBe("WITHDRAWAL");
@@ -59,9 +69,27 @@ describe("coe2026Classifier — Completion (docs/COE_RULE_MATRIX.md §3)", () =>
     expect(completion.countsInDenominator).toBe(true);
   });
 
+  it("excludes a withdrawal for a documented allowable-subtraction reason entirely, rather than counting it against the institution", () => {
+    const ctx = buildContext({
+      enrollment: {
+        enrollmentStatus: "WITHDRAWN",
+        actualCompletionDate: new Date("2026-01-15"),
+        allowableSubtractionReason: "DOCUMENTED_UNAVAILABLE",
+      },
+    });
+    const completion = findMetric(coe2026Classifier.classify(ctx), "COMPLETION");
+    expect(completion.classificationCode).toBe("ALLOWABLE_SUBTRACTION");
+    expect(completion.countsInNumerator).toBe(false);
+    expect(completion.countsInDenominator).toBe(false);
+  });
+
   it("excludes a student still actively enrolled entirely", () => {
     const ctx = buildContext({
-      enrollment: { enrollmentStatus: "ACTIVE", actualCompletionDate: null },
+      enrollment: {
+      enrollmentStatus: "ACTIVE",
+      actualCompletionDate: null,
+      allowableSubtractionReason: null,
+    },
     });
     const completion = findMetric(coe2026Classifier.classify(ctx), "COMPLETION");
     expect(completion.classificationCode).toBe("NOT_APPLICABLE");
@@ -73,6 +101,7 @@ describe("coe2026Classifier — Completion (docs/COE_RULE_MATRIX.md §3)", () =>
       enrollment: {
         enrollmentStatus: "GRADUATE_COMPLETER",
         actualCompletionDate: new Date("2024-01-15"),
+        allowableSubtractionReason: null,
       },
     });
     const completion = findMetric(coe2026Classifier.classify(ctx), "COMPLETION");
@@ -89,6 +118,7 @@ describe("coe2026Classifier — Placement (docs/COE_RULE_MATRIX.md §4)", () => 
       enrollment: {
         enrollmentStatus: "GRADUATE_COMPLETER",
         actualCompletionDate: new Date("2026-01-15"),
+        allowableSubtractionReason: null,
       },
       outcomeRecord,
       licensureResult,
@@ -96,7 +126,11 @@ describe("coe2026Classifier — Placement (docs/COE_RULE_MATRIX.md §4)", () => 
 
   it("is not applicable for a student who isn't a completer this period", () => {
     const ctx = buildContext({
-      enrollment: { enrollmentStatus: "ACTIVE", actualCompletionDate: null },
+      enrollment: {
+      enrollmentStatus: "ACTIVE",
+      actualCompletionDate: null,
+      allowableSubtractionReason: null,
+    },
     });
     expect(findMetric(coe2026Classifier.classify(ctx), "PLACEMENT").classificationCode).toBe(
       "NOT_APPLICABLE",
@@ -108,6 +142,7 @@ describe("coe2026Classifier — Placement (docs/COE_RULE_MATRIX.md §4)", () => 
       enrollment: {
         enrollmentStatus: "NON_GRADUATE_COMPLETER",
         actualCompletionDate: new Date("2026-01-15"),
+        allowableSubtractionReason: null,
       },
       outcomeRecord: null,
     });
@@ -275,6 +310,7 @@ describe("coe2026Classifier — Licensure (docs/COE_RULE_MATRIX.md §5)", () => 
       enrollment: {
         enrollmentStatus: "GRADUATE_COMPLETER",
         actualCompletionDate: new Date("2026-01-15"),
+        allowableSubtractionReason: null,
       },
       outcomeRecord: {
         employmentStatus: "EMPLOYED",
@@ -322,6 +358,7 @@ describe("coe2026Classifier — Licensure (docs/COE_RULE_MATRIX.md §5)", () => 
       enrollment: {
         enrollmentStatus: "NON_GRADUATE_COMPLETER",
         actualCompletionDate: new Date("2026-01-15"),
+        allowableSubtractionReason: null,
       },
       outcomeRecord: {
         employmentStatus: "EMPLOYED",

@@ -15,7 +15,7 @@ export function StudentExplanationPanel({
   );
 
   return (
-    <Paper withBorder p="md" radius="md" bg="blue.0">
+    <Paper withBorder p="md" radius="md" bg="var(--mantine-color-blue-light)">
       <Title order={5} mb="xs">
         How This Student Counts
       </Title>

@@ -1,4 +1,4 @@
-import { Badge, Group, Loader, NumberInput, Stack, Table, Text, Title } from "@mantine/core";
+import { Anchor, Badge, Group, Loader, NumberInput, Stack, Table, Text, Title } from "@mantine/core";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useFollowUpQueue } from "../../api/followups";
@@ -44,9 +44,9 @@ export function FollowUpQueuePage() {
             {data.items.map((row) => (
               <Table.Tr key={row.student.id} bg={row.daysOverdue > 0 ? "red.0" : undefined}>
                 <Table.Td>
-                  <Link to={`/students/${row.student.id}`}>
+                  <Anchor component={Link} to={`/students/${row.student.id}`}>
                     {row.student.firstName} {row.student.lastName}
-                  </Link>
+                  </Anchor>
                 </Table.Td>
                 <Table.Td>{row.program?.name ?? "—"}</Table.Td>
                 <Table.Td>{row.campus?.name ?? "—"}</Table.Td>

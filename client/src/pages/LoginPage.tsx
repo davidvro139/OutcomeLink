@@ -62,7 +62,7 @@ export function LoginPage() {
   }
 
   return (
-    <Center h="100vh" bg="var(--mantine-color-gray-0)">
+    <Center h="100vh" bg="var(--mantine-color-body)">
       <Paper withBorder shadow="sm" p="xl" radius="md" w={380}>
         <Stack gap="lg">
           <div>

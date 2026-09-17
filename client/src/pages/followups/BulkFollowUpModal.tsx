@@ -3,6 +3,7 @@ import { Alert, Button, List, Modal, Select, Stack, Text, Textarea } from "@mant
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useBulkCreateFollowUpAttempts } from "../../api/followups";
+import { toDatetimeLocalValue } from "../../lib/forms";
 
 interface BulkFollowUpFormValues {
   attemptedAt: string;
@@ -31,7 +32,7 @@ export function BulkFollowUpModal({
 
   const form = useForm<BulkFollowUpFormValues>({
     initialValues: {
-      attemptedAt: new Date().toISOString().slice(0, 16),
+      attemptedAt: toDatetimeLocalValue(new Date()),
       method: "PHONE",
       outcome: "NO_RESPONSE",
       notes: "",

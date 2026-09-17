@@ -3,7 +3,12 @@ import { FOLLOW_UP_METHODS, FOLLOW_UP_OUTCOMES } from "@outcomelink/shared";
 import { z } from "zod";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
+import { recordCommunicationEvent } from "../../lib/communicationEvents";
 import { prisma } from "../../lib/prisma";
+
+function followUpSummary(method: string, outcome: string): string {
+  return `Follow-up via ${method} — outcome: ${outcome.replaceAll("_", " ")}`;
+}
 
 export const createFollowUpAttemptSchema = z.object({
   attemptedAt: z.coerce.date(),
@@ -58,16 +63,25 @@ export async function create(
   const followUpAttempt = await prisma.followUpAttempt.create({
     data: { ...req.body, studentId, staffUserId: req.user!.sub },
   });
+  await recordCommunicationEvent({
+    studentId,
+    eventType: "FOLLOW_UP_ATTEMPT",
+    sourceId: followUpAttempt.id,
+    occurredAt: followUpAttempt.attemptedAt,
+    summaryText: followUpSummary(followUpAttempt.method, followUpAttempt.outcome),
+  });
   sendData(res, { followUpAttempt }, 201);
 }
 
 /**
  * Phase 2 P11 (docs/TODO.md): log the same attempt (e.g. "called everyone on
  * this page, no answer") against many Follow-Up Queue rows in one action
- * instead of opening each student's page individually. Uses `createMany`,
- * which the audit-log Prisma extension doesn't instrument per-row (same
- * documented scope boundary as merge.ts's child-record reassignment) — the
- * bulk action itself is still visible via the created FollowUpAttempt rows.
+ * instead of opening each student's page individually. Creates rows one at a
+ * time (rather than `createMany`) so each gets a real id to hang a P13
+ * CommunicationEvent off of — `createMany` only returns a count, not the
+ * created rows. The audit-log Prisma extension still doesn't instrument
+ * these per-row (same documented scope boundary as merge.ts's child-record
+ * reassignment); the bulk action itself is visible via the created rows.
  * A student not found in this institution, or flagged do-not-contact, is
  * skipped rather than failing the whole batch — the reason comes back per
  * student so the caller can show exactly who didn't get logged and why.
@@ -98,9 +112,24 @@ export async function bulkCreate(
     }
   }
 
-  const created = await prisma.followUpAttempt.createMany({
-    data: eligibleIds.map((studentId) => ({ ...attempt, studentId, staffUserId: req.user!.sub })),
-  });
+  const createdAttempts = await Promise.all(
+    eligibleIds.map((studentId) =>
+      prisma.followUpAttempt.create({
+        data: { ...attempt, studentId, staffUserId: req.user!.sub },
+      }),
+    ),
+  );
+  await Promise.all(
+    createdAttempts.map((followUpAttempt) =>
+      recordCommunicationEvent({
+        studentId: followUpAttempt.studentId,
+        eventType: "FOLLOW_UP_ATTEMPT",
+        sourceId: followUpAttempt.id,
+        occurredAt: followUpAttempt.attemptedAt,
+        summaryText: followUpSummary(followUpAttempt.method, followUpAttempt.outcome),
+      }),
+    ),
+  );
 
-  sendData(res, { createdCount: created.count, skipped }, 201);
+  sendData(res, { createdCount: createdAttempts.length, skipped }, 201);
 }

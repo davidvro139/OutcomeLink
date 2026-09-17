@@ -82,7 +82,14 @@ export function useBulkCreateFollowUpAttempts() {
         method: "POST",
         body: JSON.stringify(input),
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["followups", "queue"] }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["followups", "queue"] });
+      for (const studentId of variables.studentIds) {
+        queryClient.invalidateQueries({
+          queryKey: ["students", studentId, "communication-timeline"],
+        });
+      }
+    },
   });
 }
 
@@ -100,6 +107,9 @@ export function useCreateFollowUpAttempt(studentId: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students", studentId, "followups"] });
       queryClient.invalidateQueries({ queryKey: ["followups", "queue"] });
+      queryClient.invalidateQueries({
+        queryKey: ["students", studentId, "communication-timeline"],
+      });
     },
   });
 }

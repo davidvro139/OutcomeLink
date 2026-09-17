@@ -134,10 +134,16 @@ enum AuditAction {
   REOPEN
 }
 
+/// Split by survey type (not a single SURVEY_SENT/SURVEY_RESPONSE pair) because
+/// sourceId alone can't disambiguate which table it points into — GraduateSurvey
+/// and EmployerSurvey (and their Response tables) are separate auto-incrementing
+/// primary keys, so id 42 could exist in either. Phase 2 P13 (docs/TODO.md).
 enum CommunicationEventType {
   FOLLOW_UP_ATTEMPT
-  SURVEY_SENT
-  SURVEY_RESPONSE
+  GRADUATE_SURVEY_SENT
+  GRADUATE_SURVEY_RESPONSE
+  EMPLOYER_SURVEY_SENT
+  EMPLOYER_SURVEY_RESPONSE
   VERIFICATION_CONTACT
   NOTIFICATION
 }

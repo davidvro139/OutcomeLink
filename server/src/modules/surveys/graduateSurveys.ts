@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
+import { recordCommunicationEvent } from "../../lib/communicationEvents";
 import { prisma } from "../../lib/prisma";
 
 export const createGraduateSurveySchema = z.object({
@@ -42,6 +43,13 @@ export async function create(
       channel: req.body.channel,
       responseToken: randomUUID(),
     },
+  });
+  await recordCommunicationEvent({
+    studentId,
+    eventType: "GRADUATE_SURVEY_SENT",
+    sourceId: survey.id,
+    occurredAt: survey.sentAt,
+    summaryText: `Graduate survey sent${survey.channel ? ` via ${survey.channel}` : ""}`,
   });
   sendData(res, { survey }, 201);
 }

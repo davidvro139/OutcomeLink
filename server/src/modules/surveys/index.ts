@@ -1,2 +1,1 @@
-// surveys module: routes, controllers, and services live here.
-export {};
+export { publicSurveysRouter, surveysRouter } from "./surveys.routes";

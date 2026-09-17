@@ -1,7 +1,94 @@
 import { CPL_METRICS } from "@outcomelink/shared";
-import { Anchor, Badge, Group, Loader, Paper, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
+import { Alert, Anchor, Badge, Button, Group, Loader, Paper, SimpleGrid, Stack, Table, Text, TextInput, Title } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
+import { notifications } from "@mantine/notifications";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useReadiness } from "../../api/accreditation";
+import { useAuth } from "../../auth/AuthContext";
+import { useReadiness, useSetOutcomesDeadline } from "../../api/accreditation";
+import { formatDateOnly } from "../../lib/dates";
+
+const CAN_SET_DEADLINE = ["SYSTEM_ADMINISTRATOR", "INSTITUTIONAL_ADMINISTRATOR"];
+
+function OutcomesDeadlineBanner({
+  reportingPeriodId,
+  outcomesDeadline,
+  daysUntilOutcomesDeadline,
+}: {
+  reportingPeriodId: number;
+  outcomesDeadline: string | null;
+  daysUntilOutcomesDeadline: number | null;
+}) {
+  const { user } = useAuth();
+  const canEdit = user && CAN_SET_DEADLINE.includes(user.role);
+  const setDeadline = useSetOutcomesDeadline(reportingPeriodId);
+  const [editing, { toggle: toggleEditing, close: closeEditing }] = useDisclosure(false);
+  const [draft, setDraft] = useState(outcomesDeadline?.slice(0, 10) ?? "");
+
+  async function handleSave() {
+    try {
+      await setDeadline.mutateAsync(draft || null);
+      notifications.show({ message: "Outcomes deadline updated", color: "green" });
+      closeEditing();
+    } catch (err) {
+      notifications.show({
+        message: err instanceof Error ? err.message : "Failed to update deadline",
+        color: "red",
+      });
+    }
+  }
+
+  if (editing) {
+    return (
+      <Group>
+        <TextInput
+          type="date"
+          label="Outcomes deadline"
+          value={draft}
+          onChange={(e) => setDraft(e.currentTarget.value)}
+          w={200}
+        />
+        <Button size="xs" mt={22} onClick={handleSave} loading={setDeadline.isPending}>
+          Save
+        </Button>
+        <Button size="xs" mt={22} variant="subtle" onClick={closeEditing}>
+          Cancel
+        </Button>
+      </Group>
+    );
+  }
+
+  if (!outcomesDeadline) {
+    return canEdit ? (
+      <Button size="xs" variant="light" onClick={toggleEditing}>
+        Set Outcomes Deadline
+      </Button>
+    ) : null;
+  }
+
+  const days = daysUntilOutcomesDeadline ?? 0;
+  const color = days < 0 ? "red" : days <= 7 ? "orange" : days <= 30 ? "yellow" : "blue";
+  const deadlineDate = formatDateOnly(outcomesDeadline);
+  const message =
+    days < 0
+      ? `Outcomes deadline was ${deadlineDate} — ${-days} day${-days === 1 ? "" : "s"} overdue`
+      : days === 0
+        ? `Outcomes deadline is today (${deadlineDate})`
+        : `Outcomes deadline: ${deadlineDate} — ${days} day${days === 1 ? "" : "s"} remaining`;
+
+  return (
+    <Alert color={color} variant="light">
+      <Group justify="space-between">
+        <Text size="sm">{message}</Text>
+        {canEdit && (
+          <Button size="xs" variant="subtle" onClick={toggleEditing}>
+            Edit
+          </Button>
+        )}
+      </Group>
+    </Alert>
+  );
+}
 
 /** Phase 2 P2 (docs/TODO.md): per-program "would this pass review right now" rollup. */
 export function ReadinessTab({ reportingPeriodId }: { reportingPeriodId: number }) {
@@ -12,6 +99,12 @@ export function ReadinessTab({ reportingPeriodId }: { reportingPeriodId: number 
 
   return (
     <Stack gap="md">
+      <OutcomesDeadlineBanner
+        reportingPeriodId={reportingPeriodId}
+        outcomesDeadline={data.summary.outcomesDeadline}
+        daysUntilOutcomesDeadline={data.summary.daysUntilOutcomesDeadline}
+      />
+
       <SimpleGrid cols={{ base: 1, sm: 3 }}>
         <Paper withBorder p="md" radius="md">
           <Text size="xs" c="dimmed" tt="uppercase">

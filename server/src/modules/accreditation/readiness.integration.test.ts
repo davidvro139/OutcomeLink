@@ -218,3 +218,100 @@ describe("accreditation readiness + negotiated benchmarks (integration)", () => 
     expect(res.body.data.summary.readyPrograms).toBeGreaterThanOrEqual(1);
   });
 });
+
+/**
+ * "Outcomes follow-up deadline" (docs/TODO.md's deferred-items list) — a
+ * per-period deadline distinct from the period's own endDate, surfaced as a
+ * countdown on the Readiness dashboard. Editable after creation via the new
+ * narrow PATCH /reporting-periods/:id (outcomesDeadline only).
+ */
+describe("reporting period outcomes deadline (integration)", () => {
+  let institutionId: number;
+  let reportingPeriodId: number;
+  let adminToken: string;
+  let instructorToken: string;
+
+  beforeAll(async () => {
+    const institution = await prisma.institution.create({ data: { name: "Outcomes Deadline Test Institution" } });
+    institutionId = institution.id;
+
+    const passwordHash = await hashPassword("password123");
+    await prisma.user.create({
+      data: { institutionId, name: "Admin", email: "admin@deadline-test.edu", passwordHash, role: "SYSTEM_ADMINISTRATOR" },
+    });
+    await prisma.user.create({
+      data: { institutionId, name: "Instructor", email: "instructor@deadline-test.edu", passwordHash, role: "INSTRUCTOR_STAFF" },
+    });
+    adminToken = (await request(app).post("/api/auth/login").send({ email: "admin@deadline-test.edu", password: "password123" })).body.data.accessToken;
+    instructorToken = (await request(app).post("/api/auth/login").send({ email: "instructor@deadline-test.edu", password: "password123" })).body.data.accessToken;
+
+    const framework = await prisma.accreditationFramework.create({ data: { name: "COE-DEADLINE-TEST" } });
+    const ruleSet = await prisma.ruleSet.create({
+      data: {
+        frameworkId: framework.id,
+        versionLabel: "COE-2026-DEADLINE-TEST",
+        effectiveStartDate: new Date("2025-01-01"),
+        ruleDefinition: { benchmarks: { completion: 60, placement: 70, licensure: 70 } },
+      },
+    });
+    const period = await prisma.reportingPeriod.create({
+      data: {
+        institutionId,
+        ruleSetId: ruleSet.id,
+        label: "DEADLINE-TEST-PERIOD",
+        startDate: new Date("2025-07-01"),
+        endDate: new Date("2026-06-30"),
+      },
+    });
+    reportingPeriodId = period.id;
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  it("readiness summary has a null deadline and null days-until when none is set", async () => {
+    const res = await request(app)
+      .get(`/api/accreditation/reporting-periods/${reportingPeriodId}/readiness`)
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(res.body.data.summary.outcomesDeadline).toBeNull();
+    expect(res.body.data.summary.daysUntilOutcomesDeadline).toBeNull();
+  });
+
+  it("rejects a non-admin role from setting the deadline", async () => {
+    const res = await request(app)
+      .patch(`/api/accreditation/reporting-periods/${reportingPeriodId}`)
+      .set("Authorization", `Bearer ${instructorToken}`)
+      .send({ outcomesDeadline: "2026-12-01" });
+    expect(res.status).toBe(403);
+  });
+
+  it("sets the deadline and the readiness summary reflects a positive countdown", async () => {
+    const deadline = new Date();
+    deadline.setDate(deadline.getDate() + 10);
+
+    const patchRes = await request(app)
+      .patch(`/api/accreditation/reporting-periods/${reportingPeriodId}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ outcomesDeadline: deadline.toISOString() });
+    expect(patchRes.status).toBe(200);
+    expect(new Date(patchRes.body.data.reportingPeriod.outcomesDeadline).toDateString()).toBe(
+      deadline.toDateString(),
+    );
+
+    const readinessRes = await request(app)
+      .get(`/api/accreditation/reporting-periods/${reportingPeriodId}/readiness`)
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(readinessRes.body.data.summary.daysUntilOutcomesDeadline).toBeGreaterThanOrEqual(9);
+    expect(readinessRes.body.data.summary.daysUntilOutcomesDeadline).toBeLessThanOrEqual(10);
+  });
+
+  it("clears the deadline by sending null", async () => {
+    const res = await request(app)
+      .patch(`/api/accreditation/reporting-periods/${reportingPeriodId}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ outcomesDeadline: null });
+    expect(res.status).toBe(200);
+    expect(res.body.data.reportingPeriod.outcomesDeadline).toBeNull();
+  });
+});

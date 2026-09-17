@@ -49,7 +49,7 @@ export function ReportingPeriodsPage() {
     useDisclosure(false);
 
   const periodForm = useForm({
-    initialValues: { ruleSetId: 0, label: "", startDate: "", endDate: "" },
+    initialValues: { ruleSetId: 0, label: "", startDate: "", endDate: "", outcomesDeadline: "" },
     validate: {
       ruleSetId: (v) => (v ? null : "Rule set is required"),
       label: (v) => (v.trim() ? null : "Label is required"),
@@ -105,7 +105,10 @@ export function ReportingPeriodsPage() {
 
   async function handleCreatePeriod(values: typeof periodForm.values) {
     try {
-      await createPeriod.mutateAsync(values);
+      await createPeriod.mutateAsync({
+        ...values,
+        outcomesDeadline: values.outcomesDeadline || undefined,
+      });
       notifications.show({ message: "Reporting period created", color: "green" });
       periodForm.reset();
       closePeriodModal();
@@ -217,6 +220,12 @@ export function ReportingPeriodsPage() {
             />
             <input type="date" {...periodForm.getInputProps("startDate")} style={{ padding: 8 }} />
             <input type="date" {...periodForm.getInputProps("endDate")} style={{ padding: 8 }} />
+            <TextInput
+              type="date"
+              label="Outcomes deadline"
+              description="Optional — when outcome data collection is due, distinct from the period's end date"
+              {...periodForm.getInputProps("outcomesDeadline")}
+            />
             <Button type="submit" loading={createPeriod.isPending}>
               Create
             </Button>

@@ -9,13 +9,22 @@ export const createReportingPeriodSchema = z.object({
   label: z.string().trim().min(1).max(100),
   startDate: z.coerce.date(),
   endDate: z.coerce.date(),
+  // Distinct from endDate — see the schema.prisma doc comment on this column.
+  outcomesDeadline: z.coerce.date().optional(),
 });
 type CreateReportingPeriodInput = z.infer<typeof createReportingPeriodSchema>;
+
+export const updateReportingPeriodSchema = z.object({
+  outcomesDeadline: z.coerce.date().nullable().optional(),
+});
+type UpdateReportingPeriodInput = z.infer<typeof updateReportingPeriodSchema>;
 
 export async function list(req: Request, res: Response) {
   const reportingPeriods = await prisma.reportingPeriod.findMany({
     where: { institutionId: req.user!.institutionId },
-    orderBy: { startDate: "desc" },
+    // id as a tiebreaker: two periods sharing a startDate would otherwise sort
+    // unstably, and the Dashboard picks periods[0] as "the current period".
+    orderBy: [{ startDate: "desc" }, { id: "desc" }],
   });
   sendData(res, { reportingPeriods });
 }
@@ -45,6 +54,21 @@ export async function create(
     data: { ...req.body, institutionId },
   });
   sendData(res, { reportingPeriod }, 201);
+}
+
+/** Deliberately narrow — only outcomesDeadline is editable post-creation for now; label/dates/ruleSet edits aren't part of this item's scope. */
+export async function update(
+  req: Request<{ id: string }, unknown, UpdateReportingPeriodInput>,
+  res: Response,
+) {
+  const id = Number(req.params.id);
+  await findOwnedPeriod(req.user!.institutionId, id);
+
+  const reportingPeriod = await prisma.reportingPeriod.update({
+    where: { id },
+    data: { outcomesDeadline: req.body.outcomesDeadline },
+  });
+  sendData(res, { reportingPeriod });
 }
 
 async function findOwnedPeriod(institutionId: number, id: number) {

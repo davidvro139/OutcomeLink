@@ -1,4 +1,5 @@
 import { Anchor, Badge, Button, Group, Loader, Stack, Table, Text } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -8,6 +9,7 @@ import {
   useValidationIssues,
 } from "../../api/accreditation";
 import { downloadFile } from "../../lib/apiClient";
+import { MergeDuplicatesModal } from "./MergeDuplicatesModal";
 
 const SEVERITY_COLORS: Record<string, string> = {
   ERROR: "red",
@@ -21,6 +23,21 @@ export function ValidationTab({ reportingPeriodId }: { reportingPeriodId: number
   const { data: period } = useReportingPeriod(reportingPeriodId);
   const resolveIssue = useResolveValidationIssue(reportingPeriodId);
   const [exporting, setExporting] = useState(false);
+  const [mergeOpened, { open: openMerge, close: closeMerge }] = useDisclosure(false);
+  const [mergeStudentId, setMergeStudentId] = useState<number | null>(null);
+  const [mergeIssueId, setMergeIssueId] = useState<number | null>(null);
+
+  function handleOpenMerge(studentId: number, issueId: number) {
+    setMergeStudentId(studentId);
+    setMergeIssueId(issueId);
+    openMerge();
+  }
+
+  async function handleMerged() {
+    if (mergeIssueId) {
+      await resolveIssue.mutateAsync(mergeIssueId).catch(() => undefined);
+    }
+  }
 
   async function handleResolve(issueId: number) {
     try {
@@ -107,19 +124,40 @@ export function ValidationTab({ reportingPeriodId }: { reportingPeriodId: number
                 </Table.Td>
                 <Table.Td>{issue.program?.name ?? "—"}</Table.Td>
                 <Table.Td>
-                  <Button
-                    size="xs"
-                    variant="subtle"
-                    onClick={() => handleResolve(issue.id)}
-                    loading={resolveIssue.isPending}
-                  >
-                    Resolve
-                  </Button>
+                  <Group gap={4} wrap="nowrap">
+                    {issue.issueType === "POSSIBLE_DUPLICATE_STUDENT" && issue.student && (
+                      <Button
+                        size="xs"
+                        variant="light"
+                        color="orange"
+                        onClick={() => handleOpenMerge(issue.student!.id, issue.id)}
+                      >
+                        Merge
+                      </Button>
+                    )}
+                    <Button
+                      size="xs"
+                      variant="subtle"
+                      onClick={() => handleResolve(issue.id)}
+                      loading={resolveIssue.isPending}
+                    >
+                      Resolve
+                    </Button>
+                  </Group>
                 </Table.Td>
               </Table.Tr>
             ))}
           </Table.Tbody>
         </Table>
+      )}
+
+      {mergeStudentId && (
+        <MergeDuplicatesModal
+          opened={mergeOpened}
+          onClose={closeMerge}
+          flaggedStudentId={mergeStudentId}
+          onMerged={handleMerged}
+        />
       )}
     </Stack>
   );

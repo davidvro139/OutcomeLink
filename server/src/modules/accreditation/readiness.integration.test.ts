@@ -315,3 +315,62 @@ describe("reporting period outcomes deadline (integration)", () => {
     expect(res.body.data.reportingPeriod.outcomesDeadline).toBeNull();
   });
 });
+
+/**
+ * Regression coverage for a permissions mismatch found via browser
+ * verification of the outcomes-deadline feature: the frontend showed "New
+ * Reporting Period"/"New COE Rule Set" buttons to Institutional
+ * Administrators, but the backend only ever allowed System Administrator,
+ * so clicking them produced a silent 403. Loosened to match CAN_FINALIZE
+ * (the same set already used for finalize/submit/reopen/the deadline PATCH).
+ */
+describe("Institutional Administrator can create accreditation setup data (integration)", () => {
+  let institutionId: number;
+  let institutionalAdminToken: string;
+
+  beforeAll(async () => {
+    const institution = await prisma.institution.create({ data: { name: "Inst Admin Create Test Institution" } });
+    institutionId = institution.id;
+    const passwordHash = await hashPassword("password123");
+    await prisma.user.create({
+      data: { institutionId, name: "Inst Admin", email: "instadmin@create-test.edu", passwordHash, role: "INSTITUTIONAL_ADMINISTRATOR" },
+    });
+    institutionalAdminToken = (
+      await request(app).post("/api/auth/login").send({ email: "instadmin@create-test.edu", password: "password123" })
+    ).body.data.accessToken;
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  it("creates a framework, a rule set, and a reporting period as an Institutional Administrator", async () => {
+    const frameworkRes = await request(app)
+      .post("/api/accreditation/frameworks")
+      .set("Authorization", `Bearer ${institutionalAdminToken}`)
+      .send({ name: "COE-INST-ADMIN-TEST" });
+    expect(frameworkRes.status).toBe(201);
+
+    const ruleSetRes = await request(app)
+      .post(`/api/accreditation/frameworks/${frameworkRes.body.data.framework.id}/rule-sets`)
+      .set("Authorization", `Bearer ${institutionalAdminToken}`)
+      .send({
+        versionLabel: "COE-2026-INST-ADMIN-TEST",
+        effectiveStartDate: "2025-01-01",
+        ruleDefinition: { benchmarks: { completion: 60, placement: 70, licensure: 70 } },
+      });
+    expect(ruleSetRes.status).toBe(201);
+
+    const periodRes = await request(app)
+      .post("/api/accreditation/reporting-periods")
+      .set("Authorization", `Bearer ${institutionalAdminToken}`)
+      .send({
+        ruleSetId: ruleSetRes.body.data.ruleSet.id,
+        label: "INST-ADMIN-TEST-PERIOD",
+        startDate: "2025-07-01",
+        endDate: "2026-06-30",
+      });
+    expect(periodRes.status).toBe(201);
+    expect(periodRes.body.data.reportingPeriod).toMatchObject({ institutionId, label: "INST-ADMIN-TEST-PERIOD" });
+  });
+});

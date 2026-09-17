@@ -13,7 +13,7 @@ import {
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import {
   useComputeReportingPeriod,
   useFinalizeReportingPeriod,
@@ -37,9 +37,14 @@ const STATUS_COLORS: Record<string, string> = {
   REOPENED: "orange",
 };
 
+const TAB_VALUES = ["dashboard", "readiness", "validation", "improvement-plans", "reports", "audit"];
+
 export function ReportingPeriodDetailPage() {
   const { id } = useParams<{ id: string }>();
   const periodId = Number(id);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const activeTab = requestedTab && TAB_VALUES.includes(requestedTab) ? requestedTab : "dashboard";
   const { data: period, isLoading } = useReportingPeriod(periodId);
   const compute = useComputeReportingPeriod(periodId);
   const validate = useValidateReportingPeriod(periodId);
@@ -168,7 +173,12 @@ export function ReportingPeriodDetailPage() {
         </Text>
       )}
 
-      <Tabs defaultValue="dashboard">
+      <Tabs
+        value={activeTab}
+        onChange={(value) =>
+          setSearchParams(value && value !== "dashboard" ? { tab: value } : {}, { replace: true })
+        }
+      >
         <Tabs.List>
           <Tabs.Tab value="dashboard">CPL Dashboard</Tabs.Tab>
           <Tabs.Tab value="readiness">Readiness</Tabs.Tab>

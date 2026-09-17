@@ -1,6 +1,7 @@
 import {
   AppShell,
   Avatar,
+  Burger,
   Group,
   Menu,
   NavLink,
@@ -9,6 +10,7 @@ import {
   Title,
   UnstyledButton,
 } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
 import {
   IconBriefcase,
   IconCertificate,
@@ -42,6 +44,7 @@ export function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [navOpened, { toggle: toggleNav, close: closeNav }] = useDisclosure(false);
 
   async function handleLogout() {
     await logout();
@@ -49,12 +52,24 @@ export function AppLayout() {
   }
 
   return (
-    <AppShell header={{ height: 60 }} navbar={{ width: 220, breakpoint: "sm" }} padding="md">
+    <AppShell
+      header={{ height: 60 }}
+      navbar={{ width: 220, breakpoint: "sm", collapsed: { mobile: !navOpened } }}
+      padding="md"
+    >
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
-          <Title order={4} component={Link} to="/" style={{ textDecoration: "none", color: "inherit" }}>
-            OutcomeLink
-          </Title>
+          <Group gap="sm">
+            <Burger opened={navOpened} onClick={toggleNav} hiddenFrom="sm" size="sm" />
+            <Title
+              order={4}
+              component={Link}
+              to="/"
+              style={{ textDecoration: "none", color: "inherit" }}
+            >
+              OutcomeLink
+            </Title>
+          </Group>
 
           <GlobalSearch />
 
@@ -106,6 +121,7 @@ export function AppLayout() {
                   ? location.pathname === "/"
                   : location.pathname.startsWith(item.to)
               }
+              onClick={closeNav}
             />
           ))}
         </Stack>

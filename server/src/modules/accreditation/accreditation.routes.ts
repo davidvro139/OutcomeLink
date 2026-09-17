@@ -21,7 +21,7 @@ accreditationRouter.get("/frameworks", requireAuth, asyncHandler(frameworks.list
 accreditationRouter.post(
   "/frameworks",
   requireAuth,
-  requireRole(SYSTEM_ADMIN),
+  requireRole(...CAN_FINALIZE),
   validate(frameworks.createFrameworkSchema),
   asyncHandler(frameworks.create),
 );
@@ -34,7 +34,7 @@ accreditationRouter.get(
 accreditationRouter.post(
   "/frameworks/:frameworkId/rule-sets",
   requireAuth,
-  requireRole(SYSTEM_ADMIN),
+  requireRole(...CAN_FINALIZE),
   validate(ruleSets.createRuleSetSchema),
   asyncHandler(ruleSets.create),
 );
@@ -51,7 +51,7 @@ accreditationRouter.get("/reporting-periods/:id", requireAuth, asyncHandler(repo
 accreditationRouter.post(
   "/reporting-periods",
   requireAuth,
-  requireRole(SYSTEM_ADMIN),
+  requireRole(...CAN_FINALIZE),
   validate(reportingPeriods.createReportingPeriodSchema),
   asyncHandler(reportingPeriods.create),
 );

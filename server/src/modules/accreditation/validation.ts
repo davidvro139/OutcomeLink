@@ -111,3 +111,37 @@ export async function resolveIssue(req: Request, res: Response) {
   });
   sendData(res, { issue: resolved });
 }
+
+export const bulkResolveIssuesSchema = z.object({
+  issueIds: z.array(z.coerce.number().int().positive()).min(1).max(500),
+});
+type BulkResolveIssuesInput = z.infer<typeof bulkResolveIssuesSchema>;
+
+/**
+ * Phase 2 P11 (docs/TODO.md): resolve many open issues at once (e.g. a batch
+ * of INFORMATION-severity rows already handled some other way) instead of
+ * clicking "Resolve" one row at a time. Scoped to issues actually belonging
+ * to this reporting period, same as resolveIssue above; anything in the
+ * request that doesn't match (wrong period, already resolved, unknown id) is
+ * silently excluded from the update rather than failing the whole batch —
+ * the response reports how many were actually resolved.
+ */
+export async function bulkResolveIssues(
+  req: Request<{ id: string }, unknown, BulkResolveIssuesInput>,
+  res: Response,
+) {
+  const reportingPeriodId = Number(req.params.id);
+  await findOwnedPeriod(req.user!.institutionId, reportingPeriodId);
+  const { issueIds } = req.body;
+
+  const user = await prisma.user.findUnique({
+    where: { id: req.user!.sub },
+    select: { name: true },
+  });
+
+  const result = await prisma.validationIssue.updateMany({
+    where: { id: { in: issueIds }, reportingPeriodId, resolvedAt: null },
+    data: { resolvedAt: new Date(), resolvedBy: user?.name ?? String(req.user!.sub) },
+  });
+  sendData(res, { resolvedCount: result.count });
+}

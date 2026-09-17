@@ -325,6 +325,21 @@ export function useResolveValidationIssue(reportingPeriodId: number) {
   });
 }
 
+export function useBulkResolveValidationIssues(reportingPeriodId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (issueIds: number[]) =>
+      apiRequest<{ resolvedCount: number }>(
+        `/api/accreditation/reporting-periods/${reportingPeriodId}/validation-issues/bulk-resolve`,
+        { method: "PATCH", body: JSON.stringify({ issueIds }) },
+      ),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: ["accreditation", "validation-issues", reportingPeriodId],
+      }),
+  });
+}
+
 export interface ImprovementPlanUpdate {
   id: number;
   improvementPlanId: number;

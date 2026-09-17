@@ -1,18 +1,48 @@
-import { Anchor, Badge, Group, Loader, NumberInput, Stack, Table, Text, Title } from "@mantine/core";
+import { Anchor, Badge, Button, Checkbox, Group, Loader, NumberInput, Stack, Table, Text, Title } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useFollowUpQueue } from "../../api/followups";
+import { BulkFollowUpModal } from "./BulkFollowUpModal";
 
 /** Spec §12: task-oriented follow-up queue with overdue highlighting. */
 export function FollowUpQueuePage() {
   const [minDaysOverdue, setMinDaysOverdue] = useState<number | undefined>(undefined);
   const { data, isLoading } = useFollowUpQueue({ minDaysOverdue });
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkOpened, { open: openBulk, close: closeBulk }] = useDisclosure(false);
+
+  const rows = data?.items ?? [];
+  const allSelected = rows.length > 0 && rows.every((row) => selectedIds.has(row.student.id));
+  const someSelected = rows.some((row) => selectedIds.has(row.student.id));
+
+  const studentLabels = new Map(
+    rows.map((row) => [row.student.id, `${row.student.firstName} ${row.student.lastName}`]),
+  );
+
+  function toggleAll() {
+    setSelectedIds(allSelected ? new Set() : new Set(rows.map((row) => row.student.id)));
+  }
+
+  function toggleOne(studentId: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(studentId)) next.delete(studentId);
+      else next.add(studentId);
+      return next;
+    });
+  }
+
+  function handleBulkClose() {
+    closeBulk();
+    setSelectedIds(new Set());
+  }
 
   return (
     <Stack p="xl" gap="md">
       <Title order={2}>Follow-Up Queue</Title>
 
-      <Group>
+      <Group justify="space-between">
         <NumberInput
           label="Minimum days overdue"
           placeholder="e.g. 7"
@@ -21,6 +51,9 @@ export function FollowUpQueuePage() {
           w={220}
           min={0}
         />
+        {selectedIds.size > 0 && (
+          <Button onClick={openBulk}>Log Follow-Up for {selectedIds.size} Selected</Button>
+        )}
       </Group>
 
       {isLoading && <Loader />}
@@ -29,6 +62,14 @@ export function FollowUpQueuePage() {
         <Table striped highlightOnHover>
           <Table.Thead>
             <Table.Tr>
+              <Table.Th w={36}>
+                <Checkbox
+                  checked={allSelected}
+                  indeterminate={someSelected && !allSelected}
+                  onChange={toggleAll}
+                  aria-label="Select all"
+                />
+              </Table.Th>
               <Table.Th>Student</Table.Th>
               <Table.Th>Program</Table.Th>
               <Table.Th>Campus</Table.Th>
@@ -41,11 +82,18 @@ export function FollowUpQueuePage() {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {data.items.map((row) => (
+            {rows.map((row) => (
               <Table.Tr
                 key={row.student.id}
                 bg={row.daysOverdue > 0 ? "var(--mantine-color-red-light)" : undefined}
               >
+                <Table.Td>
+                  <Checkbox
+                    checked={selectedIds.has(row.student.id)}
+                    onChange={() => toggleOne(row.student.id)}
+                    aria-label={`Select ${row.student.firstName} ${row.student.lastName}`}
+                  />
+                </Table.Td>
                 <Table.Td>
                   <Anchor component={Link} to={`/students/${row.student.id}`}>
                     {row.student.firstName} {row.student.lastName}
@@ -80,6 +128,13 @@ export function FollowUpQueuePage() {
           No students match this filter.
         </Text>
       )}
+
+      <BulkFollowUpModal
+        opened={bulkOpened}
+        onClose={handleBulkClose}
+        studentIds={[...selectedIds]}
+        studentLabels={studentLabels}
+      />
     </Stack>
   );
 }

@@ -1,2 +1,1 @@
-// imports module: routes, controllers, and services live here.
-export {};
+export { importsRouter } from "./imports.routes";

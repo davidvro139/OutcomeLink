@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 export interface StoredFile {
@@ -11,6 +11,8 @@ export interface StoredFile {
 export interface StorageAdapter {
   /** Persists the file and returns a reference the app can use later to retrieve it. */
   save(file: StoredFile): Promise<{ fileReference: string }>;
+  /** Reads back a previously-saved file's bytes given its reference. */
+  load(fileReference: string): Promise<Buffer>;
 }
 
 /**
@@ -28,8 +30,21 @@ export class LocalDiskStorageAdapter implements StorageAdapter {
     await writeFile(path.join(this.uploadDir, fileName), file.buffer);
     return { fileReference: fileName };
   }
+
+  async load(fileReference: string): Promise<Buffer> {
+    return readFile(path.join(this.uploadDir, fileReference));
+  }
 }
 
 export const storage: StorageAdapter = new LocalDiskStorageAdapter(
   path.join(process.cwd(), "uploads", "evidence"),
+);
+
+/**
+ * A CSV import batch is re-read and re-parsed at each wizard step (map,
+ * validate, preview, commit) rather than persisting parsed rows in the
+ * database — separate directory from evidence uploads, same adapter.
+ */
+export const importStorage: StorageAdapter = new LocalDiskStorageAdapter(
+  path.join(process.cwd(), "uploads", "imports"),
 );

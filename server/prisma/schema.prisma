@@ -169,6 +169,7 @@ model Institution {
   employers             Employer[]
   reportingPeriods      ReportingPeriod[]
   importMappingProfiles ImportMappingProfile[]
+  importBatches         ImportBatch[]
 
   @@map("institutions")
 }
@@ -893,12 +894,26 @@ model StudentMergeLog {
 
 model ImportBatch {
   id               Int               @id @default(autoincrement())
+  institutionId    Int               @map("institution_id")
   sourceSystem     String            @map("source_system")
+  originalFilename String?           @map("original_filename")
+  // Reference into the storage adapter (server/src/lib/storage.ts), not the raw
+  // bytes — the file is re-read and re-parsed at each wizard step (map/validate/
+  // preview/commit) rather than persisting parsed rows in the database.
+  fileReference String @map("file_reference")
+  // The mapping actually applied to this batch (source CSV column -> target
+  // Student field). Independent of mappingProfileId below: a batch can use an
+  // ad hoc mapping never saved as a reusable profile, or start from a saved
+  // profile and still diverge from it for this one run.
+  columnMapping    Json?             @map("column_mapping")
+  totalRows        Int?              @map("total_rows")
+  importedRowCount Int?              @map("imported_row_count")
   uploadedBy       String            @map("uploaded_by")
   uploadedAt       DateTime          @default(now()) @map("uploaded_at")
   mappingProfileId Int?              @map("mapping_profile_id")
   status           ImportBatchStatus @default(UPLOADED)
 
+  institution    Institution           @relation(fields: [institutionId], references: [id])
   mappingProfile ImportMappingProfile? @relation(fields: [mappingProfileId], references: [id])
   rowErrors      ImportRowError[]
 

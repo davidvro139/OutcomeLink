@@ -1,4 +1,11 @@
-import { Loader, Stack, Tabs, Text, Title } from "@mantine/core";
+import { Group, Loader, Paper, SimpleGrid, Stack, Tabs, Text, Title } from "@mantine/core";
+import {
+  IconChecklist,
+  IconFileSpreadsheet,
+  IconReportAnalytics,
+  type Icon,
+} from "@tabler/icons-react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useReportingPeriods } from "../api/accreditation";
 import { ReadinessTab } from "./accreditation/ReadinessTab";
@@ -7,6 +14,38 @@ import { ExecutiveDashboard } from "./dashboards/ExecutiveDashboard";
 
 const EXECUTIVE_ROLES = ["SYSTEM_ADMINISTRATOR", "INSTITUTIONAL_ADMINISTRATOR"];
 const DATA_QUALITY_ROLES = ["SYSTEM_ADMINISTRATOR", "INSTITUTIONAL_ADMINISTRATOR"];
+
+interface QuickLink {
+  to: string;
+  label: string;
+  description: string;
+  icon: Icon;
+}
+
+function QuickLinkCard({ to, label, description, icon: IconComponent }: QuickLink) {
+  return (
+    <Paper
+      component={Link}
+      to={to}
+      withBorder
+      p="md"
+      radius="md"
+      style={{ textDecoration: "none", color: "inherit" }}
+    >
+      <Group wrap="nowrap">
+        <IconComponent size={28} stroke={1.5} />
+        <div>
+          <Text fw={500} size="sm">
+            {label}
+          </Text>
+          <Text size="xs" c="dimmed">
+            {description}
+          </Text>
+        </div>
+      </Group>
+    </Paper>
+  );
+}
 
 /**
  * Phase 2 P6 (docs/TODO.md): role-based landing dashboards (Executive,
@@ -32,6 +71,35 @@ export function DashboardPage() {
 
       {!isLoading && !currentPeriod && (
         <Text c="dimmed">No reporting periods exist yet — set one up under Accreditation.</Text>
+      )}
+
+      {currentPeriod && (
+        <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
+          <QuickLinkCard
+            to={`/accreditation/reporting-periods/${currentPeriod.id}?tab=improvement-plans`}
+            label="Improvement Plans"
+            description={`For ${currentPeriod.label}`}
+            icon={IconChecklist}
+          />
+          <QuickLinkCard
+            to={`/accreditation/reporting-periods/${currentPeriod.id}?tab=reports`}
+            label="Drill-Down Reports"
+            description={`For ${currentPeriod.label}`}
+            icon={IconReportAnalytics}
+          />
+          <QuickLinkCard
+            to={`/accreditation/reporting-periods/${currentPeriod.id}`}
+            label="CPL Results Export"
+            description="CPL Dashboard tab → Export to Excel"
+            icon={IconFileSpreadsheet}
+          />
+          <QuickLinkCard
+            to={`/accreditation/reporting-periods/${currentPeriod.id}?tab=validation`}
+            label="Validation Issues Export"
+            description="Data Validation tab → Export to Excel"
+            icon={IconFileSpreadsheet}
+          />
+        </SimpleGrid>
       )}
 
       {currentPeriod && (

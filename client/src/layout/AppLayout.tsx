@@ -21,6 +21,7 @@ import {
   IconLogout,
   IconSchool,
   IconTrendingUp,
+  IconUpload,
   IconUsers,
 } from "@tabler/icons-react";
 import { ROLE_LABELS } from "@outcomelink/shared";
@@ -35,6 +36,7 @@ const NAV_ITEMS = [
   { to: "/employers", label: "Employers", icon: IconBriefcase },
   { to: "/followups", label: "Follow-Up Queue", icon: IconClipboardCheck },
   { to: "/licensure", label: "Licensure Queue", icon: IconCertificate },
+  { to: "/imports", label: "Bulk Import", icon: IconUpload },
   { to: "/accreditation/reporting-periods", label: "Accreditation", icon: IconChartBar },
   { to: "/accreditation/trends", label: "Trends", icon: IconTrendingUp },
 ];

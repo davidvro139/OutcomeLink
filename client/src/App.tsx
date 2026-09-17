@@ -9,6 +9,8 @@ import { EmployerAnalyticsPage } from "./pages/employers/EmployerAnalyticsPage";
 import { EmployerDetailPage } from "./pages/employers/EmployerDetailPage";
 import { EmployersListPage } from "./pages/employers/EmployersListPage";
 import { FollowUpQueuePage } from "./pages/followups/FollowUpQueuePage";
+import { ImportBatchPage } from "./pages/imports/ImportBatchPage";
+import { ImportsPage } from "./pages/imports/ImportsPage";
 import { LicensureQueuePage } from "./pages/licensure/LicensureQueuePage";
 import { LoginPage } from "./pages/LoginPage";
 import { ProgramDetailPage } from "./pages/programs/ProgramDetailPage";
@@ -45,6 +47,9 @@ function App() {
 
         <Route path="/followups" element={<FollowUpQueuePage />} />
         <Route path="/licensure" element={<LicensureQueuePage />} />
+
+        <Route path="/imports" element={<ImportsPage />} />
+        <Route path="/imports/:id" element={<ImportBatchPage />} />
 
         <Route path="/accreditation/reporting-periods" element={<ReportingPeriodsPage />} />
         <Route path="/accreditation/trends" element={<TrendsPage />} />

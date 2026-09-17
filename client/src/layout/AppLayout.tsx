@@ -15,6 +15,7 @@ import {
   IconChartBar,
   IconChevronDown,
   IconClipboardCheck,
+  IconLayoutDashboard,
   IconLogout,
   IconSchool,
   IconTrendingUp,
@@ -26,6 +27,7 @@ import { useAuth } from "../auth/AuthContext";
 import { GlobalSearch } from "../components/GlobalSearch";
 
 const NAV_ITEMS = [
+  { to: "/", label: "Dashboard", icon: IconLayoutDashboard },
   { to: "/programs", label: "Programs", icon: IconSchool },
   { to: "/students", label: "Students", icon: IconUsers },
   { to: "/employers", label: "Employers", icon: IconBriefcase },
@@ -50,7 +52,9 @@ export function AppLayout() {
     <AppShell header={{ height: 60 }} navbar={{ width: 220, breakpoint: "sm" }} padding="md">
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
-          <Title order={4}>OutcomeLink</Title>
+          <Title order={4} component={Link} to="/" style={{ textDecoration: "none", color: "inherit" }}>
+            OutcomeLink
+          </Title>
 
           <GlobalSearch />
 
@@ -97,7 +101,11 @@ export function AppLayout() {
               to={item.to}
               label={item.label}
               leftSection={<item.icon size={18} />}
-              active={location.pathname.startsWith(item.to)}
+              active={
+                item.to === "/"
+                  ? location.pathname === "/"
+                  : location.pathname.startsWith(item.to)
+              }
             />
           ))}
         </Stack>

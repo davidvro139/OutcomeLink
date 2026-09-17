@@ -100,12 +100,18 @@ export async function readiness(req: Request, res: Response) {
     readinessRows.push({ program, metrics, openIssueCount, ready });
   }
 
+  const daysUntilOutcomesDeadline = reportingPeriod.outcomesDeadline
+    ? Math.ceil((reportingPeriod.outcomesDeadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    : null;
+
   sendData(res, {
     readiness: readinessRows,
     summary: {
       totalPrograms: readinessRows.length,
       readyPrograms: readinessRows.filter((r) => r.ready).length,
       programsWithOpenIssues: readinessRows.filter((r) => r.openIssueCount > 0).length,
+      outcomesDeadline: reportingPeriod.outcomesDeadline,
+      daysUntilOutcomesDeadline,
     },
   });
 }

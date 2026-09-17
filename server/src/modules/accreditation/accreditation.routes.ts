@@ -55,6 +55,13 @@ accreditationRouter.post(
   validate(reportingPeriods.createReportingPeriodSchema),
   asyncHandler(reportingPeriods.create),
 );
+accreditationRouter.patch(
+  "/reporting-periods/:id",
+  requireAuth,
+  requireRole(...CAN_FINALIZE),
+  validate(reportingPeriods.updateReportingPeriodSchema),
+  asyncHandler(reportingPeriods.update),
+);
 
 accreditationRouter.post(
   "/reporting-periods/:id/finalize",

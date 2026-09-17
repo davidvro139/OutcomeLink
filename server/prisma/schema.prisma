@@ -459,6 +459,11 @@ model ReportingPeriod {
   label                  String
   startDate              DateTime              @map("start_date")
   endDate                DateTime              @map("end_date")
+  // Distinct from endDate: the training-material-documented "outcomes due
+  // Dec 1, annual report due first week of December" deadline for having
+  // outcome data collected, separate from when the period itself ends.
+  // Deferred item from docs/TODO.md, not part of the original Phase 2 plan.
+  outcomesDeadline       DateTime?             @map("outcomes_deadline")
   cohortWindowDefinition Json?                 @map("cohort_window_definition")
   status                 ReportingPeriodStatus @default(OPEN)
   finalizedAt            DateTime?             @map("finalized_at")

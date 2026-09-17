@@ -27,6 +27,7 @@ export interface ReportingPeriod {
   label: string;
   startDate: string;
   endDate: string;
+  outcomesDeadline: string | null;
   status: ReportingPeriodStatus;
   finalizedAt: string | null;
   finalizedBy: string | null;
@@ -157,13 +158,34 @@ export function useReportingPeriod(id: number | undefined) {
 export function useCreateReportingPeriod() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { ruleSetId: number; label: string; startDate: string; endDate: string }) =>
+    mutationFn: (input: {
+      ruleSetId: number;
+      label: string;
+      startDate: string;
+      endDate: string;
+      outcomesDeadline?: string;
+    }) =>
       apiRequest<{ reportingPeriod: ReportingPeriod }>("/api/accreditation/reporting-periods", {
         method: "POST",
         body: JSON.stringify(input),
       }),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["accreditation", "reporting-periods"] }),
+  });
+}
+
+export function useSetOutcomesDeadline(id: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (outcomesDeadline: string | null) =>
+      apiRequest<{ reportingPeriod: ReportingPeriod }>(`/api/accreditation/reporting-periods/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ outcomesDeadline }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["accreditation", "reporting-periods", id] });
+      queryClient.invalidateQueries({ queryKey: ["accreditation", "readiness", id] });
+    },
   });
 }
 
@@ -271,6 +293,8 @@ export interface ReadinessSummary {
   totalPrograms: number;
   readyPrograms: number;
   programsWithOpenIssues: number;
+  outcomesDeadline: string | null;
+  daysUntilOutcomesDeadline: number | null;
 }
 
 export function useReadiness(reportingPeriodId: number | undefined) {

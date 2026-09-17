@@ -60,6 +60,32 @@ export function useFollowUpAttempts(studentId: number | undefined) {
   });
 }
 
+export interface BulkCreateFollowUpAttemptInput {
+  studentIds: number[];
+  attemptedAt: string;
+  method: FollowUpMethod;
+  outcome: FollowUpOutcome;
+  notes?: string;
+  nextFollowUpDate?: string;
+}
+
+export interface BulkCreateFollowUpAttemptResult {
+  createdCount: number;
+  skipped: { studentId: number; reason: string }[];
+}
+
+export function useBulkCreateFollowUpAttempts() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: BulkCreateFollowUpAttemptInput) =>
+      apiRequest<BulkCreateFollowUpAttemptResult>("/api/followups/bulk", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["followups", "queue"] }),
+  });
+}
+
 export function useCreateFollowUpAttempt(studentId: number) {
   const queryClient = useQueryClient();
   return useMutation({

@@ -23,3 +23,10 @@ followupsRouter.post(
   validate(attempts.createFollowUpAttemptSchema),
   asyncHandler(attempts.create),
 );
+followupsRouter.post(
+  "/bulk",
+  requireAuth,
+  requireRole(...OPERATIONAL_ROLES),
+  validate(attempts.bulkCreateFollowUpAttemptSchema),
+  asyncHandler(attempts.bulkCreate),
+);

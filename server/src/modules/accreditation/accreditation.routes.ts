@@ -134,6 +134,13 @@ accreditationRouter.patch(
   requireRole(...CAN_FINALIZE),
   asyncHandler(validation.resolveIssue),
 );
+accreditationRouter.patch(
+  "/reporting-periods/:id/validation-issues/bulk-resolve",
+  requireAuth,
+  requireRole(...CAN_FINALIZE),
+  validate(validation.bulkResolveIssuesSchema),
+  asyncHandler(validation.bulkResolveIssues),
+);
 
 accreditationRouter.get(
   "/improvement-plans",

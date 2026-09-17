@@ -73,6 +73,11 @@ studentsRouter.patch(
   asyncHandler(enrollments.update),
 );
 
+studentsRouter.get(
+  "/:id/duplicate-candidates",
+  requireAuth,
+  asyncHandler(merge.duplicateCandidates),
+);
 studentsRouter.post(
   "/:id/merge",
   requireAuth,

@@ -11,6 +11,45 @@ export const mergeStudentsSchema = z.object({
 type MergeStudentsInput = z.infer<typeof mergeStudentsSchema>;
 
 /**
+ * Candidates for merging into the given student: other students at the same
+ * institution with the same normalized first+last name, using the exact same
+ * match rule validationEngine.ts uses to raise POSSIBLE_DUPLICATE_STUDENT —
+ * so a candidate list can never disagree with the issue that sent staff here
+ * in the first place. Excludes anyone already merged away (they're no longer
+ * a live record to merge again).
+ */
+export async function duplicateCandidates(req: Request<{ id: string }>, res: Response) {
+  const studentId = Number(req.params.id);
+  const institutionId = req.user!.institutionId;
+
+  const student = await prisma.student.findFirst({ where: { id: studentId, institutionId } });
+  if (!student) throw ApiError.notFound("Student not found");
+
+  const alreadyMergedIds = new Set(
+    (await prisma.studentMergeLog.findMany({ select: { mergedStudentId: true } })).map(
+      (m) => m.mergedStudentId,
+    ),
+  );
+
+  // Same normalized-name match rule validationEngine.ts uses to raise
+  // POSSIBLE_DUPLICATE_STUDENT — MySQL has no case-insensitive `mode` filter
+  // like Postgres, so this compares in JS the same way that check does.
+  const normalizedTarget = `${student.firstName.trim().toLowerCase()}|${student.lastName.trim().toLowerCase()}`;
+  const institutionStudents = await prisma.student.findMany({
+    where: { institutionId, id: { not: studentId } },
+    select: { id: true, internalStudentId: true, firstName: true, lastName: true, email: true },
+  });
+  const candidates = institutionStudents.filter(
+    (candidate) =>
+      !alreadyMergedIds.has(candidate.id) &&
+      `${candidate.firstName.trim().toLowerCase()}|${candidate.lastName.trim().toLowerCase()}` ===
+        normalizedTarget,
+  );
+
+  sendData(res, { candidates });
+}
+
+/**
  * Duplicate Student Resolution — spec §23. Reassigns every child record from
  * the merged-away student onto the survivor and records the merge itself
  * (who/when/why) via StudentMergeLog, which the audit-log Prisma extension
@@ -46,6 +85,15 @@ export async function merge(
   const alreadyMerged = await prisma.studentMergeLog.findFirst({ where: { mergedStudentId } });
   if (alreadyMerged)
     throw ApiError.conflict("This student has already been merged into another record");
+
+  const survivorAlreadyMergedAway = await prisma.studentMergeLog.findFirst({
+    where: { mergedStudentId: survivingStudentId },
+  });
+  if (survivorAlreadyMergedAway) {
+    throw ApiError.conflict(
+      "The surviving record has itself already been merged into another student — merge into that record instead",
+    );
+  }
 
   const actingUser = await prisma.user.findUnique({
     where: { id: req.user!.sub },

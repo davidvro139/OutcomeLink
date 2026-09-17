@@ -161,9 +161,18 @@ export async function runValidation(reportingPeriodId: number): Promise<void> {
     }
   }
 
-  // Duplicate student: same institution, same first+last name, different internal IDs
+  // Duplicate student: same institution, same first+last name, different internal IDs.
+  // Excludes students already merged away (StudentMergeLog.mergedStudentId) — those rows
+  // are kept for audit history (merge.ts never deletes them) but are a resolved duplicate,
+  // not an open one; without this exclusion, a merged pair would be flagged again on every
+  // future validation run forever, defeating the point of merging (docs/TODO.md P10).
+  const alreadyMergedAwayIds = new Set(
+    (await prisma.studentMergeLog.findMany({ select: { mergedStudentId: true } })).map(
+      (m) => m.mergedStudentId,
+    ),
+  );
   const students = await prisma.student.findMany({
-    where: { institutionId: reportingPeriod.institutionId },
+    where: { institutionId: reportingPeriod.institutionId, id: { notIn: [...alreadyMergedAwayIds] } },
   });
   const byName = new Map<string, number[]>();
   for (const student of students) {

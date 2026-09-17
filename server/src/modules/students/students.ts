@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import type { Request, Response } from "express";
 import { z } from "zod";
 import { ApiError } from "../../lib/apiError";
@@ -6,6 +7,26 @@ import { paginatedResponse } from "../../lib/crudHelpers";
 import { paginationQuerySchema } from "../../lib/pagination";
 import { prisma } from "../../lib/prisma";
 import { sendXlsx } from "../../lib/xlsx";
+
+/**
+ * A plain `contains: search` against one column meant a search for
+ * "Isobel Yost" matched nothing, since neither firstName nor lastName holds
+ * that whole phrase — only single-token searches ever worked. Splitting on
+ * whitespace and requiring every token to match some field (not necessarily
+ * the same one) fixes full-name search without needing full-text search.
+ */
+export function studentNameSearchFilter(search: string): Prisma.StudentWhereInput {
+  const tokens = search.trim().split(/\s+/).filter(Boolean);
+  return {
+    AND: tokens.map((token) => ({
+      OR: [
+        { firstName: { contains: token } },
+        { lastName: { contains: token } },
+        { internalStudentId: { contains: token } },
+      ],
+    })),
+  };
+}
 
 export const createStudentSchema = z.object({
   internalStudentId: z.string().trim().min(1).max(100),
@@ -35,15 +56,9 @@ export async function list(req: Request, res: Response) {
   const { page, pageSize, search } = req.query as unknown as ListStudentsQuery;
   const institutionId = req.user!.institutionId;
 
-  const where = {
+  const where: Prisma.StudentWhereInput = {
     institutionId,
-    ...(search && {
-      OR: [
-        { firstName: { contains: search } },
-        { lastName: { contains: search } },
-        { internalStudentId: { contains: search } },
-      ],
-    }),
+    ...(search && studentNameSearchFilter(search)),
   };
 
   await paginatedResponse(
@@ -63,13 +78,7 @@ export async function exportStudents(req: Request, res: Response) {
   const students = await prisma.student.findMany({
     where: {
       institutionId,
-      ...(search && {
-        OR: [
-          { firstName: { contains: search } },
-          { lastName: { contains: search } },
-          { internalStudentId: { contains: search } },
-        ],
-      }),
+      ...(search && studentNameSearchFilter(search)),
     },
     include: { communicationPreference: true },
     orderBy: { lastName: "asc" },

@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import { sendData } from "../../lib/apiResponse";
 import { prisma } from "../../lib/prisma";
+import { studentNameSearchFilter } from "../students/students";
 
 export const searchQuerySchema = z.object({
   q: z.string().trim().min(1).max(200),
@@ -16,14 +17,7 @@ export async function search(req: Request, res: Response) {
 
   const [students, employers, programs, contacts] = await Promise.all([
     prisma.student.findMany({
-      where: {
-        institutionId,
-        OR: [
-          { firstName: { contains: q } },
-          { lastName: { contains: q } },
-          { internalStudentId: { contains: q } },
-        ],
-      },
+      where: { institutionId, ...studentNameSearchFilter(q) },
       select: { id: true, firstName: true, lastName: true, internalStudentId: true },
       take: RESULT_LIMIT,
     }),

@@ -152,6 +152,25 @@ export function useUpsertCommunicationPreference(studentId: number) {
   });
 }
 
+export interface DuplicateCandidate {
+  id: number;
+  internalStudentId: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+}
+
+export function useDuplicateCandidates(studentId: number | undefined) {
+  return useQuery({
+    queryKey: ["students", studentId, "duplicate-candidates"],
+    queryFn: () =>
+      apiRequest<{ candidates: DuplicateCandidate[] }>(
+        `/api/students/${studentId}/duplicate-candidates`,
+      ).then((r) => r.candidates),
+    enabled: studentId !== undefined,
+  });
+}
+
 export function useMergeStudent(survivingStudentId: number) {
   const queryClient = useQueryClient();
   return useMutation({

@@ -1,6 +1,9 @@
 import { BarChart, PieChart } from "@mantine/charts";
-import { Anchor, Badge, Box, Group, Loader, Paper, SimpleGrid, Stack, Table, Tabs, Text, Title } from "@mantine/core";
+import { Anchor, Badge, Box, Button, Group, Loader, Modal, Paper, SimpleGrid, Stack, Table, Tabs, Text, Title } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
+import { notifications } from "@mantine/notifications";
 import { Link } from "react-router-dom";
+import { useAuth } from "../../auth/AuthContext";
 import {
   useFollowUpEffectivenessReport,
   useOutcomeFunnelReport,
@@ -8,6 +11,15 @@ import {
   useTimeToEmploymentReport,
   useUnknownOutcomesReport,
 } from "../../api/reports";
+import { useStartGraduateCampaign } from "../../api/surveys";
+
+const CAN_START_CAMPAIGN = [
+  "SYSTEM_ADMINISTRATOR",
+  "INSTITUTIONAL_ADMINISTRATOR",
+  "PROGRAM_ADMINISTRATOR",
+  "CAREER_SERVICES_STAFF",
+  "INSTRUCTOR_STAFF",
+];
 
 function StatCard({ label, value, color }: { label: string; value: string | number; color?: string }) {
   return (
@@ -158,6 +170,55 @@ function OutcomeFunnelPanel({ reportingPeriodId }: { reportingPeriodId: number }
   );
 }
 
+function GraduateCampaignButton({ reportingPeriodId }: { reportingPeriodId: number }) {
+  const { user } = useAuth();
+  const startCampaign = useStartGraduateCampaign();
+  const [opened, { open, close }] = useDisclosure(false);
+
+  if (!user || !CAN_START_CAMPAIGN.includes(user.role)) return null;
+
+  async function handleStart() {
+    try {
+      const result = await startCampaign.mutateAsync({ reportingPeriodId });
+      notifications.show({
+        message:
+          result.skipped.length > 0
+            ? `Sent ${result.sentCount} of ${result.targetedCount} targeted students; ${result.skipped.length} already had a pending survey.`
+            : `Sent graduate surveys to all ${result.sentCount} targeted students.`,
+        color: "green",
+        autoClose: false,
+      });
+      close();
+    } catch (err) {
+      notifications.show({
+        message: err instanceof Error ? err.message : "Failed to start outreach campaign",
+        color: "red",
+      });
+    }
+  }
+
+  return (
+    <>
+      <Button size="xs" variant="light" color="grape" onClick={open}>
+        Start Outreach Campaign
+      </Button>
+      <Modal opened={opened} onClose={close} title="Start Graduate Outreach Campaign">
+        <Stack gap="md">
+          <Text size="sm">
+            Sends a graduate survey to every student this period with an unresolved outcome —
+            seeking/unknown status or no outcome record at all — skipping anyone who already has a
+            survey pending. This is the deferred "Quarterly graduate outreach campaign" item; run it
+            whenever it's appropriate rather than on an actual schedule.
+          </Text>
+          <Button onClick={handleStart} loading={startCampaign.isPending} color="grape">
+            Send Surveys Now
+          </Button>
+        </Stack>
+      </Modal>
+    </>
+  );
+}
+
 function UnknownOutcomesPanel({ reportingPeriodId }: { reportingPeriodId: number }) {
   const { data, isLoading } = useUnknownOutcomesReport(reportingPeriodId);
   if (isLoading) return <Loader />;
@@ -173,6 +234,10 @@ function UnknownOutcomesPanel({ reportingPeriodId }: { reportingPeriodId: number
 
   return (
     <Stack gap="md">
+      <Group justify="flex-end">
+        <GraduateCampaignButton reportingPeriodId={reportingPeriodId} />
+      </Group>
+
       <SimpleGrid cols={{ base: 1, sm: 2 }}>
         <StatCard label="Seeking / unknown" value={data.totalSeekingOrUnknown} color="orange" />
         <StatCard label="Missing outcome record" value={data.totalMissingRecord} color="red" />

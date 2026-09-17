@@ -3,6 +3,7 @@ import {
   Button,
   Center,
   Divider,
+  Group,
   Paper,
   PasswordInput,
   Stack,
@@ -11,6 +12,7 @@ import {
   Title,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
+import { ROLE_LABELS, type Role } from "@outcomelink/shared";
 import { useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
@@ -21,10 +23,20 @@ interface LoginFormValues {
   password: string;
 }
 
-// Seeded test account from local dev setup — see the session's earlier work
-// creating this user directly against the dev database. Dev-only: import.meta.env.DEV
-// is false in a production build, so this button (and the credentials) never ship.
-const DEMO_CREDENTIALS = { email: "ada@mwtc.edu", password: "password123" };
+// One seeded account per role at the demo institution (server/prisma/seed.ts,
+// "Creating staff users" — all share this password). Lets a reviewer try
+// every permission level without knowing the seed data by heart. Dev-only:
+// import.meta.env.DEV is false in a production build, so this section (and
+// the credentials it exposes) never ships.
+const DEMO_PASSWORD = "password123";
+const DEMO_ACCOUNTS: { role: Role; name: string; email: string }[] = [
+  { role: "SYSTEM_ADMINISTRATOR", name: "Sam Sysadmin", email: "sam@mwtc.edu" },
+  { role: "INSTITUTIONAL_ADMINISTRATOR", name: "Ada Administrator", email: "ada@mwtc.edu" },
+  { role: "PROGRAM_ADMINISTRATOR", name: "Priya Patel", email: "priya.patel@mwtc.edu" },
+  { role: "CAREER_SERVICES_STAFF", name: "Jordan Blake", email: "jordan.blake@mwtc.edu" },
+  { role: "INSTRUCTOR_STAFF", name: "Terry Osei", email: "terry.osei@mwtc.edu" },
+  { role: "READ_ONLY_AUDITOR", name: "Quinn Alvarado", email: "quinn.alvarado@mwtc.edu" },
+];
 
 export function LoginPage() {
   const { status, login } = useAuth();
@@ -32,6 +44,7 @@ export function LoginPage() {
   const location = useLocation();
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
 
   const form = useForm<LoginFormValues>({
     initialValues: { email: "", password: "" },
@@ -49,6 +62,7 @@ export function LoginPage() {
   async function handleLogin(email: string, password: string) {
     setError(null);
     setSubmitting(true);
+    setPendingEmail(email);
     try {
       await login(email, password);
       navigate("/", { replace: true });
@@ -58,12 +72,13 @@ export function LoginPage() {
       );
     } finally {
       setSubmitting(false);
+      setPendingEmail(null);
     }
   }
 
   return (
     <Center h="100vh" bg="var(--mantine-color-body)">
-      <Paper withBorder shadow="sm" p="xl" radius="md" w={380}>
+      <Paper withBorder shadow="sm" p="xl" radius="md" w={440}>
         <Stack gap="lg">
           <div>
             <Title order={2}>OutcomeLink</Title>
@@ -101,16 +116,29 @@ export function LoginPage() {
 
           {import.meta.env.DEV && (
             <>
-              <Divider label="Development only" labelPosition="center" />
-              <Button
-                variant="light"
-                color="grape"
-                fullWidth
-                loading={submitting}
-                onClick={() => handleLogin(DEMO_CREDENTIALS.email, DEMO_CREDENTIALS.password)}
-              >
-                Demo login
-              </Button>
+              <Divider label="Development only — demo accounts" labelPosition="center" />
+              <Stack gap={6}>
+                {DEMO_ACCOUNTS.map((account) => (
+                  <Button
+                    key={account.email}
+                    variant="light"
+                    color="grape"
+                    fullWidth
+                    loading={pendingEmail === account.email}
+                    disabled={submitting && pendingEmail !== account.email}
+                    onClick={() => handleLogin(account.email, DEMO_PASSWORD)}
+                  >
+                    <Group justify="space-between" w="100%" wrap="nowrap">
+                      <Text size="sm" fw={500}>
+                        {ROLE_LABELS[account.role]}
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        {account.name}
+                      </Text>
+                    </Group>
+                  </Button>
+                ))}
+              </Stack>
             </>
           )}
         </Stack>

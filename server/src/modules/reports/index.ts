@@ -1,2 +1,1 @@
-// reports module: routes, controllers, and services live here.
-export {};
+export { reportsRouter } from "./reports.routes";

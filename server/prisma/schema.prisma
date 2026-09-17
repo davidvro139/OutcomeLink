@@ -752,6 +752,10 @@ model GraduateSurvey {
   studentId Int      @map("student_id")
   sentAt    DateTime @map("sent_at")
   channel   String?
+  // Opaque, unguessable value the public response link is keyed on instead of
+  // the sequential id — a graduate filling out their own survey should not be
+  // able to enumerate other students' surveys by walking ids.
+  responseToken String @unique @map("response_token")
 
   student  Student                 @relation(fields: [studentId], references: [id])
   response GraduateSurveyResponse?
@@ -778,10 +782,11 @@ model GraduateSurveyResponse {
 }
 
 model EmployerSurvey {
-  id         Int      @id @default(autoincrement())
-  employerId Int      @map("employer_id")
-  studentId  Int      @map("student_id")
-  sentAt     DateTime @map("sent_at")
+  id            Int      @id @default(autoincrement())
+  employerId    Int      @map("employer_id")
+  studentId     Int      @map("student_id")
+  sentAt        DateTime @map("sent_at")
+  responseToken String   @unique @map("response_token")
 
   employer Employer                @relation(fields: [employerId], references: [id])
   student  Student                 @relation(fields: [studentId], references: [id])

@@ -19,6 +19,7 @@ import { programsRouter } from "./modules/programs";
 import { reportsRouter } from "./modules/reports";
 import { searchRouter } from "./modules/search";
 import { studentsRouter } from "./modules/students";
+import { publicSurveysRouter, surveysRouter } from "./modules/surveys";
 import { usersRouter } from "./modules/users";
 
 export function createApp() {
@@ -52,6 +53,8 @@ export function createApp() {
   app.use("/api/audit", auditRouter);
   app.use("/api/users", usersRouter);
   app.use("/api/reports", reportsRouter);
+  app.use("/api", surveysRouter);
+  app.use("/api/public/surveys", publicSurveysRouter);
   // Further domain routers are mounted here as each module lands.
 
   app.use(notFoundHandler);

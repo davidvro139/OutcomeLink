@@ -15,11 +15,15 @@ import { ProgramDetailPage } from "./pages/programs/ProgramDetailPage";
 import { ProgramsListPage } from "./pages/programs/ProgramsListPage";
 import { StudentDetailPage } from "./pages/students/StudentDetailPage";
 import { StudentsListPage } from "./pages/students/StudentsListPage";
+import { EmployerSurveyPage } from "./pages/surveys/EmployerSurveyPage";
+import { GraduateSurveyPage } from "./pages/surveys/GraduateSurveyPage";
 
 function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/survey/graduate/:token" element={<GraduateSurveyPage />} />
+      <Route path="/survey/employer/:token" element={<EmployerSurveyPage />} />
       <Route
         element={
           <RequireAuth>

@@ -76,6 +76,9 @@ export function useSendGraduateSurvey(studentId: number) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students", studentId, "graduate-surveys"] });
+      queryClient.invalidateQueries({
+        queryKey: ["students", studentId, "communication-timeline"],
+      });
     },
   });
 }
@@ -101,6 +104,9 @@ export function useSendEmployerSurvey(studentId: number) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students", studentId, "employer-surveys"] });
+      queryClient.invalidateQueries({
+        queryKey: ["students", studentId, "communication-timeline"],
+      });
     },
   });
 }

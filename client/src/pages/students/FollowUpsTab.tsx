@@ -8,6 +8,7 @@ import {
   useCreateFollowUpAttempt,
   useFollowUpAttempts,
 } from "../../api/followups";
+import { toDatetimeLocalValue } from "../../lib/forms";
 
 export function FollowUpsTab({ studentId }: { studentId: number }) {
   const { data: attempts, isLoading } = useFollowUpAttempts(studentId);
@@ -16,7 +17,7 @@ export function FollowUpsTab({ studentId }: { studentId: number }) {
 
   const form = useForm<CreateFollowUpAttemptInput>({
     initialValues: {
-      attemptedAt: new Date().toISOString().slice(0, 16),
+      attemptedAt: toDatetimeLocalValue(new Date()),
       method: "PHONE",
       outcome: "NO_RESPONSE",
       notes: "",

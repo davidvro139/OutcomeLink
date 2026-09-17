@@ -3,6 +3,7 @@ import { asyncHandler } from "../../lib/asyncHandler";
 import { requireAuth, requireRole } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
 import * as communicationPreference from "./communicationPreference";
+import * as communicationTimeline from "./communicationTimeline";
 import * as enrollments from "./enrollments";
 import * as merge from "./merge";
 import * as students from "./students";
@@ -55,6 +56,12 @@ studentsRouter.put(
   requireRole(...CAN_MANAGE_STUDENTS, "INSTRUCTOR_STAFF", "CAREER_SERVICES_STAFF"),
   validate(communicationPreference.upsertCommunicationPreferenceSchema),
   asyncHandler(communicationPreference.upsert),
+);
+
+studentsRouter.get(
+  "/:studentId/communication-timeline",
+  requireAuth,
+  asyncHandler(communicationTimeline.list),
 );
 
 studentsRouter.get("/:studentId/enrollments", requireAuth, asyncHandler(enrollments.list));

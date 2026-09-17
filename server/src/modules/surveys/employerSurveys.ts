@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
+import { recordCommunicationEvent } from "../../lib/communicationEvents";
 import { prisma } from "../../lib/prisma";
 
 export const createEmployerSurveySchema = z.object({
@@ -55,6 +56,13 @@ export async function create(
       sentAt: new Date(),
       responseToken: randomUUID(),
     },
+  });
+  await recordCommunicationEvent({
+    studentId,
+    eventType: "EMPLOYER_SURVEY_SENT",
+    sourceId: survey.id,
+    occurredAt: survey.sentAt,
+    summaryText: `Employer survey sent to ${employer.name}`,
   });
   sendData(res, { survey }, 201);
 }

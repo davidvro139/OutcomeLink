@@ -15,3 +15,15 @@ export function stripEmptyStrings<T extends object>(values: T): Partial<T> {
   }
   return result;
 }
+
+/**
+ * A `<input type="datetime-local">` reads and writes its value as LOCAL wall
+ * clock time with no timezone designator — `date.toISOString()` is UTC, so
+ * using it directly as the input's default value quietly shows (and later
+ * submits) a time offset from "now" by the browser's UTC offset. Format the
+ * date's own local getters instead so what the picker shows really is now.
+ */
+export function toDatetimeLocalValue(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}

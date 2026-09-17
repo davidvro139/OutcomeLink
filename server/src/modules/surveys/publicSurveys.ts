@@ -8,6 +8,7 @@ import {
 import { z } from "zod";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
+import { recordCommunicationEvent } from "../../lib/communicationEvents";
 import { prisma } from "../../lib/prisma";
 
 /**
@@ -72,6 +73,13 @@ export async function submitGraduateSurveyResponse(
   const response = await prisma.graduateSurveyResponse.create({
     data: { ...req.body, surveyId: survey.id, submittedAt: new Date() },
   });
+  await recordCommunicationEvent({
+    studentId: survey.studentId,
+    eventType: "GRADUATE_SURVEY_RESPONSE",
+    sourceId: response.id,
+    occurredAt: response.submittedAt,
+    summaryText: "Graduate survey response received",
+  });
   sendData(res, { response }, 201);
 }
 
@@ -107,6 +115,13 @@ export async function submitEmployerSurveyResponse(
 
   const response = await prisma.employerSurveyResponse.create({
     data: { ...req.body, surveyId: survey.id, submittedAt: new Date() },
+  });
+  await recordCommunicationEvent({
+    studentId: survey.studentId,
+    eventType: "EMPLOYER_SURVEY_RESPONSE",
+    sourceId: response.id,
+    occurredAt: response.submittedAt,
+    summaryText: "Employer survey response received",
   });
   sendData(res, { response }, 201);
 }

@@ -4,6 +4,7 @@ import { OPERATIONAL_ROLES } from "../../lib/roles";
 import { requireAuth, requireRole } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
 import * as employerSurveys from "./employerSurveys";
+import * as graduateCampaign from "./graduateCampaign";
 import * as graduateSurveys from "./graduateSurveys";
 import * as publicSurveys from "./publicSurveys";
 
@@ -16,6 +17,14 @@ surveysRouter.post(
   requireRole(...OPERATIONAL_ROLES),
   validate(graduateSurveys.createGraduateSurveySchema),
   asyncHandler(graduateSurveys.create),
+);
+
+surveysRouter.post(
+  "/surveys/graduate-campaign",
+  requireAuth,
+  requireRole(...OPERATIONAL_ROLES),
+  validate(graduateCampaign.startGraduateCampaignSchema),
+  asyncHandler(graduateCampaign.startCampaign),
 );
 
 surveysRouter.get("/students/:studentId/employer-surveys", requireAuth, asyncHandler(employerSurveys.list));

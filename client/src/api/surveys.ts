@@ -184,3 +184,26 @@ export function useSubmitEmployerSurveyResponse(token: string) {
       }),
   });
 }
+
+export interface GraduateCampaignResult {
+  targetedCount: number;
+  sentCount: number;
+  skipped: { studentId: number; reason: string }[];
+}
+
+/** Deferred item (docs/TODO.md): batched graduate-survey outreach to everyone this period with no resolved outcome yet. */
+export function useStartGraduateCampaign() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { reportingPeriodId: number; channel?: string }) =>
+      apiRequest<GraduateCampaignResult>("/api/surveys/graduate-campaign", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["reports", "unknown-outcomes", variables.reportingPeriodId],
+      });
+    },
+  });
+}

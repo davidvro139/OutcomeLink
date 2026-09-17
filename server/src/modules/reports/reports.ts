@@ -187,6 +187,42 @@ export async function outcomeFunnel(req: Request, res: Response) {
 }
 
 /**
+ * The distinct set of students this period the classifier placed in
+ * SEEKING_OR_UNKNOWN (has an outcome record, but no resolved employment
+ * status) or who have no outcome record at all — exported so the Quarterly
+ * Graduate Outreach Campaign (docs/TODO.md deferred items) can target exactly
+ * the same population unknownOutcomes() below reports on, rather than
+ * re-deriving a second, potentially-divergent definition of "needs
+ * follow-up." A student appearing in both underlying queries is deduplicated
+ * — one survey per student per campaign run, not two.
+ */
+export async function getUnresolvedOutcomeStudentIds(
+  institutionId: number,
+  reportingPeriodId: number,
+): Promise<number[]> {
+  const [seekingOrUnknown, missingOutcomeIssues] = await Promise.all([
+    prisma.studentClassification.findMany({
+      where: {
+        reportingPeriodId,
+        metric: "PLACEMENT",
+        classificationCode: "SEEKING_OR_UNKNOWN",
+        studentEnrollment: { student: { institutionId } },
+      },
+      select: { studentEnrollment: { select: { studentId: true } } },
+    }),
+    prisma.validationIssue.findMany({
+      where: { reportingPeriodId, issueType: "MISSING_OUTCOME_RECORD" },
+      select: { studentId: true },
+    }),
+  ]);
+
+  const ids = new Set<number>();
+  for (const c of seekingOrUnknown) ids.add(c.studentEnrollment.studentId);
+  for (const i of missingOutcomeIssues) if (i.studentId) ids.add(i.studentId);
+  return [...ids];
+}
+
+/**
  * Unknown Outcome: graduate completers this period the classifier placed in
  * SEEKING_OR_UNKNOWN (has an outcome record, but no resolved employment
  * status) or who have no outcome record at all — the population Follow-Up

@@ -19,6 +19,7 @@ import {
   IconClipboardCheck,
   IconLayoutDashboard,
   IconLogout,
+  IconReportAnalytics,
   IconSchool,
   IconTrendingUp,
   IconUpload,
@@ -40,6 +41,7 @@ const NAV_ITEMS = [
   { to: "/imports", label: "Bulk Import", icon: IconUpload },
   { to: "/accreditation/reporting-periods", label: "Accreditation", icon: IconChartBar },
   { to: "/accreditation/trends", label: "Trends", icon: IconTrendingUp },
+  { to: "/report-builder", label: "Report Builder", icon: IconReportAnalytics },
 ];
 
 /** The authenticated app shell: header with search + user menu, navbar, content area for routed pages. */

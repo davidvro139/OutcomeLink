@@ -1,10 +1,40 @@
 import { Router } from "express";
 import { asyncHandler } from "../../lib/asyncHandler";
-import { requireAuth } from "../../middleware/auth";
+import { OPERATIONAL_ROLES } from "../../lib/roles";
+import { requireAuth, requireRole } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
+import { exportCustomReport, runCustomReport, runReportSchema } from "./customReportBuilder";
 import * as reports from "./reports";
+import * as savedReports from "./savedReports";
 
 export const reportsRouter = Router();
+
+reportsRouter.post(
+  "/custom/run",
+  requireAuth,
+  validate(runReportSchema),
+  asyncHandler(runCustomReport),
+);
+reportsRouter.post(
+  "/custom/export",
+  requireAuth,
+  validate(runReportSchema),
+  asyncHandler(exportCustomReport),
+);
+reportsRouter.get("/custom/saved", requireAuth, asyncHandler(savedReports.list));
+reportsRouter.post(
+  "/custom/saved",
+  requireAuth,
+  requireRole(...OPERATIONAL_ROLES),
+  validate(savedReports.saveReportSchema),
+  asyncHandler(savedReports.create),
+);
+reportsRouter.delete(
+  "/custom/saved/:id",
+  requireAuth,
+  requireRole(...OPERATIONAL_ROLES),
+  asyncHandler(savedReports.remove),
+);
 
 reportsRouter.get(
   "/time-to-employment",

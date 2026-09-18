@@ -7,3 +7,4 @@ export * from "./outcomes";
 export * from "./surveys";
 export * from "./imports";
 export * from "./communicationEvents";
+export * from "./reportBuilder";

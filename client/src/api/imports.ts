@@ -19,6 +19,7 @@ export interface ImportBatch {
   columnMapping: ImportColumnMapping | null;
   totalRows: number | null;
   importedRowCount: number | null;
+  importedEnrollmentCount: number | null;
   status: ImportBatchStatus;
   mappingProfile?: { id: number; sourceSystemName: string } | null;
 }
@@ -131,7 +132,7 @@ export function useCommitImportBatch(batchId: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () =>
-      apiRequest<{ batch: ImportBatch; importedRowCount: number }>(
+      apiRequest<{ batch: ImportBatch; importedRowCount: number; importedEnrollmentCount?: number }>(
         `/api/imports/batches/${batchId}/commit`,
         { method: "POST" },
       ),

@@ -15,7 +15,7 @@ import {
   type ReportFilterDef,
   type ReportFilterInput,
 } from "@outcomelink/shared";
-import { BarChart } from "@mantine/charts";
+import { BarChart, LineChart } from "@mantine/charts";
 import {
   Alert,
   Badge,
@@ -159,6 +159,7 @@ const CHART_PERIOD_COLORS = [
 const MAX_CHART_GROUPS = 20;
 
 type ChartMode = "TREND" | "BY_LABEL" | "CATEGORY_COUNT";
+type ChartStyle = "BAR" | "LINE";
 
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
@@ -181,7 +182,7 @@ function distinctInOrder(rows: Record<string, unknown>[], key: string): string[]
 }
 
 /**
- * Customizable bar-chart comparison across the 2+ periods a report was run
+ * Customizable chart comparison across the 2+ periods a report was run
  * with — only rendered when the result actually carries a period label.
  * Three modes, all computed client-side from the already-fetched rows (no
  * extra request): a metric's trend across periods, that same metric broken
@@ -190,7 +191,10 @@ function distinctInOrder(rows: Record<string, unknown>[], key: string): string[]
  * histogram). Which modes are even offered depends on which of the
  * currently-selected columns are chart-capable (shared/src/reportBuilder.ts's
  * `chartKind`) — this is a viewer for whatever the user already chose to
- * see as columns, not a second, independent query.
+ * see as columns, not a second, independent query. Rendered as either a
+ * Mantine BarChart or LineChart (same `data`/`dataKey`/`series` shape for
+ * both, so the "Chart style" toggle is a pure presentation switch — it
+ * doesn't touch how chartData/series are computed above).
  */
 function ReportChartPanel({
   result,
@@ -205,6 +209,7 @@ function ReportChartPanel({
   const [metricOverride, setMetricOverride] = useState<string | null>(null);
   const [labelOverride, setLabelOverride] = useState<string | null>(null);
   const [categoryOverride, setCategoryOverride] = useState<string | null>(null);
+  const [chartStyle, setChartStyle] = useState<ChartStyle>("BAR");
 
   const numericFields = selectedFields
     .map((key) => fieldDefs.find((d) => d.key === key))
@@ -337,6 +342,17 @@ function ReportChartPanel({
             w={200}
           />
         )}
+        <Select
+          label="Chart style"
+          data={[
+            { value: "BAR", label: "Bar" },
+            { value: "LINE", label: "Line" },
+          ]}
+          value={chartStyle}
+          onChange={(v) => v && setChartStyle(v as ChartStyle)}
+          allowDeselect={false}
+          w={140}
+        />
       </Group>
 
       {truncatedGroups && (
@@ -349,8 +365,10 @@ function ReportChartPanel({
         <Text c="dimmed" size="sm">
           No chartable data for this selection.
         </Text>
-      ) : (
+      ) : chartStyle === "BAR" ? (
         <BarChart h={280} data={chartData} dataKey={dataKey} series={series} withLegend={series.length > 1} />
+      ) : (
+        <LineChart h={280} data={chartData} dataKey={dataKey} series={series} withLegend={series.length > 1} />
       )}
     </Stack>
   );

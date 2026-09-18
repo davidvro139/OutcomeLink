@@ -2,12 +2,15 @@ import { BarChart, PieChart } from "@mantine/charts";
 import { Anchor, Badge, Box, Button, Group, Loader, Modal, Paper, SimpleGrid, Stack, Table, Tabs, Text, Title } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
+import { Fragment, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import {
+  type SkillDimension,
   useFollowUpEffectivenessReport,
   useOutcomeFunnelReport,
   usePlacementQualityReport,
+  useSkillsGapReport,
   useTimeToEmploymentReport,
   useUnknownOutcomesReport,
 } from "../../api/reports";
@@ -359,11 +362,124 @@ function FollowUpEffectivenessPanel() {
   );
 }
 
+const SKILL_DIMENSIONS: SkillDimension[] = [
+  "technicalPreparednessRating",
+  "communicationRating",
+  "problemSolvingRating",
+  "professionalismRating",
+];
+
+function gapBadgeColor(gap: number | null): string {
+  if (gap === null) return "gray";
+  if (gap >= 0.5) return "red";
+  if (gap <= -0.5) return "teal";
+  return "gray";
+}
+
+function SkillsGapAnalysisPanel() {
+  const { data, isLoading } = useSkillsGapReport();
+  const [expandedProgramId, setExpandedProgramId] = useState<number | null>(null);
+
+  if (isLoading) return <Loader />;
+  if (!data) return null;
+
+  if (data.totalResponses === 0) {
+    return (
+      <Text c="dimmed" ta="center" py="xl">
+        No employer survey responses on file yet.
+      </Text>
+    );
+  }
+
+  return (
+    <Stack gap="md">
+      <Text size="sm" c="dimmed">
+        Not scoped to a reporting period — EmployerSurvey has no reporting-period link of its own,
+        same reasoning as Follow-Up Effectiveness. Each response is attributed to the graduate's
+        most recently completed program. Positive gaps (red) mean a program rates below the
+        institution average on that skill; negative gaps (teal) mean above average.
+      </Text>
+
+      <Title order={5}>Institution-wide averages</Title>
+      <SimpleGrid cols={{ base: 1, sm: 4 }}>
+        {SKILL_DIMENSIONS.map((dimension) => (
+          <StatCard
+            key={dimension}
+            label={data.dimensionLabels[dimension]}
+            value={data.institutionAverages[dimension] ?? "—"}
+          />
+        ))}
+      </SimpleGrid>
+
+      <Title order={5}>By program (worst gap first)</Title>
+      <Table withTableBorder striped highlightOnHover>
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th>Program</Table.Th>
+            <Table.Th>Responses</Table.Th>
+            {SKILL_DIMENSIONS.map((dimension) => (
+              <Table.Th key={dimension}>{data.dimensionLabels[dimension]}</Table.Th>
+            ))}
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
+          {data.byProgram.map((row) => (
+            <Fragment key={row.program.id}>
+              <Table.Tr
+                onClick={() =>
+                  setExpandedProgramId(expandedProgramId === row.program.id ? null : row.program.id)
+                }
+                style={{ cursor: row.skillsGapNotes.length > 0 ? "pointer" : undefined }}
+              >
+                <Table.Td>{row.program.name}</Table.Td>
+                <Table.Td>{row.responseCount}</Table.Td>
+                {SKILL_DIMENSIONS.map((dimension) => (
+                  <Table.Td key={dimension}>
+                    <Group gap={4} wrap="nowrap">
+                      <Text size="sm">{row.averages[dimension] ?? "—"}</Text>
+                      {row.gaps[dimension] !== null && (
+                        <Badge color={gapBadgeColor(row.gaps[dimension])} size="xs" variant="light">
+                          {row.gaps[dimension]! > 0 ? "-" : "+"}
+                          {Math.abs(row.gaps[dimension]!)}
+                        </Badge>
+                      )}
+                    </Group>
+                  </Table.Td>
+                ))}
+              </Table.Tr>
+              {expandedProgramId === row.program.id && row.skillsGapNotes.length > 0 && (
+                <Table.Tr key={`${row.program.id}-notes`}>
+                  <Table.Td colSpan={2 + SKILL_DIMENSIONS.length}>
+                    <Stack gap="xs" p="sm">
+                      <Text size="sm" fw={500}>
+                        Employer comments
+                      </Text>
+                      {row.skillsGapNotes.map((note, i) => (
+                        <Paper key={i} withBorder p="xs" radius="sm">
+                          <Text size="sm">{note.note}</Text>
+                          <Text size="xs" c="dimmed">
+                            {note.employerName} — {new Date(note.submittedAt).toLocaleDateString()}
+                          </Text>
+                        </Paper>
+                      ))}
+                    </Stack>
+                  </Table.Td>
+                </Table.Tr>
+              )}
+            </Fragment>
+          ))}
+        </Table.Tbody>
+      </Table>
+    </Stack>
+  );
+}
+
 /**
  * Phase 2 P8 (docs/TODO.md): drill-down reports answering questions the CPL
  * Dashboard and Readiness tab don't — speed and quality of placements, where
  * the outcome-documentation pipeline leaks, and whether follow-up effort is
- * paying off.
+ * paying off. Skills Gap Analysis (Phase 3, spec §64) joined this same tab
+ * later since it's the same kind of report, reusing the same components.
  */
 export function ReportsTab({ reportingPeriodId }: { reportingPeriodId: number }) {
   return (
@@ -374,6 +490,7 @@ export function ReportsTab({ reportingPeriodId }: { reportingPeriodId: number })
         <Tabs.Tab value="outcome-funnel">Outcome Funnel</Tabs.Tab>
         <Tabs.Tab value="unknown-outcomes">Unknown Outcomes</Tabs.Tab>
         <Tabs.Tab value="follow-up-effectiveness">Follow-Up Effectiveness</Tabs.Tab>
+        <Tabs.Tab value="skills-gap">Skills Gap Analysis</Tabs.Tab>
       </Tabs.List>
 
       <Tabs.Panel value="time-to-employment" pl="md">
@@ -390,6 +507,9 @@ export function ReportsTab({ reportingPeriodId }: { reportingPeriodId: number })
       </Tabs.Panel>
       <Tabs.Panel value="follow-up-effectiveness" pl="md">
         <FollowUpEffectivenessPanel />
+      </Tabs.Panel>
+      <Tabs.Panel value="skills-gap" pl="md">
+        <SkillsGapAnalysisPanel />
       </Tabs.Panel>
     </Tabs>
   );

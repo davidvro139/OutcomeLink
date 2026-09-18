@@ -343,3 +343,141 @@ export async function followUpEffectiveness(req: Request, res: Response) {
       .sort((a, b) => b.attempts - a.attempts),
   });
 }
+
+const SKILL_DIMENSIONS = [
+  "technicalPreparednessRating",
+  "communicationRating",
+  "problemSolvingRating",
+  "professionalismRating",
+] as const;
+type SkillDimension = (typeof SKILL_DIMENSIONS)[number];
+const SKILL_DIMENSION_LABELS: Record<SkillDimension, string> = {
+  technicalPreparednessRating: "Technical Preparedness",
+  communicationRating: "Communication",
+  problemSolvingRating: "Problem Solving",
+  professionalismRating: "Professionalism",
+};
+
+/**
+ * Skills-Gap Analysis (Phase 3, spec §64): compares employers' structured
+ * 1-5 skill ratings (technical/communication/problem-solving/professionalism)
+ * against the institution-wide average for each, per program, plus the raw
+ * free-text skillsGapNotes for qualitative context. Not scoped to a
+ * reporting period — EmployerSurvey has no reportingPeriodId of its own
+ * (same documented gap placementQuality() already lives with), so this is
+ * necessarily an all-time view, same reasoning as Follow-Up Effectiveness
+ * above. A survey response is attributed to whichever of the student's
+ * completed enrollments finished most recently — an employer survey concerns
+ * one specific graduate, not a specific program enrollment, so there's no
+ * stronger link available; a student with no completed enrollment on file is
+ * counted in the institution-wide averages but can't be attributed to a
+ * program row.
+ */
+export async function skillsGapAnalysis(req: Request, res: Response) {
+  const institutionId = req.user!.institutionId;
+
+  const responses = await prisma.employerSurveyResponse.findMany({
+    where: { survey: { student: { institutionId } } },
+    include: {
+      survey: {
+        include: {
+          employer: { select: { name: true } },
+          student: {
+            include: {
+              enrollments: {
+                where: { actualCompletionDate: { not: null } },
+                orderBy: { actualCompletionDate: "desc" },
+                take: 1,
+                include: { program: { select: { id: true, name: true } } },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const institutionRatings: Record<SkillDimension, number[]> = {
+    technicalPreparednessRating: [],
+    communicationRating: [],
+    problemSolvingRating: [],
+    professionalismRating: [],
+  };
+
+  interface ProgramAgg {
+    program: { id: number; name: string };
+    ratings: Record<SkillDimension, number[]>;
+    notes: { employerName: string; note: string; submittedAt: Date }[];
+  }
+  const byProgram = new Map<number, ProgramAgg>();
+
+  for (const response of responses) {
+    for (const dimension of SKILL_DIMENSIONS) {
+      const value = response[dimension];
+      if (value !== null) institutionRatings[dimension].push(value);
+    }
+
+    const program = response.survey.student.enrollments[0]?.program;
+    if (program) {
+      const agg = byProgram.get(program.id) ?? {
+        program,
+        ratings: { technicalPreparednessRating: [], communicationRating: [], problemSolvingRating: [], professionalismRating: [] },
+        notes: [],
+      };
+      for (const dimension of SKILL_DIMENSIONS) {
+        const value = response[dimension];
+        if (value !== null) agg.ratings[dimension].push(value);
+      }
+      if (response.skillsGapNotes) {
+        agg.notes.push({
+          employerName: response.survey.employer.name,
+          note: response.skillsGapNotes,
+          submittedAt: response.submittedAt,
+        });
+      }
+      byProgram.set(program.id, agg);
+    }
+  }
+
+  const institutionAverages = Object.fromEntries(
+    SKILL_DIMENSIONS.map((d) => [d, average(institutionRatings[d])]),
+  ) as Record<SkillDimension, number | null>;
+
+  const byProgramRows = [...byProgram.values()].map((agg) => {
+    const averages = Object.fromEntries(
+      SKILL_DIMENSIONS.map((d) => [d, average(agg.ratings[d])]),
+    ) as Record<SkillDimension, number | null>;
+    const gaps = Object.fromEntries(
+      SKILL_DIMENSIONS.map((d) => {
+        const institutionAvg = institutionAverages[d];
+        const programAvg = averages[d];
+        const gap = institutionAvg !== null && programAvg !== null
+          ? Math.round((institutionAvg - programAvg) * 10) / 10
+          : null;
+        return [d, gap];
+      }),
+    ) as Record<SkillDimension, number | null>;
+
+    return {
+      program: agg.program,
+      responseCount: Math.max(...SKILL_DIMENSIONS.map((d) => agg.ratings[d].length), 0),
+      averages,
+      gaps,
+      skillsGapNotes: agg.notes.sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime()),
+    };
+  });
+
+  // Worst (largest positive) gap first — the programs most below the institution average lead the list.
+  byProgramRows.sort((a, b) => {
+    const worstGap = (row: (typeof byProgramRows)[number]) =>
+      Math.max(...SKILL_DIMENSIONS.map((d) => row.gaps[d] ?? -Infinity));
+    return worstGap(b) - worstGap(a);
+  });
+
+  sendData(res, {
+    totalResponses: responses.length,
+    institutionAverages,
+    dimensionLabels: SKILL_DIMENSION_LABELS,
+    byProgram: byProgramRows,
+  });
+}

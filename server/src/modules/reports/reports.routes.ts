@@ -31,3 +31,4 @@ reportsRouter.get(
   asyncHandler(reports.unknownOutcomes),
 );
 reportsRouter.get("/follow-up-effectiveness", requireAuth, asyncHandler(reports.followUpEffectiveness));
+reportsRouter.get("/skills-gap", requireAuth, asyncHandler(reports.skillsGapAnalysis));

@@ -123,6 +123,9 @@ enum NotificationType {
   VALIDATION_ERROR
   IMPROVEMENT_PLAN_TASK_DUE
   PROGRAM_BELOW_THRESHOLD
+  // "Missing-outcomes digest" (docs/TODO.md deferred items) — a pushed
+  // institution-wide summary, distinct from VALIDATION_ERROR's per-issue scope.
+  MISSING_OUTCOMES_DIGEST
 }
 
 enum AuditAction {
@@ -960,6 +963,11 @@ model Notification {
   id                  Int              @id @default(autoincrement())
   userId              Int              @map("user_id")
   type                NotificationType
+  // Human-readable body — the schema originally had no way to say anything
+  // beyond a type + entity reference, but a digest is a summary/count, not a
+  // pointer to one record, so there's nothing else to derive display text
+  // from. Same reasoning as CommunicationEvent.summaryText.
+  message             String           @db.Text
   referenceEntityType String?          @map("reference_entity_type")
   referenceEntityId   Int?             @map("reference_entity_id")
   createdAt           DateTime         @default(now()) @map("created_at")

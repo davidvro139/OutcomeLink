@@ -1,9 +1,19 @@
 import { BarChart } from "@mantine/charts";
-import { Badge, Loader, Paper, Select, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
+import { Badge, Button, Group, Loader, Paper, Select, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import { useMemo, useState } from "react";
+import { useAuth } from "../../auth/AuthContext";
 import { useReportingPeriods, useValidationIssues } from "../../api/accreditation";
+import { useGenerateMissingOutcomesDigest } from "../../api/notifications";
 
 const SEVERITY_COLORS: Record<string, string> = { ERROR: "red", WARNING: "yellow", INFORMATION: "blue" };
+
+// Matches DashboardPage.tsx's DATA_QUALITY_ROLES exactly — that gate on the
+// tab itself is a deliberate, already-verified P6 decision (this dashboard is
+// admin-only); the backend's own role check on the digest endpoint is
+// broader (every operational role), but nothing outside this admin-only tab
+// currently offers a UI path to it.
+const CAN_SEND_DIGEST = ["SYSTEM_ADMINISTRATOR", "INSTITUTIONAL_ADMINISTRATOR"];
 
 /**
  * Phase 2 P6 (docs/TODO.md): an aggregate view over the same
@@ -13,10 +23,31 @@ const SEVERITY_COLORS: Record<string, string> = { ERROR: "red", WARNING: "yellow
  * scrolling a flat list.
  */
 export function DataQualityDashboard() {
+  const { user } = useAuth();
   const { data: periods } = useReportingPeriods();
   const [periodId, setPeriodId] = useState<number | undefined>(undefined);
   const effectivePeriodId = periodId ?? periods?.[0]?.id;
   const { data: issues, isLoading } = useValidationIssues(effectivePeriodId);
+  const generateDigest = useGenerateMissingOutcomesDigest();
+
+  async function handleSendDigest() {
+    if (!effectivePeriodId) return;
+    try {
+      const result = await generateDigest.mutateAsync(effectivePeriodId);
+      notifications.show({
+        message:
+          result.recipientCount === 0
+            ? "No students with an unresolved outcome this period — no digest needed."
+            : `Missing-outcomes digest sent to ${result.recipientCount} staff member${result.recipientCount === 1 ? "" : "s"}.`,
+        color: "green",
+      });
+    } catch (err) {
+      notifications.show({
+        message: err instanceof Error ? err.message : "Failed to send digest",
+        color: "red",
+      });
+    }
+  }
 
   const open = useMemo(() => issues?.filter((i) => !i.resolvedAt) ?? [], [issues]);
 
@@ -38,14 +69,27 @@ export function DataQualityDashboard() {
 
   return (
     <Stack gap="md">
-      <Select
-        label="Reporting period"
-        data={periods?.map((p) => ({ value: String(p.id), label: p.label })) ?? []}
-        value={effectivePeriodId ? String(effectivePeriodId) : null}
-        onChange={(v) => setPeriodId(v ? Number(v) : undefined)}
-        allowDeselect={false}
-        w={280}
-      />
+      <Group justify="space-between" align="flex-end">
+        <Select
+          label="Reporting period"
+          data={periods?.map((p) => ({ value: String(p.id), label: p.label })) ?? []}
+          value={effectivePeriodId ? String(effectivePeriodId) : null}
+          onChange={(v) => setPeriodId(v ? Number(v) : undefined)}
+          allowDeselect={false}
+          w={280}
+        />
+        {user && CAN_SEND_DIGEST.includes(user.role) && (
+          <Button
+            size="xs"
+            variant="light"
+            onClick={handleSendDigest}
+            loading={generateDigest.isPending}
+            disabled={!effectivePeriodId}
+          >
+            Send Missing-Outcomes Digest
+          </Button>
+        )}
+      </Group>
 
       {isLoading && <Loader />}
 

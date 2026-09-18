@@ -70,12 +70,19 @@ export async function apiRequestPaginated<T>(
  * For binary responses (evidence file download) that don't use the { data }
  * envelope. A plain <a href> or window.open to an authenticated route won't
  * carry the Authorization header, so the caller must fetch the bytes here
- * first and hand the browser a blob: URL instead.
+ * first and hand the browser a blob: URL instead. Accepts an optional
+ * `init` for exports that need a POST body (e.g. the Custom Report
+ * Builder's arbitrary field/filter selection) rather than a plain GET.
  */
-export async function apiRequestBlob(path: string): Promise<Blob> {
+export async function apiRequestBlob(path: string, init?: RequestInit): Promise<Blob> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     credentials: "include",
-    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    headers: {
+      ...(init?.body ? { "Content-Type": "application/json" } : {}),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      ...init?.headers,
+    },
+    ...init,
   });
 
   if (!response.ok) {
@@ -92,8 +99,8 @@ export async function apiRequestBlob(path: string): Promise<Blob> {
  * reasoning as apiRequestBlob above, but this one triggers a save rather
  * than opening the file inline.
  */
-export async function downloadFile(path: string, filename: string): Promise<void> {
-  const blob = await apiRequestBlob(path);
+export async function downloadFile(path: string, filename: string, init?: RequestInit): Promise<void> {
+  const blob = await apiRequestBlob(path, init);
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;

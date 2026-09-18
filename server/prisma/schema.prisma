@@ -179,6 +179,7 @@ model Institution {
   reportingPeriods      ReportingPeriod[]
   importMappingProfiles ImportMappingProfile[]
   importBatches         ImportBatch[]
+  savedReports          SavedReport[]
 
   @@map("institutions")
 }
@@ -305,6 +306,7 @@ model User {
   improvementPlans ImprovementPlan[]
   auditLogEntries  AuditLogEntry[]
   notifications    Notification[]
+  savedReports     SavedReport[]
 
   @@map("users")
 }
@@ -976,4 +978,28 @@ model Notification {
   user User @relation(fields: [userId], references: [id])
 
   @@map("notifications")
+}
+
+/// Custom Report Builder (Phase 3, spec §64). `definition` holds a
+/// ReportDefinition (shared/src/reportBuilder.ts) — entity type, selected
+/// fields, filters, optional reporting period — validated against the
+/// current field/filter registry at run time rather than at save time, so a
+/// saved report never gets "frozen" against a registry change; it just
+/// re-validates (and could surface an error) the next time it's run.
+/// Institution-wide, not just visible to its creator — reports are usually
+/// meant to be shared with colleagues, same reasoning as ImportMappingProfile.
+model SavedReport {
+  id            Int      @id @default(autoincrement())
+  institutionId Int      @map("institution_id")
+  createdBy     Int      @map("created_by")
+  name          String
+  definition    Json
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  institution Institution @relation(fields: [institutionId], references: [id])
+  creator     User        @relation(fields: [createdBy], references: [id])
+
+  @@unique([institutionId, name])
+  @@map("saved_reports")
 }

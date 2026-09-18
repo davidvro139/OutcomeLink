@@ -15,6 +15,7 @@ import { LicensureQueuePage } from "./pages/licensure/LicensureQueuePage";
 import { LoginPage } from "./pages/LoginPage";
 import { ProgramDetailPage } from "./pages/programs/ProgramDetailPage";
 import { ProgramsListPage } from "./pages/programs/ProgramsListPage";
+import { ReportBuilderPage } from "./pages/reportBuilder/ReportBuilderPage";
 import { StudentDetailPage } from "./pages/students/StudentDetailPage";
 import { StudentsListPage } from "./pages/students/StudentsListPage";
 import { EmployerSurveyPage } from "./pages/surveys/EmployerSurveyPage";
@@ -50,6 +51,8 @@ function App() {
 
         <Route path="/imports" element={<ImportsPage />} />
         <Route path="/imports/:id" element={<ImportBatchPage />} />
+
+        <Route path="/report-builder" element={<ReportBuilderPage />} />
 
         <Route path="/accreditation/reporting-periods" element={<ReportingPeriodsPage />} />
         <Route path="/accreditation/trends" element={<TrendsPage />} />

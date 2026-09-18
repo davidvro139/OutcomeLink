@@ -17,12 +17,26 @@ export const REPORT_ENTITY_LABELS: Record<ReportEntityType, string> = {
   PROGRAM: "Programs",
 };
 
+/**
+ * How a field can drive the Report Builder's "Chart" panel (only shown when
+ * 2+ periods are compared): "numeric-sum"/"numeric-average" fields can be
+ * the charted metric — summed or averaged across whatever rows land in a
+ * group, matching each field's own real-world semantics (Placement Count
+ * sums; a percentage or rate averages) — and "categorical" fields can be the
+ * grouping dimension for a category-frequency chart. A field with neither
+ * (ids, names, free text, dates) is chart-inert as a *value* but any
+ * selected field, chartable or not, can still be picked as the chart's
+ * *label* dimension for a per-row comparison.
+ */
+export type ReportFieldChartKind = "numeric-sum" | "numeric-average" | "categorical";
+
 export interface ReportFieldDef {
   key: string;
   label: string;
   group: string;
   /** True if this field is only meaningful when a reporting period is selected. */
   requiresReportingPeriod?: boolean;
+  chartKind?: ReportFieldChartKind;
 }
 
 export interface ReportFilterDef {
@@ -40,18 +54,18 @@ export const STUDENT_REPORT_FIELDS: ReportFieldDef[] = [
   { key: "lastName", label: "Last Name", group: "Student" },
   { key: "email", label: "Email", group: "Student" },
   { key: "phone", label: "Phone", group: "Student" },
-  { key: "programName", label: "Program", group: "Enrollment" },
-  { key: "campusName", label: "Campus", group: "Enrollment" },
-  { key: "enrollmentStatus", label: "Enrollment Status", group: "Enrollment" },
+  { key: "programName", label: "Program", group: "Enrollment", chartKind: "categorical" },
+  { key: "campusName", label: "Campus", group: "Enrollment", chartKind: "categorical" },
+  { key: "enrollmentStatus", label: "Enrollment Status", group: "Enrollment", chartKind: "categorical" },
   { key: "startDate", label: "Start Date", group: "Enrollment" },
   { key: "actualCompletionDate", label: "Completion Date", group: "Enrollment" },
-  { key: "enrollmentObjective", label: "Enrollment Objective", group: "Enrollment" },
-  { key: "credentialEarned", label: "Credential Earned", group: "Enrollment" },
-  { key: "employmentStatus", label: "Employment Status", group: "Outcome", requiresReportingPeriod: true },
-  { key: "employerName", label: "Employer", group: "Outcome", requiresReportingPeriod: true },
+  { key: "enrollmentObjective", label: "Enrollment Objective", group: "Enrollment", chartKind: "categorical" },
+  { key: "credentialEarned", label: "Credential Earned", group: "Enrollment", chartKind: "categorical" },
+  { key: "employmentStatus", label: "Employment Status", group: "Outcome", requiresReportingPeriod: true, chartKind: "categorical" },
+  { key: "employerName", label: "Employer", group: "Outcome", requiresReportingPeriod: true, chartKind: "categorical" },
   { key: "jobTitle", label: "Job Title", group: "Outcome", requiresReportingPeriod: true },
-  { key: "relatedToTraining", label: "Related to Training", group: "Outcome", requiresReportingPeriod: true },
-  { key: "verificationStatus", label: "Verification Status", group: "Outcome", requiresReportingPeriod: true },
+  { key: "relatedToTraining", label: "Related to Training", group: "Outcome", requiresReportingPeriod: true, chartKind: "categorical" },
+  { key: "verificationStatus", label: "Verification Status", group: "Outcome", requiresReportingPeriod: true, chartKind: "categorical" },
 ];
 
 export const STUDENT_REPORT_FILTERS: ReportFilterDef[] = [
@@ -63,19 +77,19 @@ export const STUDENT_REPORT_FILTERS: ReportFilterDef[] = [
 
 export const EMPLOYER_REPORT_FIELDS: ReportFieldDef[] = [
   { key: "name", label: "Name", group: "Employer" },
-  { key: "industry", label: "Industry", group: "Employer" },
+  { key: "industry", label: "Industry", group: "Employer", chartKind: "categorical" },
   { key: "city", label: "City", group: "Employer" },
-  { key: "state", label: "State", group: "Employer" },
-  { key: "active", label: "Active", group: "Employer" },
+  { key: "state", label: "State", group: "Employer", chartKind: "categorical" },
+  { key: "active", label: "Active", group: "Employer", chartKind: "categorical" },
   // Not requiresReportingPeriod — these fall back to an all-time aggregate
   // with no period selected, same as before this field set became
   // period-aware, but scope to that period's placement start-date range
   // (the same attribution placementQuality() in reports.ts already uses,
   // since EmploymentRecord has no reportingPeriodId of its own) once one or
   // more periods are selected, one output row per period.
-  { key: "placementCount", label: "Placement Count", group: "Outcomes" },
-  { key: "averageWage", label: "Average Wage", group: "Outcomes" },
-  { key: "fullTimeRate", label: "Full-Time Rate", group: "Outcomes" },
+  { key: "placementCount", label: "Placement Count", group: "Outcomes", chartKind: "numeric-sum" },
+  { key: "averageWage", label: "Average Wage", group: "Outcomes", chartKind: "numeric-average" },
+  { key: "fullTimeRate", label: "Full-Time Rate", group: "Outcomes", chartKind: "numeric-average" },
 ];
 
 export const EMPLOYER_REPORT_FILTERS: ReportFilterDef[] = [
@@ -87,13 +101,13 @@ export const EMPLOYER_REPORT_FILTERS: ReportFilterDef[] = [
 export const PROGRAM_REPORT_FIELDS: ReportFieldDef[] = [
   { key: "name", label: "Name", group: "Program" },
   { key: "code", label: "Code", group: "Program" },
-  { key: "credentialType", label: "Credential Type", group: "Program" },
-  { key: "campusName", label: "Campus", group: "Program" },
-  { key: "licensureRequired", label: "Licensure Required", group: "Program" },
-  { key: "active", label: "Active", group: "Program" },
-  { key: "completionPercentage", label: "Completion %", group: "CPL Results", requiresReportingPeriod: true },
-  { key: "placementPercentage", label: "Placement %", group: "CPL Results", requiresReportingPeriod: true },
-  { key: "licensurePercentage", label: "Licensure %", group: "CPL Results", requiresReportingPeriod: true },
+  { key: "credentialType", label: "Credential Type", group: "Program", chartKind: "categorical" },
+  { key: "campusName", label: "Campus", group: "Program", chartKind: "categorical" },
+  { key: "licensureRequired", label: "Licensure Required", group: "Program", chartKind: "categorical" },
+  { key: "active", label: "Active", group: "Program", chartKind: "categorical" },
+  { key: "completionPercentage", label: "Completion %", group: "CPL Results", requiresReportingPeriod: true, chartKind: "numeric-average" },
+  { key: "placementPercentage", label: "Placement %", group: "CPL Results", requiresReportingPeriod: true, chartKind: "numeric-average" },
+  { key: "licensurePercentage", label: "Licensure %", group: "CPL Results", requiresReportingPeriod: true, chartKind: "numeric-average" },
 ];
 
 export const PROGRAM_REPORT_FILTERS: ReportFilterDef[] = [

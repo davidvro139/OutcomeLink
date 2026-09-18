@@ -67,9 +67,15 @@ export const EMPLOYER_REPORT_FIELDS: ReportFieldDef[] = [
   { key: "city", label: "City", group: "Employer" },
   { key: "state", label: "State", group: "Employer" },
   { key: "active", label: "Active", group: "Employer" },
-  { key: "placementCount", label: "Placement Count (all-time)", group: "Outcomes" },
-  { key: "averageWage", label: "Average Wage (all-time)", group: "Outcomes" },
-  { key: "fullTimeRate", label: "Full-Time Rate (all-time)", group: "Outcomes" },
+  // Not requiresReportingPeriod — these fall back to an all-time aggregate
+  // with no period selected, same as before this field set became
+  // period-aware, but scope to that period's placement start-date range
+  // (the same attribution placementQuality() in reports.ts already uses,
+  // since EmploymentRecord has no reportingPeriodId of its own) once one or
+  // more periods are selected, one output row per period.
+  { key: "placementCount", label: "Placement Count", group: "Outcomes" },
+  { key: "averageWage", label: "Average Wage", group: "Outcomes" },
+  { key: "fullTimeRate", label: "Full-Time Rate", group: "Outcomes" },
 ];
 
 export const EMPLOYER_REPORT_FILTERS: ReportFilterDef[] = [
@@ -117,8 +123,28 @@ export interface ReportDefinition {
   entityType: ReportEntityType;
   fields: string[];
   filters: ReportFilterInput[];
-  reportingPeriodId?: number;
+  /**
+   * Zero or more reporting periods. With 2+, the query runs once per period
+   * and results are concatenated — one row per entity per period — so
+   * period-aware fields (or period-optional ones like Employer's placement
+   * stats) can be compared year-over-year in a single table/export. When 2+
+   * periods are selected, the server always prepends a `reportingPeriodLabel`
+   * column (see REPORT_PERIOD_LABEL_FIELD_KEY) so rows stay distinguishable,
+   * regardless of which fields were explicitly picked.
+   */
+  reportingPeriodIds?: number[];
 }
 
 /** Server response row cap for on-screen preview — export has no cap. */
 export const REPORT_BUILDER_PREVIEW_LIMIT = 500;
+
+/** Max number of reporting periods that can be compared in one report. */
+export const REPORT_BUILDER_MAX_PERIODS = 10;
+
+/**
+ * Auto-injected (not user-selectable, never appears in a *_REPORT_FIELDS
+ * registry) whenever 2+ reporting periods are compared, so multi-period rows
+ * stay distinguishable no matter which real fields were picked.
+ */
+export const REPORT_PERIOD_LABEL_FIELD_KEY = "reportingPeriodLabel";
+export const REPORT_PERIOD_LABEL_HEADER = "Reporting Period";

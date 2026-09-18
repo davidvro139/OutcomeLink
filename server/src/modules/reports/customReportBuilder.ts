@@ -1,9 +1,12 @@
 import type { Request, Response } from "express";
 import {
+  REPORT_BUILDER_MAX_PERIODS,
   REPORT_BUILDER_PREVIEW_LIMIT,
   REPORT_ENTITY_TYPES,
   REPORT_FIELDS_BY_ENTITY,
   REPORT_FILTERS_BY_ENTITY,
+  REPORT_PERIOD_LABEL_FIELD_KEY,
+  REPORT_PERIOD_LABEL_HEADER,
   type ReportEntityType,
 } from "@outcomelink/shared";
 import { z } from "zod";
@@ -30,6 +33,13 @@ import { sendXlsx } from "../../lib/xlsx";
  * actually send back — capping at the database layer here would make
  * totalCount and the JS-side employmentStatus filter disagree with each
  * other.
+ *
+ * Multiple reporting periods can be compared in one report ("see trends or
+ * patterns" across past years): each period-aware fetcher runs once per
+ * selected period and the results are concatenated, one row per entity per
+ * period, with a `reportingPeriodLabel` column auto-prepended whenever 2+
+ * periods are involved so rows stay distinguishable regardless of which
+ * fields the user actually picked.
  */
 
 const filterInputSchema = z.object({
@@ -41,11 +51,18 @@ export const runReportSchema = z.object({
   entityType: z.enum(REPORT_ENTITY_TYPES),
   fields: z.array(z.string()).min(1).max(50),
   filters: z.array(filterInputSchema).max(20).default([]),
-  reportingPeriodId: z.coerce.number().int().positive().optional(),
+  reportingPeriodIds: z.array(z.coerce.number().int().positive()).max(REPORT_BUILDER_MAX_PERIODS).optional(),
 });
 export type RunReportInput = z.infer<typeof runReportSchema>;
 
 type Row = Record<string, unknown>;
+
+interface ResolvedPeriod {
+  id: number;
+  label: string;
+  startDate: Date;
+  endDate: Date;
+}
 
 function average(values: number[]): number | null {
   if (values.length === 0) return null;
@@ -64,87 +81,127 @@ function validateDefinition(input: RunReportInput) {
     throw ApiError.badRequest(`Unknown field(s) for ${input.entityType}: ${unknownFields.join(", ")}`);
   }
 
+  const hasPeriod = (input.reportingPeriodIds?.length ?? 0) > 0;
+
   const filterDefs = new Map(REPORT_FILTERS_BY_ENTITY[input.entityType].map((f) => [f.key, f]));
   for (const filter of input.filters) {
     const def = filterDefs.get(filter.field);
     if (!def) throw ApiError.badRequest(`Unknown filter field "${filter.field}" for ${input.entityType}`);
-    if (def.requiresReportingPeriod && !input.reportingPeriodId) {
-      throw ApiError.badRequest(`Filter "${filter.field}" requires a reporting period`);
+    if (def.requiresReportingPeriod && !hasPeriod) {
+      throw ApiError.badRequest(`Filter "${filter.field}" requires at least one reporting period`);
     }
   }
 
   const needsPeriod = input.fields.some(
     (f) => fieldDefs.find((d) => d.key === f)?.requiresReportingPeriod,
   );
-  if (needsPeriod && !input.reportingPeriodId) {
-    throw ApiError.badRequest("Selected fields require a reporting period");
+  if (needsPeriod && !hasPeriod) {
+    throw ApiError.badRequest("Selected fields require at least one reporting period");
   }
 }
 
-async function fetchStudentRows(institutionId: number, input: RunReportInput): Promise<Row[]> {
+async function resolvePeriods(institutionId: number, input: RunReportInput): Promise<ResolvedPeriod[]> {
+  const ids = input.reportingPeriodIds ?? [];
+  if (ids.length === 0) return [];
+
+  const periods = await prisma.reportingPeriod.findMany({ where: { id: { in: ids }, institutionId } });
+  const foundIds = new Set(periods.map((p) => p.id));
+  const missing = ids.filter((id) => !foundIds.has(id));
+  if (missing.length > 0) {
+    throw ApiError.badRequest(`Unknown reportingPeriodId(s): ${missing.join(", ")}`);
+  }
+  // Preserve the caller's requested order rather than the DB's arbitrary one.
+  const byId = new Map(periods.map((p) => [p.id, p]));
+  return ids.map((id) => {
+    const p = byId.get(id)!;
+    return { id: p.id, label: p.label, startDate: p.startDate, endDate: p.endDate };
+  });
+}
+
+async function fetchStudentRows(
+  institutionId: number,
+  input: RunReportInput,
+  periods: ResolvedPeriod[],
+): Promise<Row[]> {
   const programIds = filterValue<number[]>(input, "programId");
   const campusIds = filterValue<number[]>(input, "campusId");
   const enrollmentStatuses = filterValue<string[]>(input, "enrollmentStatus");
   const employmentStatuses = filterValue<string[]>(input, "employmentStatus");
 
-  const enrollments = await prisma.studentEnrollment.findMany({
-    where: {
-      student: { institutionId },
-      ...(programIds && programIds.length > 0 ? { programId: { in: programIds } } : {}),
-      ...(campusIds && campusIds.length > 0 ? { campusId: { in: campusIds } } : {}),
-      ...(enrollmentStatuses && enrollmentStatuses.length > 0
-        ? { enrollmentStatus: { in: enrollmentStatuses as never[] } }
-        : {}),
-    },
-    include: {
-      student: true,
-      program: { select: { name: true } },
-      campus: { select: { name: true } },
-      // A conditional `include` (object vs. `false`) makes Prisma infer a
-      // union type that loses the nested `employer` relation entirely — kept
-      // the shape static instead, using a reportingPeriodId that can never
-      // match a real row (0) when no period was actually requested, so
-      // "no period selected" and "no outcome record for this period" behave
-      // identically (an empty outcomeRecords array) without a type gymnastic.
-      outcomeRecords: {
-        where: { reportingPeriodId: input.reportingPeriodId ?? 0 },
-        include: { employer: { select: { name: true } } },
+  const baseWhere = {
+    student: { institutionId },
+    ...(programIds && programIds.length > 0 ? { programId: { in: programIds } } : {}),
+    ...(campusIds && campusIds.length > 0 ? { campusId: { in: campusIds } } : {}),
+    ...(enrollmentStatuses && enrollmentStatuses.length > 0
+      ? { enrollmentStatus: { in: enrollmentStatuses as never[] } }
+      : {}),
+  };
+
+  // A `null` context means "no period selected" — one pass, no outcome join.
+  const contexts: (ResolvedPeriod | null)[] = periods.length > 0 ? periods : [null];
+  const labelRows = periods.length > 1;
+
+  const rows: Row[] = [];
+  for (const period of contexts) {
+    const enrollments = await prisma.studentEnrollment.findMany({
+      where: baseWhere,
+      include: {
+        student: true,
+        program: { select: { name: true } },
+        campus: { select: { name: true } },
+        // A conditional `include` (object vs. `false`) makes Prisma infer a
+        // union type that loses the nested `employer` relation entirely —
+        // kept the shape static, using a reportingPeriodId that can never
+        // match a real row (0) for the no-period pass, so "no period
+        // selected" and "no outcome record for this period" behave
+        // identically (an empty outcomeRecords array).
+        outcomeRecords: {
+          where: { reportingPeriodId: period?.id ?? 0 },
+          include: { employer: { select: { name: true } } },
+        },
       },
-    },
-    orderBy: { id: "asc" },
-  });
+      orderBy: { id: "asc" },
+    });
 
-  let rows: Row[] = enrollments.map((e) => {
-    const outcome = e.outcomeRecords[0];
-    return {
-      internalStudentId: e.student.internalStudentId,
-      firstName: e.student.firstName,
-      lastName: e.student.lastName,
-      email: e.student.email,
-      phone: e.student.phone,
-      programName: e.program.name,
-      campusName: e.campus.name,
-      enrollmentStatus: e.enrollmentStatus,
-      startDate: e.startDate,
-      actualCompletionDate: e.actualCompletionDate,
-      enrollmentObjective: e.enrollmentObjective,
-      credentialEarned: e.credentialEarned,
-      employmentStatus: outcome?.employmentStatus ?? null,
-      employerName: outcome?.employer?.name ?? null,
-      jobTitle: outcome?.jobTitle ?? null,
-      relatedToTraining: outcome?.relatedToTraining ?? null,
-      verificationStatus: outcome?.verificationStatus ?? null,
-    };
-  });
+    let periodRows: Row[] = enrollments.map((e) => {
+      const outcome = e.outcomeRecords[0];
+      const row: Row = {
+        internalStudentId: e.student.internalStudentId,
+        firstName: e.student.firstName,
+        lastName: e.student.lastName,
+        email: e.student.email,
+        phone: e.student.phone,
+        programName: e.program.name,
+        campusName: e.campus.name,
+        enrollmentStatus: e.enrollmentStatus,
+        startDate: e.startDate,
+        actualCompletionDate: e.actualCompletionDate,
+        enrollmentObjective: e.enrollmentObjective,
+        credentialEarned: e.credentialEarned,
+        employmentStatus: outcome?.employmentStatus ?? null,
+        employerName: outcome?.employer?.name ?? null,
+        jobTitle: outcome?.jobTitle ?? null,
+        relatedToTraining: outcome?.relatedToTraining ?? null,
+        verificationStatus: outcome?.verificationStatus ?? null,
+      };
+      if (labelRows) row[REPORT_PERIOD_LABEL_FIELD_KEY] = period!.label;
+      return row;
+    });
 
-  if (employmentStatuses && employmentStatuses.length > 0) {
-    rows = rows.filter((r) => employmentStatuses.includes(r.employmentStatus as string));
+    if (employmentStatuses && employmentStatuses.length > 0) {
+      periodRows = periodRows.filter((r) => employmentStatuses.includes(r.employmentStatus as string));
+    }
+    rows.push(...periodRows);
   }
 
   return rows;
 }
 
-async function fetchEmployerRows(institutionId: number, input: RunReportInput): Promise<Row[]> {
+async function fetchEmployerRows(
+  institutionId: number,
+  input: RunReportInput,
+  periods: ResolvedPeriod[],
+): Promise<Row[]> {
   const industries = filterValue<string[]>(input, "industry");
   const states = filterValue<string[]>(input, "state");
   const activeFilter = filterValue<boolean>(input, "active");
@@ -156,32 +213,62 @@ async function fetchEmployerRows(institutionId: number, input: RunReportInput): 
       ...(states && states.length > 0 ? { state: { in: states } } : {}),
       ...(activeFilter !== undefined ? { active: activeFilter } : {}),
     },
-    include: { employmentRecords: { select: { fullTime: true, salaryOrWage: true } } },
     orderBy: { name: "asc" },
   });
+  const employerIds = employers.map((e) => e.id);
 
-  return employers.map((e) => {
-    const wages = e.employmentRecords
-      .map((r) => (r.salaryOrWage !== null ? Number(r.salaryOrWage) : null))
-      .filter((w): w is number => w !== null);
-    const fullTimeCount = e.employmentRecords.filter((r) => r.fullTime).length;
-    return {
-      name: e.name,
-      industry: e.industry,
-      city: e.city,
-      state: e.state,
-      active: e.active,
-      placementCount: e.employmentRecords.length,
-      averageWage: average(wages),
-      fullTimeRate:
-        e.employmentRecords.length > 0
-          ? Math.round((fullTimeCount / e.employmentRecords.length) * 10000) / 100
-          : null,
-    };
-  });
+  const contexts: (ResolvedPeriod | null)[] = periods.length > 0 ? periods : [null];
+  const labelRows = periods.length > 1;
+
+  const rows: Row[] = [];
+  for (const period of contexts) {
+    // Scoped to placements starting within the period's date range (the same
+    // attribution placementQuality() in reports.ts already uses, since
+    // EmploymentRecord has no reportingPeriodId of its own) — or every
+    // record, all-time, when no period was selected.
+    const employersWithRecords = await prisma.employer.findMany({
+      where: { id: { in: employerIds } },
+      include: {
+        employmentRecords: {
+          where: period ? { startDate: { gte: period.startDate, lte: period.endDate } } : {},
+          select: { fullTime: true, salaryOrWage: true },
+        },
+      },
+    });
+    const byId = new Map(employersWithRecords.map((e) => [e.id, e]));
+
+    for (const employer of employers) {
+      const e = byId.get(employer.id)!;
+      const wages = e.employmentRecords
+        .map((r) => (r.salaryOrWage !== null ? Number(r.salaryOrWage) : null))
+        .filter((w): w is number => w !== null);
+      const fullTimeCount = e.employmentRecords.filter((r) => r.fullTime).length;
+      const row: Row = {
+        name: e.name,
+        industry: e.industry,
+        city: e.city,
+        state: e.state,
+        active: e.active,
+        placementCount: e.employmentRecords.length,
+        averageWage: average(wages),
+        fullTimeRate:
+          e.employmentRecords.length > 0
+            ? Math.round((fullTimeCount / e.employmentRecords.length) * 10000) / 100
+            : null,
+      };
+      if (labelRows) row[REPORT_PERIOD_LABEL_FIELD_KEY] = period!.label;
+      rows.push(row);
+    }
+  }
+
+  return rows;
 }
 
-async function fetchProgramRows(institutionId: number, input: RunReportInput): Promise<Row[]> {
+async function fetchProgramRows(
+  institutionId: number,
+  input: RunReportInput,
+  periods: ResolvedPeriod[],
+): Promise<Row[]> {
   const campusIds = filterValue<number[]>(input, "campusId");
   const credentialTypes = filterValue<string[]>(input, "credentialType");
   const licensureRequiredFilter = filterValue<boolean>(input, "licensureRequired");
@@ -197,56 +284,77 @@ async function fetchProgramRows(institutionId: number, input: RunReportInput): P
     orderBy: { name: "asc" },
   });
 
-  const cplByProgram = new Map<number, Partial<Record<"COMPLETION" | "PLACEMENT" | "LICENSURE", number>>>();
-  if (input.reportingPeriodId) {
-    const results = await prisma.cplCalculationResult.findMany({
-      where: { reportingPeriodId: input.reportingPeriodId, programId: { in: programs.map((p) => p.id) } },
-    });
-    for (const r of results) {
-      if (!r.programId) continue;
-      const entry = cplByProgram.get(r.programId) ?? {};
-      entry[r.metric] = Number(r.percentage);
-      cplByProgram.set(r.programId, entry);
+  const contexts: (ResolvedPeriod | null)[] = periods.length > 0 ? periods : [null];
+  const labelRows = periods.length > 1;
+
+  const rows: Row[] = [];
+  for (const period of contexts) {
+    const cplByProgram = new Map<number, Partial<Record<"COMPLETION" | "PLACEMENT" | "LICENSURE", number>>>();
+    if (period) {
+      const results = await prisma.cplCalculationResult.findMany({
+        where: { reportingPeriodId: period.id, programId: { in: programs.map((p) => p.id) } },
+      });
+      for (const r of results) {
+        if (!r.programId) continue;
+        const entry = cplByProgram.get(r.programId) ?? {};
+        entry[r.metric] = Number(r.percentage);
+        cplByProgram.set(r.programId, entry);
+      }
+    }
+
+    for (const p of programs) {
+      const cpl = cplByProgram.get(p.id) ?? {};
+      const row: Row = {
+        name: p.name,
+        code: p.code,
+        credentialType: p.credentialType,
+        campusName: p.campus.name,
+        licensureRequired: p.licensureRequired,
+        active: p.active,
+        completionPercentage: cpl.COMPLETION ?? null,
+        placementPercentage: cpl.PLACEMENT ?? null,
+        licensurePercentage: cpl.LICENSURE ?? null,
+      };
+      if (labelRows) row[REPORT_PERIOD_LABEL_FIELD_KEY] = period!.label;
+      rows.push(row);
     }
   }
 
-  return programs.map((p) => {
-    const cpl = cplByProgram.get(p.id) ?? {};
-    return {
-      name: p.name,
-      code: p.code,
-      credentialType: p.credentialType,
-      campusName: p.campus.name,
-      licensureRequired: p.licensureRequired,
-      active: p.active,
-      completionPercentage: cpl.COMPLETION ?? null,
-      placementPercentage: cpl.PLACEMENT ?? null,
-      licensurePercentage: cpl.LICENSURE ?? null,
-    };
-  });
+  return rows;
 }
 
-const FETCHERS: Record<ReportEntityType, (institutionId: number, input: RunReportInput) => Promise<Row[]>> = {
+const FETCHERS: Record<
+  ReportEntityType,
+  (institutionId: number, input: RunReportInput, periods: ResolvedPeriod[]) => Promise<Row[]>
+> = {
   STUDENT: fetchStudentRows,
   EMPLOYER: fetchEmployerRows,
   PROGRAM: fetchProgramRows,
 };
 
-function pickFields(row: Row, fields: string[]): Row {
-  return Object.fromEntries(fields.map((f) => [f, row[f] ?? null]));
+function pickFields(row: Row, fields: string[], includePeriodLabel: boolean): Row {
+  const picked: Row = {};
+  if (includePeriodLabel) picked[REPORT_PERIOD_LABEL_FIELD_KEY] = row[REPORT_PERIOD_LABEL_FIELD_KEY] ?? null;
+  for (const f of fields) picked[f] = row[f] ?? null;
+  return picked;
 }
 
-async function runQuery(institutionId: number, input: RunReportInput): Promise<Row[]> {
+async function runQuery(
+  institutionId: number,
+  input: RunReportInput,
+): Promise<{ rows: Row[]; comparingPeriods: boolean }> {
   validateDefinition(input);
-  const allRows = await FETCHERS[input.entityType](institutionId, input);
-  return allRows.map((row) => pickFields(row, input.fields));
+  const periods = await resolvePeriods(institutionId, input);
+  const comparingPeriods = periods.length > 1;
+  const allRows = await FETCHERS[input.entityType](institutionId, input, periods);
+  return { rows: allRows.map((row) => pickFields(row, input.fields, comparingPeriods)), comparingPeriods };
 }
 
 export async function runCustomReport(
   req: Request<Record<string, never>, unknown, RunReportInput>,
   res: Response,
 ) {
-  const rows = await runQuery(req.user!.institutionId, req.body);
+  const { rows } = await runQuery(req.user!.institutionId, req.body);
   sendData(res, {
     rows: rows.slice(0, REPORT_BUILDER_PREVIEW_LIMIT),
     totalCount: rows.length,
@@ -259,18 +367,21 @@ export async function exportCustomReport(
   res: Response,
 ) {
   const input = req.body;
-  const rows = await runQuery(req.user!.institutionId, input);
+  const { rows, comparingPeriods } = await runQuery(req.user!.institutionId, input);
   const fieldDefs = REPORT_FIELDS_BY_ENTITY[input.entityType];
 
+  const columns = [
+    ...(comparingPeriods
+      ? [{ header: REPORT_PERIOD_LABEL_HEADER, key: REPORT_PERIOD_LABEL_FIELD_KEY, width: 20 }]
+      : []),
+    ...input.fields.map((key) => ({
+      header: fieldDefs.find((d) => d.key === key)?.label ?? key,
+      key,
+      width: 22,
+    })),
+  ];
+
   await sendXlsx(res, `custom-report-${input.entityType.toLowerCase()}.xlsx`, [
-    {
-      name: "Report",
-      columns: input.fields.map((key) => ({
-        header: fieldDefs.find((d) => d.key === key)?.label ?? key,
-        key,
-        width: 22,
-      })),
-      rows,
-    },
+    { name: "Report", columns, rows },
   ]);
 }

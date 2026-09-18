@@ -2,10 +2,13 @@ import {
   ENROLLMENT_STATUSES,
   ENROLLMENT_STATUS_LABELS,
   EMPLOYMENT_STATUSES,
+  REPORT_BUILDER_MAX_PERIODS,
   REPORT_ENTITY_LABELS,
   REPORT_ENTITY_TYPES,
   REPORT_FIELDS_BY_ENTITY,
   REPORT_FILTERS_BY_ENTITY,
+  REPORT_PERIOD_LABEL_FIELD_KEY,
+  REPORT_PERIOD_LABEL_HEADER,
   type ReportDefinition,
   type ReportEntityType,
   type ReportFilterDef,
@@ -148,7 +151,7 @@ export function ReportBuilderPage() {
   const [entityType, setEntityType] = useState<ReportEntityType>("STUDENT");
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [filterValues, setFilterValues] = useState<FilterValueMap>({});
-  const [reportingPeriodId, setReportingPeriodId] = useState<number | undefined>(undefined);
+  const [reportingPeriodIds, setReportingPeriodIds] = useState<number[]>([]);
   const [saveModalOpened, { open: openSaveModal, close: closeSaveModal }] = useDisclosure(false);
   const [saveName, setSaveName] = useState("");
   const [exporting, setExporting] = useState(false);
@@ -178,11 +181,11 @@ export function ReportBuilderPage() {
     setSelectedFields([]);
     setFilterValues({});
     // Fields and filters are entity-specific and reset above; the reporting
-    // period isn't (periods are a real, shared concept across entities), but
-    // leaving it set would let an already-selected period from a previous
+    // periods aren't (periods are a real, shared concept across entities), but
+    // leaving them set would let periods already selected for a previous
     // entity silently satisfy the new entity's period-gating without the
-    // user ever confirming it applies here too — reset it for a clean slate.
-    setReportingPeriodId(undefined);
+    // user ever confirming it applies here too — reset for a clean slate.
+    setReportingPeriodIds([]);
     runReport.reset();
   }
 
@@ -198,13 +201,18 @@ export function ReportBuilderPage() {
       if (Array.isArray(value) && value.length === 0) continue;
       filters.push({ field: def.key, value });
     }
-    return { entityType, fields: selectedFields, filters, reportingPeriodId };
+    return {
+      entityType,
+      fields: selectedFields,
+      filters,
+      reportingPeriodIds: reportingPeriodIds.length > 0 ? reportingPeriodIds : undefined,
+    };
   }
 
   const missingPeriodForFields = selectedFields.some(
     (f) => fieldDefs.find((d) => d.key === f)?.requiresReportingPeriod,
   );
-  const canRun = selectedFields.length > 0 && (!missingPeriodForFields || reportingPeriodId !== undefined);
+  const canRun = selectedFields.length > 0 && (!missingPeriodForFields || reportingPeriodIds.length > 0);
 
   async function handleRun() {
     try {
@@ -255,7 +263,7 @@ export function ReportBuilderPage() {
     setEntityType(saved.definition.entityType);
     setSelectedFields(saved.definition.fields);
     setFilterValues(definitionFiltersToMap(saved.definition.filters));
-    setReportingPeriodId(saved.definition.reportingPeriodId);
+    setReportingPeriodIds(saved.definition.reportingPeriodIds ?? []);
     runReport.reset();
   }
 
@@ -272,6 +280,10 @@ export function ReportBuilderPage() {
   }
 
   const result = runReport.data;
+  // Derived from the actual result rows (the request that produced them),
+  // not the current reportingPeriodIds selection, since the user may have
+  // changed the picker after running the report.
+  const showsPeriodColumn = (result?.rows.length ?? 0) > 0 && REPORT_PERIOD_LABEL_FIELD_KEY in result!.rows[0];
 
   return (
     <Stack p="xl" gap="lg">
@@ -298,17 +310,19 @@ export function ReportBuilderPage() {
             onChange={handleEntityChange}
             allowDeselect={false}
           />
-          <Select
-            label="Reporting period"
+          <MultiSelect
+            label="Reporting period(s)"
             description={
               missingPeriodForFields
-                ? "Required — some selected fields/filters depend on it"
-                : "Optional — only needed for period-scoped fields"
+                ? "Required — some selected fields/filters depend on it. Pick 2+ to compare across periods."
+                : "Optional — only needed for period-scoped fields. Pick 2+ to compare across periods."
             }
             data={reportingPeriods?.map((p) => ({ value: String(p.id), label: p.label })) ?? []}
-            value={reportingPeriodId ? String(reportingPeriodId) : null}
-            onChange={(v) => setReportingPeriodId(v ? Number(v) : undefined)}
+            value={reportingPeriodIds.map(String)}
+            onChange={(v) => setReportingPeriodIds(v.map(Number))}
+            maxValues={REPORT_BUILDER_MAX_PERIODS}
             clearable
+            searchable
           />
 
           <Title order={5}>Filters</Title>
@@ -418,6 +432,7 @@ export function ReportBuilderPage() {
               <Table striped highlightOnHover>
                 <Table.Thead>
                   <Table.Tr>
+                    {showsPeriodColumn && <Table.Th>{REPORT_PERIOD_LABEL_HEADER}</Table.Th>}
                     {selectedFields.map((f) => (
                       <Table.Th key={f}>{fieldDefs.find((d) => d.key === f)?.label ?? f}</Table.Th>
                     ))}
@@ -426,6 +441,9 @@ export function ReportBuilderPage() {
                 <Table.Tbody>
                   {result.rows.map((row, i) => (
                     <Table.Tr key={i}>
+                      {showsPeriodColumn && (
+                        <Table.Td>{String(row[REPORT_PERIOD_LABEL_FIELD_KEY] ?? "—")}</Table.Td>
+                      )}
                       {selectedFields.map((f) => (
                         <Table.Td key={f}>
                           {row[f] === null || row[f] === undefined ? "—" : String(row[f])}

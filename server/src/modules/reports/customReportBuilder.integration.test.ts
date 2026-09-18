@@ -13,6 +13,7 @@ describe("custom report builder (integration)", () => {
   let autoProgramId: number;
   let nursingProgramId: number;
   let reportingPeriodId: number;
+  let earlierReportingPeriodId: number;
   let adminToken: string;
   let auditorToken: string;
   let otherAdminToken: string;
@@ -99,8 +100,38 @@ describe("custom report builder (integration)", () => {
     });
     reportingPeriodId = period.id;
 
+    const earlierPeriod = await prisma.reportingPeriod.create({
+      data: {
+        institutionId,
+        ruleSetId: ruleSet.id,
+        label: "RB-TEST-PERIOD-EARLIER",
+        startDate: new Date("2024-07-01"),
+        endDate: new Date("2025-06-30"),
+      },
+    });
+    earlierReportingPeriodId = earlierPeriod.id;
+
     await prisma.cplCalculationResult.create({
       data: { reportingPeriodId, programId: autoProgramId, metric: "COMPLETION", numerator: 3, denominator: 5, percentage: 60 },
+    });
+    await prisma.cplCalculationResult.create({
+      data: { reportingPeriodId: earlierReportingPeriodId, programId: autoProgramId, metric: "COMPLETION", numerator: 4, denominator: 5, percentage: 80 },
+    });
+
+    // A placement attributed to the earlier period's date range only, so
+    // Employer stats can be shown to differ per period rather than always
+    // reflecting the same all-time total.
+    await prisma.employmentRecord.create({
+      data: {
+        studentId: (await prisma.student.create({ data: { institutionId, internalStudentId: "RB-EMP-PLACEHOLDER3", firstName: "X", lastName: "Y" } })).id,
+        employerId: employerA.id,
+        jobTitle: "Technician III",
+        startDate: new Date("2024-08-01"),
+        fullTime: true,
+        relatedToTraining: true,
+        salaryOrWage: 60000,
+        employmentStatus: "EMPLOYED",
+      },
     });
 
     // Auto student with an EMPLOYED, verified outcome this period.
@@ -170,7 +201,7 @@ describe("custom report builder (integration)", () => {
         .send({
           entityType: "STUDENT",
           fields: ["internalStudentId", "employmentStatus", "employerName"],
-          reportingPeriodId,
+          reportingPeriodIds: [reportingPeriodId],
         });
       expect(res.status).toBe(200);
       const byId = new Map(res.body.data.rows.map((r: { internalStudentId: string }) => [r.internalStudentId, r]));
@@ -186,7 +217,7 @@ describe("custom report builder (integration)", () => {
           entityType: "STUDENT",
           fields: ["internalStudentId"],
           filters: [{ field: "employmentStatus", value: ["EMPLOYED"] }],
-          reportingPeriodId,
+          reportingPeriodIds: [reportingPeriodId],
         });
       expect(res.status).toBe(200);
       expect(res.body.data.rows).toEqual([{ internalStudentId: "RB-AUTO-1" }]);
@@ -209,7 +240,7 @@ describe("custom report builder (integration)", () => {
         .send({ entityType: "EMPLOYER", fields: ["name", "placementCount", "averageWage", "fullTimeRate"] });
       expect(res.status).toBe(200);
       const acme = res.body.data.rows.find((r: { name: string }) => r.name === "Acme Manufacturing");
-      expect(acme).toMatchObject({ placementCount: 2, averageWage: 45000, fullTimeRate: 50 });
+      expect(acme).toMatchObject({ placementCount: 3, averageWage: 50000, fullTimeRate: 66.67 });
     });
 
     it("filters to active employers only", async () => {
@@ -238,10 +269,114 @@ describe("custom report builder (integration)", () => {
           entityType: "PROGRAM",
           fields: ["name", "completionPercentage"],
           filters: [{ field: "credentialType", value: ["Diploma"] }],
-          reportingPeriodId,
+          reportingPeriodIds: [reportingPeriodId],
         });
       expect(res.status).toBe(200);
       expect(res.body.data.rows).toEqual([{ name: "Automotive Technology", completionPercentage: 60 }]);
+    });
+  });
+
+  describe("multi-period comparison", () => {
+    it("with a single period, behaves exactly as before (no reportingPeriodLabel column)", async () => {
+      const res = await request(app)
+        .post("/api/reports/custom/run")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({
+          entityType: "PROGRAM",
+          fields: ["name", "completionPercentage"],
+          filters: [{ field: "credentialType", value: ["Diploma"] }],
+          reportingPeriodIds: [reportingPeriodId],
+        });
+      expect(res.status).toBe(200);
+      expect(res.body.data.rows).toEqual([{ name: "Automotive Technology", completionPercentage: 60 }]);
+    });
+
+    it("concatenates rows across periods and tags each with reportingPeriodLabel", async () => {
+      const res = await request(app)
+        .post("/api/reports/custom/run")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({
+          entityType: "PROGRAM",
+          fields: ["name", "completionPercentage"],
+          filters: [{ field: "credentialType", value: ["Diploma"] }],
+          reportingPeriodIds: [reportingPeriodId, earlierReportingPeriodId],
+        });
+      expect(res.status).toBe(200);
+      expect(res.body.data.totalCount).toBe(2);
+      expect(res.body.data.rows).toEqual(
+        expect.arrayContaining([
+          { name: "Automotive Technology", completionPercentage: 60, reportingPeriodLabel: "RB-TEST-PERIOD" },
+          { name: "Automotive Technology", completionPercentage: 80, reportingPeriodLabel: "RB-TEST-PERIOD-EARLIER" },
+        ]),
+      );
+    });
+
+    it("scopes Employer placement stats to each period's date range when periods are selected", async () => {
+      const res = await request(app)
+        .post("/api/reports/custom/run")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({
+          entityType: "EMPLOYER",
+          fields: ["name", "placementCount", "averageWage", "fullTimeRate"],
+          filters: [{ field: "active", value: true }],
+          reportingPeriodIds: [reportingPeriodId, earlierReportingPeriodId],
+        });
+      expect(res.status).toBe(200);
+      const byLabel = new Map(
+        res.body.data.rows.map((r: { reportingPeriodLabel: string }) => [r.reportingPeriodLabel, r]),
+      );
+      expect(byLabel.get("RB-TEST-PERIOD")).toMatchObject({ placementCount: 2, averageWage: 45000, fullTimeRate: 50 });
+      expect(byLabel.get("RB-TEST-PERIOD-EARLIER")).toMatchObject({ placementCount: 1, averageWage: 60000, fullTimeRate: 100 });
+    });
+
+    it("still reports Employer's all-time stats when no period is selected", async () => {
+      const res = await request(app)
+        .post("/api/reports/custom/run")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ entityType: "EMPLOYER", fields: ["name", "placementCount"], filters: [{ field: "active", value: true }] });
+      expect(res.status).toBe(200);
+      expect(res.body.data.rows).toEqual([{ name: "Acme Manufacturing", placementCount: 3 }]);
+    });
+
+    it("rejects an unknown reportingPeriodId", async () => {
+      const res = await request(app)
+        .post("/api/reports/custom/run")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ entityType: "PROGRAM", fields: ["name"], reportingPeriodIds: [999999] });
+      expect(res.status).toBe(400);
+    });
+
+    it("rejects more periods than REPORT_BUILDER_MAX_PERIODS", async () => {
+      const res = await request(app)
+        .post("/api/reports/custom/run")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ entityType: "PROGRAM", fields: ["name"], reportingPeriodIds: Array.from({ length: 11 }, (_, i) => i + 1) });
+      expect(res.status).toBe(400);
+    });
+
+    it("exports with a Reporting Period column when comparing periods", async () => {
+      const res = await request(app)
+        .post("/api/reports/custom/export")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .buffer(true)
+        .parse((response, callback) => {
+          const chunks: Buffer[] = [];
+          response.on("data", (chunk) => chunks.push(chunk));
+          response.on("end", () => callback(null, Buffer.concat(chunks)));
+        })
+        .send({
+          entityType: "PROGRAM",
+          fields: ["name", "completionPercentage"],
+          filters: [{ field: "credentialType", value: ["Diploma"] }],
+          reportingPeriodIds: [reportingPeriodId, earlierReportingPeriodId],
+        });
+
+      expect(res.status).toBe(200);
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(res.body as Parameters<typeof workbook.xlsx.load>[0]);
+      const sheet = workbook.getWorksheet("Report")!;
+      expect(sheet.getRow(1).getCell(1).value).toBe("Reporting Period");
+      expect(sheet.getRow(1).getCell(2).value).toBe("Name");
     });
   });
 
@@ -260,11 +395,11 @@ describe("custom report builder (integration)", () => {
 
       expect(res.status).toBe(200);
       const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(res.body as Buffer);
+      await workbook.xlsx.load(res.body as Parameters<typeof workbook.xlsx.load>[0]);
       const sheet = workbook.getWorksheet("Report")!;
       expect(sheet.getRow(1).getCell(1).value).toBe("Name");
       expect(sheet.getRow(2).getCell(1).value).toBe("Acme Manufacturing");
-      expect(sheet.getRow(2).getCell(2).value).toBe(2);
+      expect(sheet.getRow(2).getCell(2).value).toBe(3);
     });
   });
 

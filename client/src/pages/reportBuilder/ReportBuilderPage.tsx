@@ -11,9 +11,11 @@ import {
   REPORT_PERIOD_LABEL_HEADER,
   type ReportDefinition,
   type ReportEntityType,
+  type ReportFieldDef,
   type ReportFilterDef,
   type ReportFilterInput,
 } from "@outcomelink/shared";
+import { BarChart } from "@mantine/charts";
 import {
   Alert,
   Badge,
@@ -38,6 +40,7 @@ import { useMemo, useState } from "react";
 import { useReportingPeriods } from "../../api/accreditation";
 import { useCampuses, usePrograms } from "../../api/programs";
 import {
+  type CustomReportResult,
   useDeleteSavedReport,
   useRunCustomReport,
   useSavedReports,
@@ -136,6 +139,220 @@ function FilterControl({
       onChange={(v) => onChange(v.length > 0 ? v : undefined)}
       clearable
     />
+  );
+}
+
+const CHART_PERIOD_COLORS = [
+  "blue.6",
+  "teal.6",
+  "grape.6",
+  "orange.6",
+  "red.6",
+  "cyan.6",
+  "lime.6",
+  "pink.6",
+  "yellow.6",
+  "indigo.6",
+];
+
+/** Grouped-bar charts get unreadable well before this many distinct bars. */
+const MAX_CHART_GROUPS = 20;
+
+type ChartMode = "TREND" | "BY_LABEL" | "CATEGORY_COUNT";
+
+function round1(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
+function aggregateNumeric(values: number[], kind: "numeric-sum" | "numeric-average"): number {
+  if (values.length === 0) return 0;
+  const sum = values.reduce((a, b) => a + b, 0);
+  return kind === "numeric-sum" ? round1(sum) : round1(sum / values.length);
+}
+
+/** Distinct values of `key` across `rows`, in first-appearance order (not sorted). */
+function distinctInOrder(rows: Record<string, unknown>[], key: string): string[] {
+  const seen: string[] = [];
+  for (const row of rows) {
+    const v = String(row[key] ?? "—");
+    if (!seen.includes(v)) seen.push(v);
+  }
+  return seen;
+}
+
+/**
+ * Customizable bar-chart comparison across the 2+ periods a report was run
+ * with — only rendered when the result actually carries a period label.
+ * Three modes, all computed client-side from the already-fetched rows (no
+ * extra request): a metric's trend across periods, that same metric broken
+ * out per period AND per some other selected column (e.g. per program), or
+ * a category field's row-count broken out per period (a true frequency
+ * histogram). Which modes are even offered depends on which of the
+ * currently-selected columns are chart-capable (shared/src/reportBuilder.ts's
+ * `chartKind`) — this is a viewer for whatever the user already chose to
+ * see as columns, not a second, independent query.
+ */
+function ReportChartPanel({
+  result,
+  fieldDefs,
+  selectedFields,
+}: {
+  result: CustomReportResult;
+  fieldDefs: ReportFieldDef[];
+  selectedFields: string[];
+}) {
+  const [modeOverride, setModeOverride] = useState<ChartMode | null>(null);
+  const [metricOverride, setMetricOverride] = useState<string | null>(null);
+  const [labelOverride, setLabelOverride] = useState<string | null>(null);
+  const [categoryOverride, setCategoryOverride] = useState<string | null>(null);
+
+  const numericFields = selectedFields
+    .map((key) => fieldDefs.find((d) => d.key === key))
+    .filter(
+      (d): d is ReportFieldDef => !!d && (d.chartKind === "numeric-sum" || d.chartKind === "numeric-average"),
+    );
+  const categoricalFields = selectedFields
+    .map((key) => fieldDefs.find((d) => d.key === key))
+    .filter((d): d is ReportFieldDef => !!d && d.chartKind === "categorical");
+
+  const availableModes: { value: ChartMode; label: string }[] = [];
+  if (numericFields.length > 0) availableModes.push({ value: "TREND", label: "Trend across periods" });
+  if (numericFields.length > 0 && selectedFields.length > 1) {
+    availableModes.push({ value: "BY_LABEL", label: "Compare by column, per period" });
+  }
+  if (categoricalFields.length > 0) {
+    availableModes.push({ value: "CATEGORY_COUNT", label: "Category counts per period" });
+  }
+
+  if (availableModes.length === 0) {
+    return (
+      <Text c="dimmed" size="sm">
+        Select at least one numeric or categorical column above to enable charting.
+      </Text>
+    );
+  }
+
+  const mode = availableModes.some((m) => m.value === modeOverride) ? modeOverride! : availableModes[0].value;
+  const metricField = numericFields.some((f) => f.key === metricOverride) ? metricOverride! : numericFields[0]?.key;
+  const labelOptions = selectedFields.filter((f) => f !== metricField);
+  const labelField = labelOptions.includes(labelOverride ?? "") ? labelOverride! : labelOptions[0];
+  const categoryField = categoricalFields.some((f) => f.key === categoryOverride)
+    ? categoryOverride!
+    : categoricalFields[0]?.key;
+
+  const periodLabels = distinctInOrder(result.rows, REPORT_PERIOD_LABEL_FIELD_KEY);
+
+  let chartData: Record<string, string | number>[] = [];
+  let series: { name: string; color: string }[] = [];
+  let dataKey = "";
+  let truncatedGroups = false;
+
+  if (mode === "TREND" && metricField) {
+    const kind = fieldDefs.find((d) => d.key === metricField)!.chartKind as "numeric-sum" | "numeric-average";
+    dataKey = "period";
+    series = [{ name: "value", color: "blue.6" }];
+    chartData = periodLabels.map((period) => {
+      const values = result.rows
+        .filter((r) => r[REPORT_PERIOD_LABEL_FIELD_KEY] === period)
+        .map((r) => r[metricField])
+        .filter((v): v is number => typeof v === "number");
+      return { period, value: aggregateNumeric(values, kind) };
+    });
+  } else if (mode === "BY_LABEL" && metricField && labelField) {
+    const kind = fieldDefs.find((d) => d.key === metricField)!.chartKind as "numeric-sum" | "numeric-average";
+    dataKey = "label";
+    series = periodLabels.map((p, i) => ({ name: p, color: CHART_PERIOD_COLORS[i % CHART_PERIOD_COLORS.length] }));
+    const labelOrder = distinctInOrder(result.rows, labelField);
+    truncatedGroups = labelOrder.length > MAX_CHART_GROUPS;
+    chartData = labelOrder.slice(0, MAX_CHART_GROUPS).map((labelValue) => {
+      const entry: Record<string, string | number> = { label: labelValue };
+      for (const period of periodLabels) {
+        const values = result.rows
+          .filter(
+            (r) => String(r[labelField] ?? "—") === labelValue && r[REPORT_PERIOD_LABEL_FIELD_KEY] === period,
+          )
+          .map((r) => r[metricField])
+          .filter((v): v is number => typeof v === "number");
+        if (values.length > 0) entry[period] = aggregateNumeric(values, kind);
+      }
+      return entry;
+    });
+  } else if (mode === "CATEGORY_COUNT" && categoryField) {
+    dataKey = "category";
+    series = periodLabels.map((p, i) => ({ name: p, color: CHART_PERIOD_COLORS[i % CHART_PERIOD_COLORS.length] }));
+    const categoryOrder = distinctInOrder(result.rows, categoryField);
+    truncatedGroups = categoryOrder.length > MAX_CHART_GROUPS;
+    chartData = categoryOrder.slice(0, MAX_CHART_GROUPS).map((categoryValue) => {
+      const entry: Record<string, string | number> = { category: categoryValue };
+      for (const period of periodLabels) {
+        entry[period] = result.rows.filter(
+          (r) => String(r[categoryField] ?? "—") === categoryValue && r[REPORT_PERIOD_LABEL_FIELD_KEY] === period,
+        ).length;
+      }
+      return entry;
+    });
+  }
+
+  return (
+    <Stack gap="sm">
+      <Group gap="md" align="flex-end" wrap="wrap">
+        <Select
+          label="Chart type"
+          data={availableModes.map((m) => ({ value: m.value, label: m.label }))}
+          value={mode}
+          onChange={(v) => v && setModeOverride(v as ChartMode)}
+          allowDeselect={false}
+          w={220}
+        />
+        {(mode === "TREND" || mode === "BY_LABEL") && (
+          <Select
+            label="Metric"
+            data={numericFields.map((f) => ({ value: f.key, label: f.label }))}
+            value={metricField ?? null}
+            onChange={setMetricOverride}
+            allowDeselect={false}
+            w={200}
+          />
+        )}
+        {mode === "BY_LABEL" && (
+          <Select
+            label="Group by"
+            data={labelOptions.map((key) => ({
+              value: key,
+              label: fieldDefs.find((d) => d.key === key)?.label ?? key,
+            }))}
+            value={labelField ?? null}
+            onChange={setLabelOverride}
+            allowDeselect={false}
+            w={200}
+          />
+        )}
+        {mode === "CATEGORY_COUNT" && (
+          <Select
+            label="Category"
+            data={categoricalFields.map((f) => ({ value: f.key, label: f.label }))}
+            value={categoryField ?? null}
+            onChange={setCategoryOverride}
+            allowDeselect={false}
+            w={200}
+          />
+        )}
+      </Group>
+
+      {truncatedGroups && (
+        <Text size="xs" c="dimmed">
+          Showing the first {MAX_CHART_GROUPS} groups — narrow your filters or columns to see the rest.
+        </Text>
+      )}
+
+      {chartData.length === 0 ? (
+        <Text c="dimmed" size="sm">
+          No chartable data for this selection.
+        </Text>
+      ) : (
+        <BarChart h={280} data={chartData} dataKey={dataKey} series={series} withLegend={series.length > 1} />
+      )}
+    </Stack>
   );
 }
 
@@ -428,7 +645,22 @@ export function ReportBuilderPage() {
               No rows matched.
             </Text>
           ) : (
-            <Table.ScrollContainer minWidth={500}>
+            <>
+              {showsPeriodColumn && (
+                <Paper withBorder p="md" radius="sm">
+                  <Title order={5} mb="sm">
+                    Chart
+                  </Title>
+                  {result.truncated && (
+                    <Text size="xs" c="dimmed" mb="xs">
+                      Based on the {result.rows.length} previewed rows only, not all {result.totalCount} —
+                      export to Excel for a chart over the full set.
+                    </Text>
+                  )}
+                  <ReportChartPanel result={result} fieldDefs={fieldDefs} selectedFields={selectedFields} />
+                </Paper>
+              )}
+              <Table.ScrollContainer minWidth={500}>
               <Table striped highlightOnHover>
                 <Table.Thead>
                   <Table.Tr>
@@ -453,7 +685,8 @@ export function ReportBuilderPage() {
                   ))}
                 </Table.Tbody>
               </Table>
-            </Table.ScrollContainer>
+              </Table.ScrollContainer>
+            </>
           )}
         </Stack>
       )}

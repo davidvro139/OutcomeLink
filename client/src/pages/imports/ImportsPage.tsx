@@ -1,3 +1,4 @@
+import { IMPORT_ACCEPTED_FILE_EXTENSIONS } from "@outcomelink/shared";
 import { Anchor, Badge, Button, FileInput, Group, Loader, Modal, Stack, Table, Text, TextInput, Title } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -14,7 +15,10 @@ const STATUS_COLORS: Record<string, string> = {
   FAILED: "red",
 };
 
-/** Phase 2 P12 (docs/TODO.md): bulk student import — batch history + entry point into the upload wizard. */
+/**
+ * Phase 2 P12 (docs/TODO.md): bulk student/enrollment import — batch history
+ * and entry point into the upload wizard. Accepts CSV or Excel (spec §51).
+ */
 export function ImportsPage() {
   const { data: batches, isLoading } = useImportBatches();
   const upload = useUploadImportBatch();
@@ -43,7 +47,7 @@ export function ImportsPage() {
   return (
     <Stack p="xl" gap="md">
       <Group justify="space-between">
-        <Title order={2}>Bulk Student Import</Title>
+        <Title order={2}>Bulk Import</Title>
         <Button onClick={open}>New Import</Button>
       </Group>
 
@@ -51,7 +55,7 @@ export function ImportsPage() {
 
       {batches && batches.length === 0 && (
         <Text c="dimmed" ta="center" py="xl">
-          No imports yet. Click "New Import" to upload a CSV roster.
+          No imports yet. Click "New Import" to upload a roster or term export.
         </Text>
       )}
 
@@ -95,15 +99,15 @@ export function ImportsPage() {
         <Stack gap="md">
           <TextInput
             label="Source system"
-            description='Whatever you call the system this export came from (e.g. "Banner", "Colleague") — reused to suggest a saved column mapping next time'
+            description='Whatever you call the system this export came from (e.g. "Northstar", "OneWorld") — reused to suggest a saved column mapping next time'
             required
             value={sourceSystem}
             onChange={(e) => setSourceSystem(e.currentTarget.value)}
           />
           <FileInput
-            label="CSV file"
+            label="CSV or Excel file"
             placeholder="Choose file"
-            accept=".csv,text/csv"
+            accept={IMPORT_ACCEPTED_FILE_EXTENSIONS.join(",")}
             required
             value={file}
             onChange={setFile}

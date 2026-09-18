@@ -1,4 +1,12 @@
-import { IMPORT_REQUIRED_TARGET_FIELDS, IMPORT_TARGET_FIELDS, IMPORT_TARGET_FIELD_LABELS, type ImportColumnMapping, type ImportTargetField } from "@outcomelink/shared";
+import {
+  IMPORT_ENROLLMENT_TARGET_FIELDS,
+  IMPORT_REQUIRED_ENROLLMENT_TARGET_FIELDS,
+  IMPORT_REQUIRED_TARGET_FIELDS,
+  IMPORT_STUDENT_TARGET_FIELDS,
+  IMPORT_TARGET_FIELD_LABELS,
+  type ImportColumnMapping,
+  type ImportTargetField,
+} from "@outcomelink/shared";
 import { Alert, Badge, Button, Checkbox, Group, Loader, Pagination, Select, Stack, Table, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
@@ -77,19 +85,13 @@ function MappingStep({
     }
   }
 
-  const allRequiredMapped = IMPORT_REQUIRED_TARGET_FIELDS.every((f) => byTarget[f]);
+  const mapsAnyEnrollmentField = IMPORT_ENROLLMENT_TARGET_FIELDS.some((f) => byTarget[f]);
+  const allRequiredMapped =
+    IMPORT_REQUIRED_TARGET_FIELDS.every((f) => byTarget[f]) &&
+    (!mapsAnyEnrollmentField || IMPORT_REQUIRED_ENROLLMENT_TARGET_FIELDS.every((f) => byTarget[f]));
 
-  return (
-    <Stack gap="md">
-      <Title order={4}>Map Columns</Title>
-      {matchingProfile && (
-        <Alert color="blue">
-          A saved mapping for "{sourceSystem}" exists.{" "}
-          <Button size="xs" variant="light" onClick={applyProfile}>
-            Apply saved mapping
-          </Button>
-        </Alert>
-      )}
+  function fieldTable(fields: readonly ImportTargetField[], requiredFields: readonly ImportTargetField[]) {
+    return (
       <Table withTableBorder>
         <Table.Thead>
           <Table.Tr>
@@ -98,11 +100,11 @@ function MappingStep({
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {IMPORT_TARGET_FIELDS.map((field) => (
+          {fields.map((field) => (
             <Table.Tr key={field}>
               <Table.Td>
                 {IMPORT_TARGET_FIELD_LABELS[field]}
-                {IMPORT_REQUIRED_TARGET_FIELDS.includes(field) && (
+                {requiredFields.includes(field) && (
                   <Text span c="red">
                     {" "}
                     *
@@ -123,6 +125,33 @@ function MappingStep({
           ))}
         </Table.Tbody>
       </Table>
+    );
+  }
+
+  return (
+    <Stack gap="md">
+      <Title order={4}>Map Columns</Title>
+      {matchingProfile && (
+        <Alert color="blue">
+          A saved mapping for "{sourceSystem}" exists.{" "}
+          <Button size="xs" variant="light" onClick={applyProfile}>
+            Apply saved mapping
+          </Button>
+        </Alert>
+      )}
+
+      <Title order={6}>Student fields</Title>
+      {fieldTable(IMPORT_STUDENT_TARGET_FIELDS, IMPORT_REQUIRED_TARGET_FIELDS)}
+
+      <Title order={6}>Enrollment fields</Title>
+      <Text size="xs" c="dimmed">
+        Optional as a group — leave all of these unmapped for a plain roster import. Map any one of
+        them and Program Code, Start Date, and Enrollment Status become required together, and this
+        import will also create one enrollment per row (for both new and already-existing students).
+        Enrollment Status accepts either spelling (e.g. "Active" or "ACTIVE").
+      </Text>
+      {fieldTable(IMPORT_ENROLLMENT_TARGET_FIELDS, mapsAnyEnrollmentField ? IMPORT_REQUIRED_ENROLLMENT_TARGET_FIELDS : [])}
+
       <Checkbox
         label={`Save this mapping for future "${sourceSystem}" imports`}
         checked={saveAsProfile}
@@ -135,7 +164,7 @@ function MappingStep({
   );
 }
 
-function PreviewSection({ batchId }: { batchId: number }) {
+function PreviewSection({ batchId, mappedFields }: { batchId: number; mappedFields: ImportTargetField[] }) {
   const [page, setPage] = useState(1);
   const { data, isLoading } = useImportPreview(batchId, page);
 
@@ -145,28 +174,28 @@ function PreviewSection({ batchId }: { batchId: number }) {
   return (
     <Stack gap="sm">
       <Title order={5}>Preview ({data.totalValidRows} valid rows)</Title>
-      <Table withTableBorder>
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>Row</Table.Th>
-            <Table.Th>Internal ID</Table.Th>
-            <Table.Th>First</Table.Th>
-            <Table.Th>Last</Table.Th>
-            <Table.Th>Email</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {data.items.map((row) => (
-            <Table.Tr key={row.rowNumber}>
-              <Table.Td>{row.rowNumber}</Table.Td>
-              <Table.Td>{row.candidate.internalStudentId}</Table.Td>
-              <Table.Td>{row.candidate.firstName}</Table.Td>
-              <Table.Td>{row.candidate.lastName}</Table.Td>
-              <Table.Td>{row.candidate.email ?? "—"}</Table.Td>
+      <Table.ScrollContainer minWidth={500}>
+        <Table withTableBorder>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Row</Table.Th>
+              {mappedFields.map((field) => (
+                <Table.Th key={field}>{IMPORT_TARGET_FIELD_LABELS[field]}</Table.Th>
+              ))}
             </Table.Tr>
-          ))}
-        </Table.Tbody>
-      </Table>
+          </Table.Thead>
+          <Table.Tbody>
+            {data.items.map((row) => (
+              <Table.Tr key={row.rowNumber}>
+                <Table.Td>{row.rowNumber}</Table.Td>
+                {mappedFields.map((field) => (
+                  <Table.Td key={field}>{row.candidate[field] ?? "—"}</Table.Td>
+                ))}
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+      </Table.ScrollContainer>
       {Math.ceil(data.totalValidRows / data.pageSize) > 1 && (
         <Pagination
           total={Math.ceil(data.totalValidRows / data.pageSize)}
@@ -203,7 +232,11 @@ export function ImportBatchPage() {
   async function handleCommit() {
     try {
       const result = await commitBatch.mutateAsync();
-      notifications.show({ message: `Imported ${result.importedRowCount} students`, color: "green" });
+      const message =
+        result.importedEnrollmentCount !== undefined
+          ? `Imported ${result.importedRowCount} students, ${result.importedEnrollmentCount} enrollments`
+          : `Imported ${result.importedRowCount} students`;
+      notifications.show({ message, color: "green" });
     } catch (err) {
       notifications.show({
         message: err instanceof Error ? err.message : "Failed to commit import",
@@ -290,13 +323,22 @@ export function ImportBatchPage() {
             </Stack>
           )}
 
-          <PreviewSection batchId={batch.id} />
+          <PreviewSection
+            batchId={batch.id}
+            mappedFields={Object.values(batch.columnMapping ?? {}).filter((f): f is ImportTargetField => !!f)}
+          />
         </Stack>
       )}
 
       {batch.status === "IMPORTED" && (
         <Alert color="green" title="Import complete">
           {batch.importedRowCount} student{batch.importedRowCount === 1 ? "" : "s"} imported.
+          {batch.importedEnrollmentCount !== null && (
+            <>
+              {" "}
+              {batch.importedEnrollmentCount} enrollment{batch.importedEnrollmentCount === 1 ? "" : "s"} created.
+            </>
+          )}
         </Alert>
       )}
     </Stack>

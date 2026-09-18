@@ -924,6 +924,10 @@ model ImportBatch {
   columnMapping    Json?             @map("column_mapping")
   totalRows        Int?              @map("total_rows")
   importedRowCount Int?              @map("imported_row_count")
+  // Set only when this batch's mapping includes an enrollment field (see
+  // shared/src/imports.ts) — null for a plain student-roster import, which
+  // never creates enrollments at all.
+  importedEnrollmentCount Int?       @map("imported_enrollment_count")
   uploadedBy       String            @map("uploaded_by")
   uploadedAt       DateTime          @default(now()) @map("uploaded_at")
   mappingProfileId Int?              @map("mapping_profile_id")

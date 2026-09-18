@@ -28,6 +28,7 @@ import { ROLE_LABELS } from "@outcomelink/shared";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { GlobalSearch } from "../components/GlobalSearch";
+import { NotificationBell } from "../components/NotificationBell";
 
 const NAV_ITEMS = [
   { to: "/", label: "Dashboard", icon: IconLayoutDashboard },
@@ -74,6 +75,8 @@ export function AppLayout() {
           </Group>
 
           <GlobalSearch />
+
+          {user && <NotificationBell />}
 
           {user && (
             <Menu position="bottom-end" shadow="md" width={220}>

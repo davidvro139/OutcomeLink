@@ -95,3 +95,31 @@ export function useFollowUpEffectivenessReport() {
     queryFn: () => apiRequest<FollowUpEffectivenessReport>("/api/reports/follow-up-effectiveness"),
   });
 }
+
+export type SkillDimension =
+  | "technicalPreparednessRating"
+  | "communicationRating"
+  | "problemSolvingRating"
+  | "professionalismRating";
+
+export interface SkillsGapProgramRow {
+  program: { id: number; name: string };
+  responseCount: number;
+  averages: Record<SkillDimension, number | null>;
+  gaps: Record<SkillDimension, number | null>;
+  skillsGapNotes: { employerName: string; note: string; submittedAt: string }[];
+}
+
+export interface SkillsGapReport {
+  totalResponses: number;
+  institutionAverages: Record<SkillDimension, number | null>;
+  dimensionLabels: Record<SkillDimension, string>;
+  byProgram: SkillsGapProgramRow[];
+}
+
+export function useSkillsGapReport() {
+  return useQuery({
+    queryKey: ["reports", "skills-gap"],
+    queryFn: () => apiRequest<SkillsGapReport>("/api/reports/skills-gap"),
+  });
+}

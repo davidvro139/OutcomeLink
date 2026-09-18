@@ -162,9 +162,16 @@ Per spec §63. Broken into stages the same way the MVP was, ordered roughly by d
 
 ## Phase 3
 
-Per spec §64: Skills-gap analysis, Geographic placement reporting (Leaflet), custom Report Builder, Scheduled reports, advanced workflow automation, additional accreditation frameworks beyond COE, SIS/API integrations.
+Per spec §64. Unlike Phase 2's P1-P13 (bounded extensions of things that already existed), these are largely independent, substantial initiatives — picked one at a time by explicit user choice rather than assumed order.
 
-- **State workforce-agency wage-record match-file import** as a third-party outcome-verification source (the training deck's "DWS/USHE match files reviewed each Fall") — a common, valuable COE compliance workflow, called out explicitly under the existing SIS/API integrations item above.
+- [x] **Skills-gap analysis** — compares employers' structured 1-5 skill ratings (Technical Preparedness, Communication, Problem Solving, Professionalism — from P9's Employer Survey) per program against the institution-wide average for each dimension, surfacing which programs employers rate notably below average on which skills, plus the raw free-text `skillsGapNotes` comments for qualitative context. Deliberately not scoped to a reporting period — `EmployerSurvey` has no reporting-period link of its own in the data model, the exact same gap `placementQuality()`/`followUpEffectiveness()` (P8) already document, so this is an all-time view by the same established precedent. A response is attributed to whichever of the graduate's completed enrollments finished most recently, since an employer survey concerns one specific graduate, not a specific program enrollment — there's no stronger link available, and a student with no completed enrollment on file still counts in the institution-wide averages but can't be attributed to a program row. Lives as a 6th sub-tab ("Skills Gap Analysis") on the existing Reports tab (P8), reusing the same components/patterns. 6 new integration tests (including the exact gap arithmetic and program-attribution logic) — 183/183 server tests passing. Verified in a real browser: institution averages and per-program gaps computed correctly, worst-gap program sorted first, expandable employer comments worked, and the report showed identical data across two different reporting periods' Reports tabs, confirming it's genuinely not period-scoped. No bugs found.
+- [ ] **Geographic placement reporting** (Leaflet) — needs employer/student location geocoding data the seed doesn't currently produce.
+- [ ] **Custom Report Builder** — a generic UI for constructing arbitrary reports from fields/filters; the most architecturally ambitious remaining item, a subsystem in its own right.
+- [ ] **Scheduled reports** — depends on the same job-scheduler infrastructure gap noted throughout the deferred items (P9's campaign, the missing-outcomes digest) — nothing in this app runs on an actual time-based schedule yet.
+- [ ] **Advanced workflow automation**
+- [ ] **Additional accreditation frameworks beyond COE** — the rule engine (`RuleSet.ruleDefinition`, the classifiers) is currently COE-shaped throughout; generalizing it is a real design project, not a bounded feature.
+- [ ] **SIS/API integrations**
+  - [ ] **State workforce-agency wage-record match-file import** as a third-party outcome-verification source (the training deck's "DWS/USHE match files reviewed each Fall") — a common, valuable COE compliance workflow, called out explicitly under this item.
 
 ## Not yet scheduled (explicitly deferred, not forgotten)
 

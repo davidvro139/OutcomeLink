@@ -21,6 +21,7 @@ export interface ImportBatch {
   importedRowCount: number | null;
   importedEnrollmentCount: number | null;
   status: ImportBatchStatus;
+  dataSourceConnectionId: number | null;
   mappingProfile?: { id: number; sourceSystemName: string } | null;
 }
 

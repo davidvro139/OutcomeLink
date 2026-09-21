@@ -10,6 +10,10 @@ const envSchema = z.object({
   JWT_ACCESS_TTL: z.string().default("15m"),
   JWT_REFRESH_TTL: z.string().default("7d"),
   CLIENT_ORIGIN: z.string().default("http://localhost:5173"),
+  // Encrypts DataSourceConnection.clientSecretEncrypted at rest (lib/secrets.ts)
+  // — a real external credential (Dataverse/Azure AD app registration secret),
+  // not something to leave in plaintext in the database.
+  SECRETS_ENCRYPTION_KEY: z.string().min(1, "SECRETS_ENCRYPTION_KEY is required"),
 });
 
 // Fail fast on missing/malformed config rather than at first use.

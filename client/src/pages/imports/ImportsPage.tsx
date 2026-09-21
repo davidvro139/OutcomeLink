@@ -4,7 +4,11 @@ import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/AuthContext";
 import { type ImportBatch, useImportBatches, useUploadImportBatch } from "../../api/imports";
+
+// Matches imports.routes.ts's CAN_MANAGE_CONNECTIONS.
+const CAN_MANAGE_CONNECTIONS = ["SYSTEM_ADMINISTRATOR", "INSTITUTIONAL_ADMINISTRATOR"];
 
 const STATUS_COLORS: Record<string, string> = {
   UPLOADED: "gray",
@@ -20,6 +24,8 @@ const STATUS_COLORS: Record<string, string> = {
  * and entry point into the upload wizard. Accepts CSV or Excel (spec §51).
  */
 export function ImportsPage() {
+  const { user } = useAuth();
+  const canManageConnections = !!user && CAN_MANAGE_CONNECTIONS.includes(user.role);
   const { data: batches, isLoading } = useImportBatches();
   const upload = useUploadImportBatch();
   const navigate = useNavigate();
@@ -48,7 +54,14 @@ export function ImportsPage() {
     <Stack p="xl" gap="md">
       <Group justify="space-between">
         <Title order={2}>Bulk Import</Title>
-        <Button onClick={open}>New Import</Button>
+        <Group gap="xs">
+          {canManageConnections && (
+            <Button variant="light" component={Link} to="/imports/connections">
+              Data Source Connections
+            </Button>
+          )}
+          <Button onClick={open}>New Import</Button>
+        </Group>
       </Group>
 
       {isLoading && <Loader />}

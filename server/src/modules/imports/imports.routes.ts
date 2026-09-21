@@ -3,6 +3,7 @@ import { asyncHandler } from "../../lib/asyncHandler";
 import { requireAuth, requireRole } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
 import * as batches from "./importBatches";
+import * as connections from "./dataConnections";
 import * as mappingProfiles from "./mappingProfiles";
 
 const CAN_IMPORT = [
@@ -10,6 +11,11 @@ const CAN_IMPORT = [
   "INSTITUTIONAL_ADMINISTRATOR",
   "PROGRAM_ADMINISTRATOR",
 ] as const;
+
+// Configuring a connection means handing this app a live external
+// credential (a Dataverse/Azure AD app registration secret) — a higher bar
+// than uploading a file, so this is narrower than CAN_IMPORT.
+const CAN_MANAGE_CONNECTIONS = ["SYSTEM_ADMINISTRATOR", "INSTITUTIONAL_ADMINISTRATOR"] as const;
 
 export const importsRouter = Router();
 
@@ -56,4 +62,38 @@ importsRouter.post(
   requireAuth,
   requireRole(...CAN_IMPORT),
   asyncHandler(batches.commit),
+);
+
+importsRouter.get("/connections", requireAuth, requireRole(...CAN_MANAGE_CONNECTIONS), asyncHandler(connections.list));
+importsRouter.post(
+  "/connections",
+  requireAuth,
+  requireRole(...CAN_MANAGE_CONNECTIONS),
+  validate(connections.createConnectionSchema),
+  asyncHandler(connections.create),
+);
+importsRouter.patch(
+  "/connections/:id",
+  requireAuth,
+  requireRole(...CAN_MANAGE_CONNECTIONS),
+  validate(connections.updateConnectionSchema),
+  asyncHandler(connections.update),
+);
+importsRouter.delete(
+  "/connections/:id",
+  requireAuth,
+  requireRole(...CAN_MANAGE_CONNECTIONS),
+  asyncHandler(connections.remove),
+);
+importsRouter.post(
+  "/connections/:id/test",
+  requireAuth,
+  requireRole(...CAN_MANAGE_CONNECTIONS),
+  asyncHandler(connections.test),
+);
+importsRouter.post(
+  "/connections/:id/import-batches",
+  requireAuth,
+  requireRole(...CAN_MANAGE_CONNECTIONS),
+  asyncHandler(connections.createImportBatch),
 );

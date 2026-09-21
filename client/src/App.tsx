@@ -20,6 +20,7 @@ import { StudentDetailPage } from "./pages/students/StudentDetailPage";
 import { StudentsListPage } from "./pages/students/StudentsListPage";
 import { EmployerSurveyPage } from "./pages/surveys/EmployerSurveyPage";
 import { GraduateSurveyPage } from "./pages/surveys/GraduateSurveyPage";
+import { DataConnectionsPage } from "./pages/imports/DataConnectionsPage";
 
 function App() {
   return (
@@ -50,6 +51,7 @@ function App() {
         <Route path="/licensure" element={<LicensureQueuePage />} />
 
         <Route path="/imports" element={<ImportsPage />} />
+        <Route path="/imports/connections" element={<DataConnectionsPage />} />
         <Route path="/imports/:id" element={<ImportBatchPage />} />
 
         <Route path="/report-builder" element={<ReportBuilderPage />} />

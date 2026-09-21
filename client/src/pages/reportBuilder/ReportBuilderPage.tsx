@@ -37,6 +37,7 @@ import {
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useReportingPeriods } from "../../api/accreditation";
 import { useCampuses, usePrograms } from "../../api/programs";
 import {
@@ -524,16 +525,21 @@ export function ReportBuilderPage() {
     <Stack p="xl" gap="lg">
       <Group justify="space-between">
         <Title order={2}>Report Builder</Title>
-        {savedReports && savedReports.length > 0 && (
-          <Select
-            placeholder="Load a saved report…"
-            data={savedReports.map((r) => ({ value: String(r.id), label: r.name }))}
-            onChange={handleLoadSaved}
-            clearable
-            searchable
-            w={260}
-          />
-        )}
+        <Group gap="xs">
+          {savedReports && savedReports.length > 0 && (
+            <Select
+              placeholder="Load a saved report…"
+              data={savedReports.map((r) => ({ value: String(r.id), label: r.name }))}
+              onChange={handleLoadSaved}
+              clearable
+              searchable
+              w={260}
+            />
+          )}
+          <Button variant="light" component={Link} to="/report-builder/scheduled">
+            Scheduled Reports
+          </Button>
+        </Group>
       </Group>
 
       <Group align="flex-start" gap="xl" wrap="wrap">

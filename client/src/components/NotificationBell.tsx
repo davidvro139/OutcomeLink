@@ -1,10 +1,39 @@
-import { ActionIcon, Indicator, Menu, ScrollArea, Stack, Text } from "@mantine/core";
+import { ActionIcon, Anchor, Group, Indicator, Menu, ScrollArea, Stack, Text } from "@mantine/core";
 import { IconBell } from "@tabler/icons-react";
+import { notifications as notify } from "@mantine/notifications";
+import { ApiRequestError } from "../lib/apiClient";
 import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
   useNotifications,
+  type Notification,
 } from "../api/notifications";
+import { downloadScheduledReportRun } from "../api/scheduledReports";
+
+async function handleDownloadRun(runId: number) {
+  try {
+    await downloadScheduledReportRun(runId);
+  } catch (err) {
+    // apiRequestBlob throws with the raw HTTP status text ("Not Found"), not the server's JSON
+    // error message — a 404 here specifically means the run (or its file) no longer exists, so
+    // say that plainly rather than surfacing the unhelpful status text verbatim.
+    const message =
+      err instanceof ApiRequestError && err.status === 404
+        ? "This report is no longer available."
+        : err instanceof Error
+          ? err.message
+          : "Failed to download report";
+    notify.show({ message, color: "red" });
+  }
+}
+
+// A failed run's notification also has this type + a referenceEntityId (pointing at the FAILED
+// run, with no file) — the Download link still shows for it, but the click surfaces the server's
+// "no generated file" error rather than silently doing nothing, which is honest enough not to be
+// worth an extra request just to distinguish success from failure up front.
+function isDownloadableReport(n: Notification): boolean {
+  return n.type === "SCHEDULED_REPORT_READY" && n.referenceEntityId !== null;
+}
 
 /**
  * "Missing-outcomes digest" (docs/TODO.md deferred items) needed somewhere
@@ -65,11 +94,25 @@ export function NotificationBell() {
                   }}
                   fw={n.readAt ? 400 : 600}
                   bg={n.readAt ? undefined : "var(--mantine-color-blue-light)"}
+                  closeMenuOnClick={!isDownloadableReport(n)}
                 >
                   <Text size="sm">{n.message}</Text>
-                  <Text size="xs" c="dimmed">
-                    {new Date(n.createdAt).toLocaleString()}
-                  </Text>
+                  <Group justify="space-between" align="center" wrap="nowrap">
+                    <Text size="xs" c="dimmed">
+                      {new Date(n.createdAt).toLocaleString()}
+                    </Text>
+                    {isDownloadableReport(n) && (
+                      <Anchor
+                        size="xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleDownloadRun(n.referenceEntityId!);
+                        }}
+                      >
+                        Download
+                      </Anchor>
+                    )}
+                  </Group>
                 </Menu.Item>
               ))}
             </Stack>

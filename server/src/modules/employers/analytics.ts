@@ -18,6 +18,12 @@ function concentrationRisk(topShare: number): "LOW" | "MODERATE" | "HIGH" {
   return "LOW";
 }
 
+interface EmployerTotals {
+  employer: { id: number; name: string; industry: string | null };
+  placementCount: number;
+  relatedPlacementCount: number;
+}
+
 /**
  * Employer Relationship Analytics (Phase 2 P5, docs/TODO.md): which
  * employers are actually absorbing graduates, whether the institution is
@@ -26,12 +32,17 @@ function concentrationRisk(topShare: number): "LOW" | "MODERATE" | "HIGH" {
  * cluster in. Scoped to every EMPLOYED outcome record with an employer on
  * file — related-to-training or not, since this is about the real
  * relationship, not just the narrower COE "related placement" numerator —
- * optionally narrowed to one reporting period.
+ * optionally narrowed to one reporting period. Not further scoped to a
+ * program-restricted caller's assigned programs — same reasoning as
+ * search.ts/customReportBuilder.ts's Employer entity: an employer isn't
+ * owned by one program.
+ *
+ * Split into a pure `computeEmployerAnalytics` and a thin HTTP wrapper
+ * (Phase 3 Scheduled Reports, docs/TODO.md) so the "Quarterly Employer
+ * Report" subscription type can generate this same rollup outside of any
+ * request/response cycle.
  */
-export async function analytics(req: Request, res: Response) {
-  const institutionId = req.user!.institutionId;
-  const { reportingPeriodId } = req.query as unknown as EmployerAnalyticsQuery;
-
+export async function computeEmployerAnalytics(institutionId: number, reportingPeriodId: number | undefined) {
   const outcomeRecords = await prisma.studentOutcomeRecord.findMany({
     where: {
       employmentStatus: "EMPLOYED",
@@ -46,11 +57,6 @@ export async function analytics(req: Request, res: Response) {
     },
   });
 
-  interface EmployerTotals {
-    employer: { id: number; name: string; industry: string | null };
-    placementCount: number;
-    relatedPlacementCount: number;
-  }
   const byEmployer = new Map<number, EmployerTotals>();
   for (const record of outcomeRecords) {
     if (!record.employerId || !record.employer) continue;
@@ -94,7 +100,7 @@ export async function analytics(req: Request, res: Response) {
     }))
     .sort((a, b) => b.placementCount - a.placementCount);
 
-  sendData(res, {
+  return {
     topEmployers: topEmployers.slice(0, 20),
     industryBreakdown,
     concentration: {
@@ -104,5 +110,11 @@ export async function analytics(req: Request, res: Response) {
       top5Share,
       risk: concentrationRisk(topEmployerShare),
     },
-  });
+  };
+}
+
+export async function analytics(req: Request, res: Response) {
+  const institutionId = req.user!.institutionId;
+  const { reportingPeriodId } = req.query as unknown as EmployerAnalyticsQuery;
+  sendData(res, await computeEmployerAnalytics(institutionId, reportingPeriodId));
 }

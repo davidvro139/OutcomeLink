@@ -161,13 +161,17 @@ export async function placementQuality(req: Request, res: Response) {
  * each successive stage of "do we actually know what happened to them, with
  * evidence to prove it" — Completers -> Employed -> Employed Related ->
  * Verified -> Evidence on File.
+ *
+ * Split into a pure `compute*` function and a thin HTTP wrapper (Phase 3
+ * Scheduled Reports, docs/TODO.md) so the scheduler can generate this same
+ * report outside of any request/response cycle, the same reasoning
+ * customReportBuilder.ts's runQuery() was already structured around.
  */
-export async function outcomeFunnel(req: Request, res: Response) {
-  const institutionId = req.user!.institutionId;
-  const { reportingPeriodId } = req.query as unknown as ReportingPeriodQuery;
-  await findOwnedPeriod(institutionId, reportingPeriodId);
-  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
-
+export async function computeOutcomeFunnel(
+  institutionId: number,
+  reportingPeriodId: number,
+  accessibleProgramIds: number[] | null,
+) {
   const completions = await prisma.studentClassification.findMany({
     where: {
       reportingPeriodId,
@@ -192,7 +196,7 @@ export async function outcomeFunnel(req: Request, res: Response) {
   const verified = employedRelated.filter((o) => o.verificationStatus);
   const withEvidence = verified.filter((o) => o.evidence.length > 0);
 
-  sendData(res, {
+  return {
     stages: [
       { stage: "Completers", count: completerEnrollmentIds.length },
       { stage: "Employed", count: employed.length },
@@ -200,7 +204,15 @@ export async function outcomeFunnel(req: Request, res: Response) {
       { stage: "Verified", count: verified.length },
       { stage: "Evidence on File", count: withEvidence.length },
     ],
-  });
+  };
+}
+
+export async function outcomeFunnel(req: Request, res: Response) {
+  const institutionId = req.user!.institutionId;
+  const { reportingPeriodId } = req.query as unknown as ReportingPeriodQuery;
+  await findOwnedPeriod(institutionId, reportingPeriodId);
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+  sendData(res, await computeOutcomeFunnel(institutionId, reportingPeriodId, accessibleProgramIds));
 }
 
 /**
@@ -239,6 +251,14 @@ export async function getUnresolvedOutcomeStudentIds(
   return [...ids];
 }
 
+export interface UnknownOutcomesProgramCount {
+  program: { id: number; name: string } | null;
+  seekingOrUnknown: number;
+  missingRecord: number;
+}
+
+const unknownOutcomesStudentSelect = { id: true, internalStudentId: true, firstName: true, lastName: true } as const;
+
 /**
  * Unknown Outcome: graduate completers this period the classifier placed in
  * SEEKING_OR_UNKNOWN (has an outcome record, but no resolved employment
@@ -246,12 +266,11 @@ export async function getUnresolvedOutcomeStudentIds(
  * work should be targeting, aggregated by program instead of the flat
  * per-student Follow-Up Queue view.
  */
-export async function unknownOutcomes(req: Request, res: Response) {
-  const institutionId = req.user!.institutionId;
-  const { reportingPeriodId } = req.query as unknown as ReportingPeriodQuery;
-  await findOwnedPeriod(institutionId, reportingPeriodId);
-  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
-
+export async function computeUnknownOutcomes(
+  institutionId: number,
+  reportingPeriodId: number,
+  accessibleProgramIds: number[] | null,
+) {
   const seekingOrUnknown = await prisma.studentClassification.findMany({
     where: {
       reportingPeriodId,
@@ -265,7 +284,7 @@ export async function unknownOutcomes(req: Request, res: Response) {
     include: {
       studentEnrollment: {
         include: {
-          student: { select: { id: true, firstName: true, lastName: true } },
+          student: { select: unknownOutcomesStudentSelect },
           program: { select: { id: true, name: true } },
         },
       },
@@ -279,17 +298,12 @@ export async function unknownOutcomes(req: Request, res: Response) {
       ...(accessibleProgramIds && { programId: { in: accessibleProgramIds } }),
     },
     include: {
-      student: { select: { id: true, firstName: true, lastName: true } },
+      student: { select: unknownOutcomesStudentSelect },
       program: { select: { id: true, name: true } },
     },
   });
 
-  interface ProgramCount {
-    program: { id: number; name: string } | null;
-    seekingOrUnknown: number;
-    missingRecord: number;
-  }
-  const byProgram = new Map<number | "none", ProgramCount>();
+  const byProgram = new Map<number | "none", UnknownOutcomesProgramCount>();
   function bump(program: { id: number; name: string } | null, field: "seekingOrUnknown" | "missingRecord") {
     const key = program?.id ?? "none";
     const entry = byProgram.get(key) ?? { program, seekingOrUnknown: 0, missingRecord: 0 };
@@ -299,7 +313,7 @@ export async function unknownOutcomes(req: Request, res: Response) {
   for (const c of seekingOrUnknown) bump(c.studentEnrollment.program, "seekingOrUnknown");
   for (const i of missingOutcomeIssues) bump(i.program, "missingRecord");
 
-  sendData(res, {
+  return {
     totalSeekingOrUnknown: seekingOrUnknown.length,
     totalMissingRecord: missingOutcomeIssues.length,
     students: seekingOrUnknown.map((c) => ({
@@ -309,7 +323,15 @@ export async function unknownOutcomes(req: Request, res: Response) {
     byProgram: [...byProgram.values()].sort(
       (a, b) => b.seekingOrUnknown + b.missingRecord - (a.seekingOrUnknown + a.missingRecord),
     ),
-  });
+  };
+}
+
+export async function unknownOutcomes(req: Request, res: Response) {
+  const institutionId = req.user!.institutionId;
+  const { reportingPeriodId } = req.query as unknown as ReportingPeriodQuery;
+  await findOwnedPeriod(institutionId, reportingPeriodId);
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+  sendData(res, await computeUnknownOutcomes(institutionId, reportingPeriodId, accessibleProgramIds));
 }
 
 /**

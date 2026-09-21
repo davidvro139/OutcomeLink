@@ -16,10 +16,13 @@ export interface XlsxSheet {
 
 /**
  * Phase 2 P7 (docs/TODO.md): the one place that knows how to turn rows into
- * a downloadable .xlsx response, so every export endpoint gets consistent
- * formatting (bold header row, sized columns) instead of reimplementing it.
+ * an .xlsx workbook, so every export gets consistent formatting (bold header
+ * row, sized columns) instead of reimplementing it. Returns a raw `Buffer`
+ * rather than writing to a `Response` — Scheduled Reports (Phase 3,
+ * docs/TODO.md) generates a workbook outside of any HTTP request/response
+ * cycle, so `sendXlsx()` below is now just this plus the response headers.
  */
-export async function sendXlsx(res: Response, filename: string, sheets: XlsxSheet[]): Promise<void> {
+export async function buildXlsxBuffer(sheets: XlsxSheet[]): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   workbook.created = new Date();
 
@@ -31,12 +34,17 @@ export async function sendXlsx(res: Response, filename: string, sheets: XlsxShee
   }
 
   const buffer = await workbook.xlsx.writeBuffer();
+  return Buffer.from(buffer);
+}
+
+export async function sendXlsx(res: Response, filename: string, sheets: XlsxSheet[]): Promise<void> {
+  const buffer = await buildXlsxBuffer(sheets);
   res.setHeader(
     "Content-Type",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   );
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-  res.send(Buffer.from(buffer));
+  res.send(buffer);
 }
 
 function cellToString(value: ExcelJS.CellValue): string {

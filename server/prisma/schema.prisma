@@ -126,6 +126,11 @@ enum NotificationType {
   // "Missing-outcomes digest" (docs/TODO.md deferred items) — a pushed
   // institution-wide summary, distinct from VALIDATION_ERROR's per-issue scope.
   MISSING_OUTCOMES_DIGEST
+  // Scheduled Reports (Phase 3, docs/TODO.md) — a subscription's automatic
+  // run produced a downloadable workbook. referenceEntityType/Id point at the
+  // ScheduledReportRun, not the subscription, so the client can resolve
+  // straight to a download without a second lookup.
+  SCHEDULED_REPORT_READY
 }
 
 enum AuditAction {
@@ -181,6 +186,7 @@ model Institution {
   importBatches         ImportBatch[]
   savedReports          SavedReport[]
   dataSourceConnections DataSourceConnection[]
+  scheduledReportSubscriptions ScheduledReportSubscription[]
 
   @@map("institutions")
 }
@@ -308,6 +314,7 @@ model User {
   auditLogEntries  AuditLogEntry[]
   notifications    Notification[]
   savedReports     SavedReport[]
+  scheduledReportSubscriptions ScheduledReportSubscription[]
 
   @@map("users")
 }
@@ -486,6 +493,7 @@ model ReportingPeriod {
   validationIssues       ValidationIssue[]
   outcomeRecords         StudentOutcomeRecord[]
   improvementPlans       ImprovementPlan[]
+  scheduledReportSubscriptions ScheduledReportSubscription[]
 
   @@unique([institutionId, label])
   @@map("reporting_periods")
@@ -1055,6 +1063,97 @@ model SavedReport {
   institution Institution @relation(fields: [institutionId], references: [id])
   creator     User        @relation(fields: [createdBy], references: [id])
 
+  scheduledReportSubscriptions ScheduledReportSubscription[]
+
   @@unique([institutionId, name])
   @@map("saved_reports")
+}
+
+enum ScheduledReportFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  ANNUALLY
+}
+
+// One of two mutually-exclusive report sources a subscription can point at
+// (docs/TODO.md's Scheduled Reports entry has the full "why both" reasoning):
+// a SavedReport's Custom Report Builder definition (re-run as-is via
+// customReportBuilder.ts's buildCustomReportSheet), or one of a small, fixed
+// set of built-in dashboards spec §50 names by example, none of which have a
+// "saved definition" concept of their own. Exactly one of
+// savedReportId/builtInReportType is set on a given row, enforced at the Zod
+// layer (scheduledReports.ts) rather than a DB constraint — the same
+// either/or-by-convention pattern AllowableSubtractionReason (only
+// meaningful when WITHDRAWN) already uses in this schema.
+enum ScheduledReportSource {
+  SAVED_REPORT
+  BUILT_IN
+}
+
+// The 4 built-in report types spec §50 names by example (Monthly Outcomes
+// Summary, Weekly Missing Verification Report, Quarterly Employer Report,
+// Annual CPL Readiness Report), mapped onto the closest already-existing
+// report each name describes rather than inventing 4 new report shapes:
+// OUTCOME_FUNNEL (P8) for "Outcomes Summary" (data-completeness through the
+// pipeline), UNKNOWN_OUTCOMES (P8) for "Missing Verification" (exactly the
+// population that still needs chasing down), EMPLOYER_ANALYTICS (P5) for
+// "Employer Report", and CPL_READINESS (P2) for "CPL Readiness."
+enum BuiltInReportType {
+  OUTCOME_FUNNEL
+  UNKNOWN_OUTCOMES
+  EMPLOYER_ANALYTICS
+  CPL_READINESS
+}
+
+// A recurring subscription that automatically re-runs one report and
+// delivers it as a Notification with a downloadable workbook — see
+// docs/TODO.md's Scheduled Reports entry for the full design (no email
+// infrastructure exists anywhere in this app, so "delivery" means an in-app
+// notification + generated file, the same honest scope boundary the
+// missing-outcomes digest and graduate outreach campaign already document).
+model ScheduledReportSubscription {
+  id                Int                      @id @default(autoincrement())
+  institutionId     Int                      @map("institution_id")
+  name              String
+  frequency         ScheduledReportFrequency
+  reportSource      ScheduledReportSource    @map("report_source")
+  savedReportId     Int?                     @map("saved_report_id")
+  builtInReportType BuiltInReportType?       @map("built_in_report_type")
+  // For a BUILT_IN report that needs one (all but EMPLOYER_ANALYTICS, which
+  // runs institution-wide/all-time when omitted, matching its own existing
+  // endpoint's behavior): null means "resolve to the institution's most
+  // recently created reporting period at run time" rather than a period
+  // fixed forever at subscribe time, so a recurring subscription keeps
+  // reporting on whatever's current instead of the same period every run.
+  reportingPeriodId Int?                     @map("reporting_period_id")
+  active            Boolean                  @default(true)
+  createdBy         Int                      @map("created_by")
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  lastRunAt         DateTime?                @map("last_run_at")
+  nextRunAt         DateTime                 @map("next_run_at")
+
+  institution     Institution          @relation(fields: [institutionId], references: [id])
+  savedReport     SavedReport?         @relation(fields: [savedReportId], references: [id])
+  reportingPeriod ReportingPeriod?     @relation(fields: [reportingPeriodId], references: [id])
+  creator         User                 @relation(fields: [createdBy], references: [id])
+  runs            ScheduledReportRun[]
+
+  @@unique([institutionId, name])
+  @@map("scheduled_report_subscriptions")
+}
+
+model ScheduledReportRun {
+  id             Int      @id @default(autoincrement())
+  subscriptionId Int      @map("subscription_id")
+  runAt          DateTime @default(now()) @map("run_at")
+  status         String
+  errorMessage   String?  @map("error_message") @db.Text
+  fileReference  String?  @map("file_reference")
+  rowCount       Int?     @map("row_count")
+
+  subscription ScheduledReportSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@map("scheduled_report_runs")
 }

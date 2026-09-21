@@ -15,7 +15,7 @@ import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import type { AccessTokenPayload } from "../../lib/jwt";
 import { prisma } from "../../lib/prisma";
-import { sendXlsx } from "../../lib/xlsx";
+import { sendXlsx, type XlsxSheet } from "../../lib/xlsx";
 
 /**
  * Custom Report Builder (Phase 3, spec §64). A curated, structured query
@@ -398,12 +398,17 @@ export async function runCustomReport(
   });
 }
 
-export async function exportCustomReport(
-  req: Request<Record<string, never>, unknown, RunReportInput>,
-  res: Response,
-) {
-  const input = req.body;
-  const { rows, comparingPeriods } = await runQuery(req.user!, input);
+/**
+ * Runs a saved-or-ad-hoc report definition and shapes the result as an
+ * `XlsxSheet` — shared by the HTTP export endpoint below and, without any
+ * `req`/`res` in sight, the Scheduled Reports subscription runner (Phase 3,
+ * docs/TODO.md), which re-executes a `SavedReport.definition` on a schedule.
+ */
+export async function buildCustomReportSheet(
+  user: AccessTokenPayload,
+  input: RunReportInput,
+): Promise<XlsxSheet> {
+  const { rows, comparingPeriods } = await runQuery(user, input);
   const fieldDefs = REPORT_FIELDS_BY_ENTITY[input.entityType];
 
   const columns = [
@@ -417,7 +422,14 @@ export async function exportCustomReport(
     })),
   ];
 
-  await sendXlsx(res, `custom-report-${input.entityType.toLowerCase()}.xlsx`, [
-    { name: "Report", columns, rows },
-  ]);
+  return { name: "Report", columns, rows };
+}
+
+export async function exportCustomReport(
+  req: Request<Record<string, never>, unknown, RunReportInput>,
+  res: Response,
+) {
+  const input = req.body;
+  const sheet = await buildCustomReportSheet(req.user!, input);
+  await sendXlsx(res, `custom-report-${input.entityType.toLowerCase()}.xlsx`, [sheet]);
 }

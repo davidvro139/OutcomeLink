@@ -22,11 +22,19 @@ interface MetricReadiness {
  * flat issue list. Reuses both (CplCalculationResult, ValidationIssue,
  * getEffectiveBenchmark) rather than recomputing anything, so it can never
  * drift out of sync with what those already show.
+ *
+ * Split into a pure `computeReadiness` and a thin HTTP wrapper (Phase 3
+ * Scheduled Reports, docs/TODO.md) so the "Annual CPL Readiness Report"
+ * subscription type can generate this same rollup outside of any
+ * request/response cycle.
  */
-export async function readiness(req: Request, res: Response) {
-  const reportingPeriodId = Number(req.params.id);
+export async function computeReadiness(
+  institutionId: number,
+  reportingPeriodId: number,
+  accessibleProgramIds: number[] | null,
+) {
   const reportingPeriod = await prisma.reportingPeriod.findFirst({
-    where: { id: reportingPeriodId, institutionId: req.user!.institutionId },
+    where: { id: reportingPeriodId, institutionId },
     include: { ruleSet: true },
   });
   if (!reportingPeriod) throw ApiError.notFound("Reporting period not found");
@@ -34,13 +42,12 @@ export async function readiness(req: Request, res: Response) {
   const standardBenchmarks = (
     reportingPeriod.ruleSet.ruleDefinition as { benchmarks?: Record<string, number> }
   )?.benchmarks;
-  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
 
   const [results, programs, openIssues] = await Promise.all([
     prisma.cplCalculationResult.findMany({ where: { reportingPeriodId, programId: { not: null } } }),
     prisma.program.findMany({
       where: {
-        institutionId: req.user!.institutionId,
+        institutionId,
         active: true,
         ...(accessibleProgramIds && { id: { in: accessibleProgramIds } }),
       },
@@ -110,7 +117,7 @@ export async function readiness(req: Request, res: Response) {
     ? Math.ceil((reportingPeriod.outcomesDeadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     : null;
 
-  sendData(res, {
+  return {
     readiness: readinessRows,
     summary: {
       totalPrograms: readinessRows.length,
@@ -119,5 +126,12 @@ export async function readiness(req: Request, res: Response) {
       outcomesDeadline: reportingPeriod.outcomesDeadline,
       daysUntilOutcomesDeadline,
     },
-  });
+  };
+}
+
+export async function readiness(req: Request, res: Response) {
+  const reportingPeriodId = Number(req.params.id);
+  const institutionId = req.user!.institutionId;
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+  sendData(res, await computeReadiness(institutionId, reportingPeriodId, accessibleProgramIds));
 }

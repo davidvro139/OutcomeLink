@@ -180,6 +180,7 @@ model Institution {
   importMappingProfiles ImportMappingProfile[]
   importBatches         ImportBatch[]
   savedReports          SavedReport[]
+  dataSourceConnections DataSourceConnection[]
 
   @@map("institutions")
 }
@@ -932,10 +933,17 @@ model ImportBatch {
   uploadedAt       DateTime          @default(now()) @map("uploaded_at")
   mappingProfileId Int?              @map("mapping_profile_id")
   status           ImportBatchStatus @default(UPLOADED)
+  // Set only when this batch's rows were fetched live from a DataSourceConnection
+  // (e.g. OneWorld/Dataverse) rather than uploaded as a file — everything past
+  // that point (fileReference, mapping, validate, preview, commit) is identical
+  // either way, since the fetched rows are serialized to the same CSV shape and
+  // saved through the same storage adapter.
+  dataSourceConnectionId Int?        @map("data_source_connection_id")
 
-  institution    Institution           @relation(fields: [institutionId], references: [id])
-  mappingProfile ImportMappingProfile? @relation(fields: [mappingProfileId], references: [id])
-  rowErrors      ImportRowError[]
+  institution           Institution            @relation(fields: [institutionId], references: [id])
+  mappingProfile        ImportMappingProfile?  @relation(fields: [mappingProfileId], references: [id])
+  dataSourceConnection  DataSourceConnection?  @relation(fields: [dataSourceConnectionId], references: [id])
+  rowErrors             ImportRowError[]
 
   @@map("import_batches")
 }
@@ -951,6 +959,49 @@ model ImportMappingProfile {
 
   @@unique([institutionId, sourceSystemName])
   @@map("import_mapping_profiles")
+}
+
+// A live external data source an institution's Bulk Import can pull from
+// instead of a manually uploaded file — currently scoped to Microsoft
+// Dataverse/Power Platform systems (e.g. OneWorld SIS, which is built on
+// Dynamics 365), reached via Dataverse's standard OData Web API using an
+// Azure AD (Entra ID) app registration's client-credentials OAuth2 flow.
+// `type` exists to leave room for a different connector kind later without a
+// schema change, but only "DATAVERSE_ODATA" is actually implemented.
+//
+// Deliberately one connection = one Dataverse table (`entityLogicalName`):
+// an institution wanting both, say, a Student table and a separate
+// Enrollment table from the same OneWorld environment creates two
+// connections and runs two import batches, the same way two separate CSV
+// exports would be handled — this avoids a cross-table join/expand design
+// that Dataverse doesn't make trivial anyway and whose real shape depends on
+// schema this app has no way to know in advance.
+//
+// clientSecret is encrypted at rest (server/src/lib/secrets.ts) and never
+// returned by any API response — only ever decrypted in-process, immediately
+// before an outbound token request.
+model DataSourceConnection {
+  id                     Int      @id @default(autoincrement())
+  institutionId          Int      @map("institution_id")
+  name                   String
+  type                   String   @default("DATAVERSE_ODATA")
+  environmentUrl         String   @map("environment_url")
+  tenantId               String   @map("tenant_id")
+  clientId               String   @map("client_id")
+  clientSecretEncrypted  String   @map("client_secret_encrypted") @db.Text
+  entityLogicalName      String   @map("entity_logical_name")
+  createdBy              String   @map("created_by")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+  lastTestedAt           DateTime? @map("last_tested_at")
+  lastTestStatus         String?  @map("last_test_status")
+  lastTestError          String?  @map("last_test_error") @db.Text
+
+  institution   Institution   @relation(fields: [institutionId], references: [id])
+  importBatches ImportBatch[]
+
+  @@unique([institutionId, name])
+  @@map("data_source_connections")
 }
 
 model ImportRowError {

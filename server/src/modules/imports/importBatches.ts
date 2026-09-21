@@ -177,35 +177,60 @@ export async function create(
   if (!IMPORT_ACCEPTED_FILE_EXTENSIONS.some((ext) => req.file!.originalname.toLowerCase().endsWith(ext))) {
     throw ApiError.badRequest(`File must be one of: ${IMPORT_ACCEPTED_FILE_EXTENSIONS.join(", ")}`);
   }
-  const institutionId = req.user!.institutionId;
-  const { sourceSystem } = req.body;
 
-  const { headers, rows } = await parseUploadedFile(req.file.buffer, req.file.originalname);
+  const result = await createBatchFromBuffer({
+    institutionId: req.user!.institutionId,
+    uploaderId: req.user!.sub,
+    sourceSystem: req.body.sourceSystem,
+    buffer: req.file.buffer,
+    originalFilename: req.file.originalname,
+    mimeType: req.file.mimetype,
+  });
+  sendData(res, result, 201);
+}
+
+/**
+ * Shared by the multipart file-upload route above and the live
+ * DataSourceConnection fetch route (dataConnections.ts) — a batch's rows can
+ * come from either an uploaded file's real bytes or a synthesized CSV built
+ * from a Dataverse OData response (lib/csv.ts's stringifyCsv), and from this
+ * point on the two are indistinguishable: same parsing, same storage, same
+ * ImportBatch row shape.
+ */
+export async function createBatchFromBuffer(input: {
+  institutionId: number;
+  uploaderId: number;
+  sourceSystem: string;
+  buffer: Buffer;
+  originalFilename: string;
+  mimeType: string;
+  dataSourceConnectionId?: number;
+}) {
+  const { institutionId, uploaderId, sourceSystem, buffer, originalFilename, mimeType, dataSourceConnectionId } =
+    input;
+  const { headers, rows } = await parseUploadedFile(buffer, originalFilename);
 
   const [uploader, suggestedProfile, { fileReference }] = await Promise.all([
-    prisma.user.findUnique({ where: { id: req.user!.sub }, select: { name: true } }),
+    prisma.user.findUnique({ where: { id: uploaderId }, select: { name: true } }),
     prisma.importMappingProfile.findUnique({
       where: { institutionId_sourceSystemName: { institutionId, sourceSystemName: sourceSystem } },
     }),
-    importStorage.save({
-      buffer: req.file.buffer,
-      originalName: req.file.originalname,
-      mimeType: req.file.mimetype,
-    }),
+    importStorage.save({ buffer, originalName: originalFilename, mimeType }),
   ]);
 
   const batch = await prisma.importBatch.create({
     data: {
       institutionId,
       sourceSystem,
-      originalFilename: req.file.originalname,
+      originalFilename,
       fileReference,
       totalRows: rows.length,
-      uploadedBy: uploader?.name ?? String(req.user!.sub),
+      uploadedBy: uploader?.name ?? String(uploaderId),
+      dataSourceConnectionId,
     },
   });
 
-  sendData(res, { batch, sourceColumns: headers, suggestedProfile }, 201);
+  return { batch, sourceColumns: headers, suggestedProfile };
 }
 
 export async function setMapping(

@@ -45,9 +45,19 @@ function issueTokens(user: AuthenticatedUser): AuthTokens {
 }
 
 /**
- * Open self-registration is a bootstrap convenience for a project with no user-management
- * screens yet (spec §4's admin-managed user model comes in a later stage — see
- * docs/TODO.md stage 2 follow-ups). This should be locked down once that exists.
+ * Public self-registration bootstraps a BRAND NEW institution and its first
+ * user — always as SYSTEM_ADMINISTRATOR of that new institution, never a
+ * caller-chosen role, and never joining an institution that already exists.
+ *
+ * This used to accept an arbitrary institutionId and role with no
+ * authentication at all — a real cross-tenant privilege-escalation hole
+ * (project review, 2026-09-18: "the unauthenticated route accepts an
+ * existing institution ID and any role, including SYSTEM_ADMINISTRATOR").
+ * Restricting it to "create your own institution" closes that off entirely
+ * (there's no existing institution to escalate into) while still leaving a
+ * genuine, common self-service path for a brand-new customer to sign up.
+ * Adding a user to an institution that already has one now requires an
+ * existing admin of that institution — see users.ts's createUser().
  */
 export async function registerUser(
   input: RegisterInput,
@@ -55,18 +65,18 @@ export async function registerUser(
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
   if (existing) throw ApiError.conflict("An account with this email already exists");
 
-  const institution = await prisma.institution.findUnique({ where: { id: input.institutionId } });
-  if (!institution) throw ApiError.badRequest("Unknown institutionId");
-
   const passwordHash = await hashPassword(input.password);
-  const created = await prisma.user.create({
-    data: {
-      institutionId: input.institutionId,
-      name: input.name,
-      email: input.email,
-      passwordHash,
-      role: input.role,
-    },
+  const created = await prisma.$transaction(async (tx) => {
+    const institution = await tx.institution.create({ data: { name: input.institutionName } });
+    return tx.user.create({
+      data: {
+        institutionId: institution.id,
+        name: input.name,
+        email: input.email,
+        passwordHash,
+        role: "SYSTEM_ADMINISTRATOR",
+      },
+    });
   });
 
   const user = toAuthenticatedUser(created);

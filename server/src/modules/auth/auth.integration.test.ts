@@ -18,22 +18,45 @@ describe("auth (integration)", () => {
 
   const credentials = { email: "test-user@example.edu", password: "password123" };
 
-  it("registers a new user and returns an access token + user profile", async () => {
+  it("registers a new user by creating a brand-new institution, always as SYSTEM_ADMINISTRATOR", async () => {
     const res = await request(app)
       .post("/api/auth/register")
-      .send({ institutionId, name: "Test User", ...credentials, role: "SYSTEM_ADMINISTRATOR" });
+      .send({ institutionName: "Brand New College", name: "Test User", ...credentials });
 
     expect(res.status).toBe(201);
     expect(res.body.data.accessToken).toEqual(expect.any(String));
     expect(res.body.data.user).toMatchObject({ email: credentials.email, role: "SYSTEM_ADMINISTRATOR" });
+    expect(res.body.data.user.institutionId).not.toBe(institutionId);
     // The refresh token should be set as an httpOnly cookie, not exposed in the body.
     expect(res.headers["set-cookie"]?.[0]).toMatch(/refreshToken=.*HttpOnly/i);
+
+    const createdInstitution = await prisma.institution.findUnique({
+      where: { id: res.body.data.user.institutionId },
+    });
+    expect(createdInstitution).toMatchObject({ name: "Brand New College" });
+  });
+
+  it("ignores a caller-supplied institutionId or role — registration can never join an existing institution or pick a role", async () => {
+    const res = await request(app)
+      .post("/api/auth/register")
+      .send({
+        institutionName: "Second Brand New College",
+        institutionId, // an existing, real institution — must be ignored
+        role: "READ_ONLY_AUDITOR", // a role other than the always-forced one — must be ignored
+        name: "Attacker",
+        email: "attacker@example.edu",
+        password: "password123",
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.user.institutionId).not.toBe(institutionId);
+    expect(res.body.data.user.role).toBe("SYSTEM_ADMINISTRATOR");
   });
 
   it("rejects registration with an already-used email", async () => {
     const res = await request(app)
       .post("/api/auth/register")
-      .send({ institutionId, name: "Duplicate", ...credentials, role: "SYSTEM_ADMINISTRATOR" });
+      .send({ institutionName: "Duplicate Attempt College", name: "Duplicate", ...credentials });
 
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("CONFLICT");
@@ -42,7 +65,16 @@ describe("auth (integration)", () => {
   it("rejects registration with a short password", async () => {
     const res = await request(app)
       .post("/api/auth/register")
-      .send({ institutionId, name: "X", email: "short@example.edu", password: "short", role: "SYSTEM_ADMINISTRATOR" });
+      .send({ institutionName: "Short Password College", name: "X", email: "short@example.edu", password: "short" });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("rejects registration with no institution name", async () => {
+    const res = await request(app)
+      .post("/api/auth/register")
+      .send({ name: "No Institution", email: "noinstitution@example.edu", password: "password123" });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("VALIDATION_ERROR");

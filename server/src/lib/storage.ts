@@ -48,3 +48,8 @@ export const storage: StorageAdapter = new LocalDiskStorageAdapter(
 export const importStorage: StorageAdapter = new LocalDiskStorageAdapter(
   path.join(process.cwd(), "uploads", "imports"),
 );
+
+/** Generated .xlsx workbooks from Scheduled Reports (Phase 3, docs/TODO.md) — one file per ScheduledReportRun. */
+export const scheduledReportStorage: StorageAdapter = new LocalDiskStorageAdapter(
+  path.join(process.cwd(), "uploads", "scheduled-reports"),
+);

@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { getAccessibleProgramIds } from "../../lib/accessScope";
 import { sendData } from "../../lib/apiResponse";
 import { prisma } from "../../lib/prisma";
 
@@ -12,13 +13,17 @@ import { prisma } from "../../lib/prisma";
  */
 export async function queue(req: Request, res: Response) {
   const institutionId = req.user!.institutionId;
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
 
   const enrollments = await prisma.studentEnrollment.findMany({
     where: {
       enrollmentStatus: "GRADUATE_COMPLETER",
       reportableForAccreditation: true,
       student: { institutionId },
-      program: { licensureRequired: true },
+      program: {
+        licensureRequired: true,
+        ...(accessibleProgramIds && { id: { in: accessibleProgramIds } }),
+      },
     },
     include: {
       student: { select: { id: true, firstName: true, lastName: true } },

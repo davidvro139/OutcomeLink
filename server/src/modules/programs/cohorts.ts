@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
+import { getAccessibleProgramIds } from "../../lib/accessScope";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { prisma } from "../../lib/prisma";
@@ -14,7 +15,14 @@ type CreateCohortInput = z.infer<typeof createCohortSchema>;
 export const updateCohortSchema = createCohortSchema.partial();
 type UpdateCohortInput = z.infer<typeof updateCohortSchema>;
 
-async function findOwnedProgram(institutionId: number, programId: number) {
+async function findOwnedProgram(
+  institutionId: number,
+  programId: number,
+  accessibleProgramIds: number[] | null,
+) {
+  if (accessibleProgramIds && !accessibleProgramIds.includes(programId)) {
+    throw ApiError.notFound("Program not found");
+  }
   const program = await prisma.program.findFirst({ where: { id: programId, institutionId } });
   if (!program) throw ApiError.notFound("Program not found");
   return program;
@@ -22,7 +30,8 @@ async function findOwnedProgram(institutionId: number, programId: number) {
 
 export async function list(req: Request, res: Response) {
   const programId = Number(req.params.programId);
-  await findOwnedProgram(req.user!.institutionId, programId);
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+  await findOwnedProgram(req.user!.institutionId, programId, accessibleProgramIds);
   const cohorts = await prisma.cohort.findMany({ where: { programId }, orderBy: { name: "asc" } });
   sendData(res, { cohorts });
 }
@@ -32,7 +41,8 @@ export async function create(
   res: Response,
 ) {
   const programId = Number(req.params.programId);
-  await findOwnedProgram(req.user!.institutionId, programId);
+  // SYSTEM_ADMINISTRATOR-only route (see programs.routes.ts) — never a scoped role, so no lookup needed.
+  await findOwnedProgram(req.user!.institutionId, programId, null);
   const cohort = await prisma.cohort.create({ data: { ...req.body, programId } });
   sendData(res, { cohort }, 201);
 }
@@ -43,7 +53,8 @@ export async function update(
 ) {
   const programId = Number(req.params.programId);
   const id = Number(req.params.id);
-  await findOwnedProgram(req.user!.institutionId, programId);
+  // SYSTEM_ADMINISTRATOR-only route (see programs.routes.ts) — never a scoped role, so no lookup needed.
+  await findOwnedProgram(req.user!.institutionId, programId, null);
   const cohort = await prisma.cohort.findFirst({ where: { id, programId } });
   if (!cohort) throw ApiError.notFound("Cohort not found");
   const updated = await prisma.cohort.update({ where: { id }, data: req.body });
@@ -53,7 +64,8 @@ export async function update(
 export async function remove(req: Request, res: Response) {
   const programId = Number(req.params.programId);
   const id = Number(req.params.id);
-  await findOwnedProgram(req.user!.institutionId, programId);
+  // SYSTEM_ADMINISTRATOR-only route (see programs.routes.ts) — never a scoped role, so no lookup needed.
+  await findOwnedProgram(req.user!.institutionId, programId, null);
   const cohort = await prisma.cohort.findFirst({ where: { id, programId } });
   if (!cohort) throw ApiError.notFound("Cohort not found");
   await prisma.cohort.delete({ where: { id } });

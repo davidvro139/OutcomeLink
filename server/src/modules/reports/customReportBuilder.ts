@@ -10,8 +10,10 @@ import {
   type ReportEntityType,
 } from "@outcomelink/shared";
 import { z } from "zod";
+import { getAccessibleProgramIds } from "../../lib/accessScope";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
+import type { AccessTokenPayload } from "../../lib/jwt";
 import { prisma } from "../../lib/prisma";
 import { sendXlsx } from "../../lib/xlsx";
 
@@ -118,19 +120,38 @@ async function resolvePeriods(institutionId: number, input: RunReportInput): Pro
   });
 }
 
+/**
+ * Combines a user-selected `programId` filter with a program-scoped
+ * caller's accessible set into the single set actually queryable — never
+ * two separate `programId` conditions (Prisma `where` keys can't repeat; a
+ * second one would silently replace the first rather than combine with it).
+ * A scoped caller filtering to a program outside their own assignment
+ * correctly gets zero rows (`in: []`), not an error and not the unfiltered
+ * accessible set.
+ */
+function effectiveProgramIdFilter(
+  requested: number[] | undefined,
+  accessibleProgramIds: number[] | null,
+): number[] | undefined {
+  if (!accessibleProgramIds) return requested && requested.length > 0 ? requested : undefined;
+  if (!requested || requested.length === 0) return accessibleProgramIds;
+  return requested.filter((id) => accessibleProgramIds.includes(id));
+}
+
 async function fetchStudentRows(
   institutionId: number,
   input: RunReportInput,
   periods: ResolvedPeriod[],
+  accessibleProgramIds: number[] | null,
 ): Promise<Row[]> {
-  const programIds = filterValue<number[]>(input, "programId");
+  const programIds = effectiveProgramIdFilter(filterValue<number[]>(input, "programId"), accessibleProgramIds);
   const campusIds = filterValue<number[]>(input, "campusId");
   const enrollmentStatuses = filterValue<string[]>(input, "enrollmentStatus");
   const employmentStatuses = filterValue<string[]>(input, "employmentStatus");
 
   const baseWhere = {
     student: { institutionId },
-    ...(programIds && programIds.length > 0 ? { programId: { in: programIds } } : {}),
+    ...(programIds ? { programId: { in: programIds } } : {}),
     ...(campusIds && campusIds.length > 0 ? { campusId: { in: campusIds } } : {}),
     ...(enrollmentStatuses && enrollmentStatuses.length > 0
       ? { enrollmentStatus: { in: enrollmentStatuses as never[] } }
@@ -201,7 +222,11 @@ async function fetchEmployerRows(
   institutionId: number,
   input: RunReportInput,
   periods: ResolvedPeriod[],
+  _accessibleProgramIds: number[] | null,
 ): Promise<Row[]> {
+  // Employers aren't program-scoped (see search.ts's identical reasoning):
+  // an employer can hire from several programs, so there's no single
+  // program to check a scoped caller's access against.
   const industries = filterValue<string[]>(input, "industry");
   const states = filterValue<string[]>(input, "state");
   const activeFilter = filterValue<boolean>(input, "active");
@@ -268,6 +293,7 @@ async function fetchProgramRows(
   institutionId: number,
   input: RunReportInput,
   periods: ResolvedPeriod[],
+  accessibleProgramIds: number[] | null,
 ): Promise<Row[]> {
   const campusIds = filterValue<number[]>(input, "campusId");
   const credentialTypes = filterValue<string[]>(input, "credentialType");
@@ -279,6 +305,7 @@ async function fetchProgramRows(
       ...(campusIds && campusIds.length > 0 ? { campusId: { in: campusIds } } : {}),
       ...(credentialTypes && credentialTypes.length > 0 ? { credentialType: { in: credentialTypes } } : {}),
       ...(licensureRequiredFilter !== undefined ? { licensureRequired: licensureRequiredFilter } : {}),
+      ...(accessibleProgramIds && { id: { in: accessibleProgramIds } }),
     },
     include: { campus: { select: { name: true } } },
     orderBy: { name: "asc" },
@@ -325,7 +352,12 @@ async function fetchProgramRows(
 
 const FETCHERS: Record<
   ReportEntityType,
-  (institutionId: number, input: RunReportInput, periods: ResolvedPeriod[]) => Promise<Row[]>
+  (
+    institutionId: number,
+    input: RunReportInput,
+    periods: ResolvedPeriod[],
+    accessibleProgramIds: number[] | null,
+  ) => Promise<Row[]>
 > = {
   STUDENT: fetchStudentRows,
   EMPLOYER: fetchEmployerRows,
@@ -340,13 +372,17 @@ function pickFields(row: Row, fields: string[], includePeriodLabel: boolean): Ro
 }
 
 async function runQuery(
-  institutionId: number,
+  user: AccessTokenPayload,
   input: RunReportInput,
 ): Promise<{ rows: Row[]; comparingPeriods: boolean }> {
   validateDefinition(input);
-  const periods = await resolvePeriods(institutionId, input);
+  const institutionId = user.institutionId;
+  const [periods, accessibleProgramIds] = await Promise.all([
+    resolvePeriods(institutionId, input),
+    getAccessibleProgramIds(user),
+  ]);
   const comparingPeriods = periods.length > 1;
-  const allRows = await FETCHERS[input.entityType](institutionId, input, periods);
+  const allRows = await FETCHERS[input.entityType](institutionId, input, periods, accessibleProgramIds);
   return { rows: allRows.map((row) => pickFields(row, input.fields, comparingPeriods)), comparingPeriods };
 }
 
@@ -354,7 +390,7 @@ export async function runCustomReport(
   req: Request<Record<string, never>, unknown, RunReportInput>,
   res: Response,
 ) {
-  const { rows } = await runQuery(req.user!.institutionId, req.body);
+  const { rows } = await runQuery(req.user!, req.body);
   sendData(res, {
     rows: rows.slice(0, REPORT_BUILDER_PREVIEW_LIMIT),
     totalCount: rows.length,
@@ -367,7 +403,7 @@ export async function exportCustomReport(
   res: Response,
 ) {
   const input = req.body;
-  const { rows, comparingPeriods } = await runQuery(req.user!.institutionId, input);
+  const { rows, comparingPeriods } = await runQuery(req.user!, input);
   const fieldDefs = REPORT_FIELDS_BY_ENTITY[input.entityType];
 
   const columns = [

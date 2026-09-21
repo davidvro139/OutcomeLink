@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { CPL_METRICS, IMPROVEMENT_PLAN_STATUSES } from "@outcomelink/shared";
 import { z } from "zod";
+import { assertProgramAccessible, getAccessibleProgramIds } from "../../lib/accessScope";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { prisma } from "../../lib/prisma";
@@ -43,9 +44,12 @@ const planInclude = {
   responsibleUser: { select: { id: true, name: true } },
 } as const;
 
-async function findOwnedPlan(institutionId: number, id: number) {
+async function findOwnedPlan(institutionId: number, id: number, accessibleProgramIds: number[] | null) {
   const plan = await prisma.improvementPlan.findFirst({
-    where: { id, program: { institutionId } },
+    where: {
+      id,
+      program: { institutionId, ...(accessibleProgramIds && { id: { in: accessibleProgramIds } }) },
+    },
     include: { ...planInclude, updates: { orderBy: { createdAt: "desc" } } },
   });
   if (!plan) throw ApiError.notFound("Improvement plan not found");
@@ -55,9 +59,15 @@ async function findOwnedPlan(institutionId: number, id: number) {
 export async function list(req: Request, res: Response) {
   const institutionId = req.user!.institutionId;
   const { reportingPeriodId, programId, status } = req.query as unknown as ListImprovementPlansQuery;
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
 
   const improvementPlans = await prisma.improvementPlan.findMany({
-    where: { program: { institutionId }, reportingPeriodId, programId, status },
+    where: {
+      program: { institutionId, ...(accessibleProgramIds && { id: { in: accessibleProgramIds } }) },
+      reportingPeriodId,
+      programId,
+      status,
+    },
     include: { ...planInclude, _count: { select: { updates: true } } },
     orderBy: { id: "desc" },
   });
@@ -65,7 +75,8 @@ export async function list(req: Request, res: Response) {
 }
 
 export async function show(req: Request, res: Response) {
-  const plan = await findOwnedPlan(req.user!.institutionId, Number(req.params.id));
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+  const plan = await findOwnedPlan(req.user!.institutionId, Number(req.params.id), accessibleProgramIds);
   sendData(res, { improvementPlan: plan });
 }
 
@@ -74,6 +85,8 @@ export async function create(
   res: Response,
 ) {
   const institutionId = req.user!.institutionId;
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+  assertProgramAccessible(req.body.programId, accessibleProgramIds);
 
   const program = await prisma.program.findFirst({
     where: { id: req.body.programId, institutionId },
@@ -102,7 +115,9 @@ export async function update(
   res: Response,
 ) {
   const id = Number(req.params.id);
-  await findOwnedPlan(req.user!.institutionId, id);
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+  await findOwnedPlan(req.user!.institutionId, id, accessibleProgramIds);
+  assertProgramAccessible(req.body.programId, accessibleProgramIds);
 
   const improvementPlan = await prisma.improvementPlan.update({
     where: { id },
@@ -117,7 +132,8 @@ export async function addUpdate(
   res: Response,
 ) {
   const id = Number(req.params.id);
-  await findOwnedPlan(req.user!.institutionId, id);
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+  await findOwnedPlan(req.user!.institutionId, id, accessibleProgramIds);
 
   const actingUser = await prisma.user.findUnique({
     where: { id: req.user!.sub },

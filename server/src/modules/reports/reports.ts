@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
+import { getAccessibleProgramIds } from "../../lib/accessScope";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { prisma } from "../../lib/prisma";
@@ -52,13 +53,18 @@ export async function timeToEmployment(req: Request, res: Response) {
   const institutionId = req.user!.institutionId;
   const { reportingPeriodId } = req.query as unknown as ReportingPeriodQuery;
   await findOwnedPeriod(institutionId, reportingPeriodId);
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
 
   const outcomes = await prisma.studentOutcomeRecord.findMany({
     where: {
       reportingPeriodId,
       employmentStatus: "EMPLOYED",
       employmentStartDate: { not: null },
-      studentEnrollment: { student: { institutionId }, actualCompletionDate: { not: null } },
+      studentEnrollment: {
+        student: { institutionId },
+        actualCompletionDate: { not: null },
+        ...(accessibleProgramIds && { programId: { in: accessibleProgramIds } }),
+      },
     },
     include: { studentEnrollment: { include: { program: { select: { id: true, name: true } } } } },
   });
@@ -111,6 +117,13 @@ export async function timeToEmployment(req: Request, res: Response) {
  * validationEngine.ts's own documented scope limits) full-time rate,
  * verification rate, and wage stats among employment records starting
  * within the given reporting period's date range.
+ *
+ * Deliberately NOT further restricted for a program-scoped caller (project
+ * review, 2026-09-18's access-scoping item): the same schema gap that
+ * blocks a per-program breakdown also blocks scoping this to "only my
+ * programs' placements" — there's no programId to filter by. It stays an
+ * aggregate-only, no-student-or-employer-named number, which is a much
+ * smaller exposure than a list/detail route would be.
  */
 export async function placementQuality(req: Request, res: Response) {
   const institutionId = req.user!.institutionId;
@@ -153,13 +166,17 @@ export async function outcomeFunnel(req: Request, res: Response) {
   const institutionId = req.user!.institutionId;
   const { reportingPeriodId } = req.query as unknown as ReportingPeriodQuery;
   await findOwnedPeriod(institutionId, reportingPeriodId);
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
 
   const completions = await prisma.studentClassification.findMany({
     where: {
       reportingPeriodId,
       metric: "COMPLETION",
       classificationCode: { in: ["GRADUATE_COMPLETER", "NON_GRADUATE_COMPLETER"] },
-      studentEnrollment: { student: { institutionId } },
+      studentEnrollment: {
+        student: { institutionId },
+        ...(accessibleProgramIds && { programId: { in: accessibleProgramIds } }),
+      },
     },
     select: { studentEnrollmentId: true },
   });
@@ -233,13 +250,17 @@ export async function unknownOutcomes(req: Request, res: Response) {
   const institutionId = req.user!.institutionId;
   const { reportingPeriodId } = req.query as unknown as ReportingPeriodQuery;
   await findOwnedPeriod(institutionId, reportingPeriodId);
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
 
   const seekingOrUnknown = await prisma.studentClassification.findMany({
     where: {
       reportingPeriodId,
       metric: "PLACEMENT",
       classificationCode: "SEEKING_OR_UNKNOWN",
-      studentEnrollment: { student: { institutionId } },
+      studentEnrollment: {
+        student: { institutionId },
+        ...(accessibleProgramIds && { programId: { in: accessibleProgramIds } }),
+      },
     },
     include: {
       studentEnrollment: {
@@ -252,7 +273,11 @@ export async function unknownOutcomes(req: Request, res: Response) {
   });
 
   const missingOutcomeIssues = await prisma.validationIssue.findMany({
-    where: { reportingPeriodId, issueType: "MISSING_OUTCOME_RECORD" },
+    where: {
+      reportingPeriodId,
+      issueType: "MISSING_OUTCOME_RECORD",
+      ...(accessibleProgramIds && { programId: { in: accessibleProgramIds } }),
+    },
     include: {
       student: { select: { id: true, firstName: true, lastName: true } },
       program: { select: { id: true, name: true } },
@@ -297,6 +322,7 @@ export async function unknownOutcomes(req: Request, res: Response) {
  */
 export async function followUpEffectiveness(req: Request, res: Response) {
   const institutionId = req.user!.institutionId;
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
 
   const RESOLVING_OUTCOMES = new Set([
     "EMPLOYMENT_REPORTED",
@@ -308,7 +334,12 @@ export async function followUpEffectiveness(req: Request, res: Response) {
   ]);
 
   const attempts = await prisma.followUpAttempt.findMany({
-    where: { student: { institutionId } },
+    where: {
+      student: {
+        institutionId,
+        ...(accessibleProgramIds && { enrollments: { some: { programId: { in: accessibleProgramIds } } } }),
+      },
+    },
     include: { staffUser: { select: { id: true, name: true } } },
   });
 
@@ -372,9 +403,16 @@ const SKILL_DIMENSION_LABELS: Record<SkillDimension, string> = {
  * stronger link available; a student with no completed enrollment on file is
  * counted in the institution-wide averages but can't be attributed to a
  * program row.
+ *
+ * `byProgram` is filtered to a program-scoped caller's assigned programs
+ * (project review, 2026-09-18); `institutionAverages`/`totalResponses` stay
+ * whole-institution even for a scoped caller, the same reasoning
+ * placementQuality() above documents — they're an aggregate baseline with no
+ * student or program named, not a list of records to leak.
  */
 export async function skillsGapAnalysis(req: Request, res: Response) {
   const institutionId = req.user!.institutionId;
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
 
   const responses = await prisma.employerSurveyResponse.findMany({
     where: { survey: { student: { institutionId } } },
@@ -443,7 +481,9 @@ export async function skillsGapAnalysis(req: Request, res: Response) {
     SKILL_DIMENSIONS.map((d) => [d, average(institutionRatings[d])]),
   ) as Record<SkillDimension, number | null>;
 
-  const byProgramRows = [...byProgram.values()].map((agg) => {
+  const byProgramRows = [...byProgram.values()]
+    .filter((agg) => !accessibleProgramIds || accessibleProgramIds.includes(agg.program.id))
+    .map((agg) => {
     const averages = Object.fromEntries(
       SKILL_DIMENSIONS.map((d) => [d, average(agg.ratings[d])]),
     ) as Record<SkillDimension, number | null>;

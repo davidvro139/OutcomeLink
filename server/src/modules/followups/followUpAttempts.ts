@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { FOLLOW_UP_METHODS, FOLLOW_UP_OUTCOMES } from "@outcomelink/shared";
 import { z } from "zod";
+import { getAccessibleProgramIds, studentProgramScopeFilter } from "../../lib/accessScope";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { recordCommunicationEvent } from "../../lib/communicationEvents";
@@ -24,9 +25,13 @@ export const bulkCreateFollowUpAttemptSchema = createFollowUpAttemptSchema.exten
 });
 type BulkCreateFollowUpAttemptInput = z.infer<typeof bulkCreateFollowUpAttemptSchema>;
 
-async function findOwnedStudent(institutionId: number, studentId: number) {
+async function findOwnedStudent(
+  institutionId: number,
+  studentId: number,
+  accessibleProgramIds: number[] | null,
+) {
   const student = await prisma.student.findFirst({
-    where: { id: studentId, institutionId },
+    where: { id: studentId, institutionId, ...studentProgramScopeFilter(accessibleProgramIds) },
     include: { communicationPreference: true },
   });
   if (!student) throw ApiError.notFound("Student not found");
@@ -35,7 +40,8 @@ async function findOwnedStudent(institutionId: number, studentId: number) {
 
 export async function list(req: Request, res: Response) {
   const studentId = Number(req.params.studentId);
-  await findOwnedStudent(req.user!.institutionId, studentId);
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+  await findOwnedStudent(req.user!.institutionId, studentId, accessibleProgramIds);
   const followUpAttempts = await prisma.followUpAttempt.findMany({
     where: { studentId },
     orderBy: { attemptedAt: "desc" },
@@ -49,7 +55,8 @@ export async function create(
   res: Response,
 ) {
   const studentId = Number(req.params.studentId);
-  const student = await findOwnedStudent(req.user!.institutionId, studentId);
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+  const student = await findOwnedStudent(req.user!.institutionId, studentId, accessibleProgramIds);
 
   // Consent enforcement (spec §11): a contact method the student opted out of
   // shouldn't be used. We record what actually happened rather than silently
@@ -92,9 +99,10 @@ export async function bulkCreate(
 ) {
   const { studentIds, ...attempt } = req.body;
   const institutionId = req.user!.institutionId;
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
 
   const students = await prisma.student.findMany({
-    where: { id: { in: studentIds }, institutionId },
+    where: { id: { in: studentIds }, institutionId, ...studentProgramScopeFilter(accessibleProgramIds) },
     include: { communicationPreference: true },
   });
   const studentsById = new Map(students.map((s) => [s.id, s]));

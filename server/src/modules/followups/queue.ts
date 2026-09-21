@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { FOLLOW_UP_OUTCOMES } from "@outcomelink/shared";
 import { z } from "zod";
+import { getAccessibleProgramIds } from "../../lib/accessScope";
 import { sendPaginated, toPagination } from "../../lib/apiResponse";
 import { paginationQuerySchema } from "../../lib/pagination";
 import { prisma } from "../../lib/prisma";
@@ -42,13 +43,21 @@ export async function queue(req: Request, res: Response) {
     minDaysOverdue,
   } = req.query as unknown as FollowUpQueueQuery;
   const institutionId = req.user!.institutionId;
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+
+  // Combined via AND on the same `enrollments.some` check rather than two
+  // separate top-level `enrollments` keys (which would collide — the second
+  // would silently replace the first, e.g. dropping a `?programId=` filter
+  // and effectively removing the access-scope check).
+  const enrollmentConditions = [
+    ...(programId || campusId ? [{ programId, campusId }] : []),
+    ...(accessibleProgramIds ? [{ programId: { in: accessibleProgramIds } }] : []),
+  ];
 
   const students = await prisma.student.findMany({
     where: {
       institutionId,
-      ...((programId || campusId) && {
-        enrollments: { some: { programId, campusId } },
-      }),
+      ...(enrollmentConditions.length > 0 && { enrollments: { some: { AND: enrollmentConditions } } }),
       ...(staffUserId && { followUpAttempts: { some: { staffUserId } } }),
     },
     include: {

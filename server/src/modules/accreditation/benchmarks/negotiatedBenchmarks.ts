@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { CPL_METRICS, type CplMetric } from "@outcomelink/shared";
 import { z } from "zod";
+import { getAccessibleProgramIds } from "../../../lib/accessScope";
 import { ApiError } from "../../../lib/apiError";
 import { sendData } from "../../../lib/apiResponse";
 import { prisma } from "../../../lib/prisma";
@@ -14,7 +15,14 @@ export const createNegotiatedBenchmarkSchema = z.object({
 });
 type CreateNegotiatedBenchmarkInput = z.infer<typeof createNegotiatedBenchmarkSchema>;
 
-async function findOwnedProgram(institutionId: number, programId: number) {
+async function findOwnedProgram(
+  institutionId: number,
+  programId: number,
+  accessibleProgramIds: number[] | null,
+) {
+  if (accessibleProgramIds && !accessibleProgramIds.includes(programId)) {
+    throw ApiError.notFound("Program not found");
+  }
   const program = await prisma.program.findFirst({ where: { id: programId, institutionId } });
   if (!program) throw ApiError.notFound("Program not found");
   return program;
@@ -22,7 +30,8 @@ async function findOwnedProgram(institutionId: number, programId: number) {
 
 export async function list(req: Request, res: Response) {
   const programId = Number(req.params.programId);
-  await findOwnedProgram(req.user!.institutionId, programId);
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+  await findOwnedProgram(req.user!.institutionId, programId, accessibleProgramIds);
   const negotiatedBenchmarks = await prisma.negotiatedBenchmark.findMany({
     where: { programId },
     orderBy: { effectiveStartDate: "desc" },
@@ -35,7 +44,8 @@ export async function create(
   res: Response,
 ) {
   const programId = Number(req.params.programId);
-  await findOwnedProgram(req.user!.institutionId, programId);
+  // SYSTEM_ADMINISTRATOR-only route (see programs.routes.ts) — never a scoped role, so no lookup needed.
+  await findOwnedProgram(req.user!.institutionId, programId, null);
 
   if (req.body.effectiveEndDate && req.body.effectiveEndDate <= req.body.effectiveStartDate) {
     throw ApiError.badRequest("effectiveEndDate must be after effectiveStartDate");

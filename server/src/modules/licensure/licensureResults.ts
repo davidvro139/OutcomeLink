@@ -1,6 +1,11 @@
 import type { Request, Response } from "express";
 import { LICENSURE_RESULT_STATUSES } from "@outcomelink/shared";
 import { z } from "zod";
+import {
+  assertProgramAccessible,
+  getAccessibleProgramIds,
+  studentProgramScopeFilter,
+} from "../../lib/accessScope";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { prisma } from "../../lib/prisma";
@@ -19,15 +24,22 @@ type CreateLicensureResultInput = z.infer<typeof createLicensureResultSchema>;
 export const updateLicensureResultSchema = createLicensureResultSchema.partial();
 type UpdateLicensureResultInput = z.infer<typeof updateLicensureResultSchema>;
 
-async function findOwnedStudent(institutionId: number, studentId: number) {
-  const student = await prisma.student.findFirst({ where: { id: studentId, institutionId } });
+async function findOwnedStudent(
+  institutionId: number,
+  studentId: number,
+  accessibleProgramIds: number[] | null,
+) {
+  const student = await prisma.student.findFirst({
+    where: { id: studentId, institutionId, ...studentProgramScopeFilter(accessibleProgramIds) },
+  });
   if (!student) throw ApiError.notFound("Student not found");
   return student;
 }
 
 export async function list(req: Request, res: Response) {
   const studentId = Number(req.params.studentId);
-  await findOwnedStudent(req.user!.institutionId, studentId);
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+  await findOwnedStudent(req.user!.institutionId, studentId, accessibleProgramIds);
   const licensureResults = await prisma.licensureResult.findMany({
     where: { studentId },
     orderBy: [{ programId: "asc" }, { attemptNumber: "asc" }],
@@ -42,7 +54,9 @@ export async function create(
 ) {
   const studentId = Number(req.params.studentId);
   const institutionId = req.user!.institutionId;
-  await findOwnedStudent(institutionId, studentId);
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+  await findOwnedStudent(institutionId, studentId, accessibleProgramIds);
+  assertProgramAccessible(req.body.programId, accessibleProgramIds);
 
   const program = await prisma.program.findFirst({
     where: { id: req.body.programId, institutionId },
@@ -67,10 +81,13 @@ export async function update(
 ) {
   const studentId = Number(req.params.studentId);
   const id = Number(req.params.id);
-  await findOwnedStudent(req.user!.institutionId, studentId);
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+  await findOwnedStudent(req.user!.institutionId, studentId, accessibleProgramIds);
+  assertProgramAccessible(req.body.programId, accessibleProgramIds);
 
   const existing = await prisma.licensureResult.findFirst({ where: { id, studentId } });
   if (!existing) throw ApiError.notFound("Licensure result not found");
+  assertProgramAccessible(existing.programId, accessibleProgramIds);
 
   const licensureResult = await prisma.licensureResult.update({ where: { id }, data: req.body });
   sendData(res, { licensureResult });

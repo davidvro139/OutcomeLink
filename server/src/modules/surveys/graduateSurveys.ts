@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Request, Response } from "express";
 import { z } from "zod";
+import { getAccessibleProgramIds, studentProgramScopeFilter } from "../../lib/accessScope";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { recordCommunicationEvent } from "../../lib/communicationEvents";
@@ -11,15 +12,22 @@ export const createGraduateSurveySchema = z.object({
 });
 type CreateGraduateSurveyInput = z.infer<typeof createGraduateSurveySchema>;
 
-async function findOwnedStudent(institutionId: number, studentId: number) {
-  const student = await prisma.student.findFirst({ where: { id: studentId, institutionId } });
+async function findOwnedStudent(
+  institutionId: number,
+  studentId: number,
+  accessibleProgramIds: number[] | null,
+) {
+  const student = await prisma.student.findFirst({
+    where: { id: studentId, institutionId, ...studentProgramScopeFilter(accessibleProgramIds) },
+  });
   if (!student) throw ApiError.notFound("Student not found");
   return student;
 }
 
 export async function list(req: Request, res: Response) {
   const studentId = Number(req.params.studentId);
-  await findOwnedStudent(req.user!.institutionId, studentId);
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+  await findOwnedStudent(req.user!.institutionId, studentId, accessibleProgramIds);
 
   const surveys = await prisma.graduateSurvey.findMany({
     where: { studentId },
@@ -34,7 +42,8 @@ export async function create(
   res: Response,
 ) {
   const studentId = Number(req.params.studentId);
-  await findOwnedStudent(req.user!.institutionId, studentId);
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+  await findOwnedStudent(req.user!.institutionId, studentId, accessibleProgramIds);
 
   const survey = await prisma.graduateSurvey.create({
     data: {

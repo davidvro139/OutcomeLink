@@ -1,12 +1,28 @@
 import type { Request, Response } from "express";
 import { CPL_METRICS } from "@outcomelink/shared";
 import { z } from "zod";
+import { assertProgramAccessible, getAccessibleProgramIds } from "../../lib/accessScope";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { prisma } from "../../lib/prisma";
 import { sendXlsx } from "../../lib/xlsx";
 import { computeReportingPeriod } from "./calculators/cplCalculator";
 import { assertPeriodIsEditable } from "./reportingPeriods";
+
+/**
+ * Combines a specific requested `programId` (already validated as accessible
+ * by the caller) with a scoped user's whole accessible set when none was
+ * requested — never both at once, since `programId` can't appear twice in
+ * the same `where`/nested filter object.
+ */
+function programScopeCondition(
+  programId: number | undefined,
+  accessibleProgramIds: number[] | null,
+): { programId?: number | { in: number[] } } {
+  if (programId !== undefined) return { programId };
+  if (accessibleProgramIds) return { programId: { in: accessibleProgramIds } };
+  return {};
+}
 
 async function findOwnedPeriod(institutionId: number, reportingPeriodId: number) {
   const period = await prisma.reportingPeriod.findFirst({
@@ -32,9 +48,11 @@ export async function listResults(req: Request, res: Response) {
   const reportingPeriodId = Number(req.params.id);
   await findOwnedPeriod(req.user!.institutionId, reportingPeriodId);
   const { programId } = req.query as unknown as z.infer<typeof listResultsQuerySchema>;
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+  assertProgramAccessible(programId, accessibleProgramIds);
 
   const results = await prisma.cplCalculationResult.findMany({
-    where: { reportingPeriodId, programId },
+    where: { reportingPeriodId, ...programScopeCondition(programId, accessibleProgramIds) },
     include: { program: { select: { id: true, name: true } } },
     orderBy: [{ programId: "asc" }, { metric: "asc" }],
   });
@@ -45,9 +63,10 @@ export async function listResults(req: Request, res: Response) {
 export async function exportResults(req: Request, res: Response) {
   const reportingPeriodId = Number(req.params.id);
   const period = await findOwnedPeriod(req.user!.institutionId, reportingPeriodId);
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
 
   const results = await prisma.cplCalculationResult.findMany({
-    where: { reportingPeriodId },
+    where: { reportingPeriodId, ...programScopeCondition(undefined, accessibleProgramIds) },
     include: { program: { select: { id: true, name: true } } },
     orderBy: [{ programId: "asc" }, { metric: "asc" }],
   });
@@ -85,6 +104,8 @@ export async function drillDown(req: Request, res: Response) {
   const reportingPeriodId = Number(req.params.id);
   await findOwnedPeriod(req.user!.institutionId, reportingPeriodId);
   const { metric, programId, bucket } = req.query as unknown as DrillDownQuery;
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+  assertProgramAccessible(programId, accessibleProgramIds);
 
   const bucketFilter =
     bucket === "numerator"
@@ -98,7 +119,7 @@ export async function drillDown(req: Request, res: Response) {
       reportingPeriodId,
       metric,
       explanation: bucketFilter,
-      studentEnrollment: { programId },
+      studentEnrollment: programScopeCondition(programId, accessibleProgramIds),
     },
     include: {
       explanation: true,
@@ -127,9 +148,14 @@ export async function studentExplanation(req: Request, res: Response) {
   const reportingPeriodId = Number(req.params.id);
   const enrollmentId = Number(req.params.enrollmentId);
   await findOwnedPeriod(req.user!.institutionId, reportingPeriodId);
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
 
   const enrollment = await prisma.studentEnrollment.findFirst({
-    where: { id: enrollmentId, student: { institutionId: req.user!.institutionId } },
+    where: {
+      id: enrollmentId,
+      student: { institutionId: req.user!.institutionId },
+      ...(accessibleProgramIds && { programId: { in: accessibleProgramIds } }),
+    },
   });
   if (!enrollment) throw ApiError.notFound("Enrollment not found");
 

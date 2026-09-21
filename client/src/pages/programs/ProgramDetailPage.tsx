@@ -65,7 +65,13 @@ export function ProgramDetailPage() {
   }
 
   if (isLoading) return <Loader m="xl" />;
-  if (!program) return null;
+  if (!program) {
+    return (
+      <Text c="dimmed" ta="center" py="xl">
+        Program not found — it may not exist, or you may not have access to it.
+      </Text>
+    );
+  }
 
   const canManage = user && CAN_MANAGE.includes(user.role);
 

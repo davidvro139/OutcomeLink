@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { CPL_METRICS, type CplMetric } from "@outcomelink/shared";
+import { getAccessibleProgramIds } from "../../lib/accessScope";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { prisma } from "../../lib/prisma";
@@ -33,11 +34,16 @@ export async function readiness(req: Request, res: Response) {
   const standardBenchmarks = (
     reportingPeriod.ruleSet.ruleDefinition as { benchmarks?: Record<string, number> }
   )?.benchmarks;
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
 
   const [results, programs, openIssues] = await Promise.all([
     prisma.cplCalculationResult.findMany({ where: { reportingPeriodId, programId: { not: null } } }),
     prisma.program.findMany({
-      where: { institutionId: req.user!.institutionId, active: true },
+      where: {
+        institutionId: req.user!.institutionId,
+        active: true,
+        ...(accessibleProgramIds && { id: { in: accessibleProgramIds } }),
+      },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),

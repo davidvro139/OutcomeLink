@@ -436,6 +436,12 @@ async function main() {
   // Program admins get access to a rotating slice of programs; career services
   // and instructor staff get campus-wide access — both exercised by
   // requireProgramAccess/requireCampusAccess (server/src/middleware/auth.ts).
+  // Program Administrator and Read-Only/Auditor are the two roles the API
+  // actually restricts to this assignment (accessScope.ts's
+  // PROGRAM_SCOPED_ROLES); career services/instructor access is granted the
+  // same way but isn't currently enforced (spec §4: explicitly institution-
+  // wide for Career Services, left institution-wide by product decision for
+  // Instructor/Staff).
   const allProgramIds = [...programRows.values()].map((p) => p.id);
   const admins = usersByRole["PROGRAM_ADMINISTRATOR"] ?? [];
   for (let i = 0; i < admins.length; i++) {
@@ -448,6 +454,14 @@ async function main() {
   for (const staff of [...(usersByRole["CAREER_SERVICES_STAFF"] ?? []), ...(usersByRole["INSTRUCTOR_STAFF"] ?? [])]) {
     await prisma.userCampusAccess.create({ data: { userId: staff.id, campusId: mainCampus.id } });
     await prisma.userCampusAccess.create({ data: { userId: staff.id, campusId: northCampus.id } });
+  }
+  // The one seeded auditor is scoped to Main Campus only (via UserCampusAccess,
+  // not UserProgramAccess — proving either grant mechanism works for either
+  // scoped role), so this account has something real to demo/verify against
+  // instead of the fail-closed "sees nothing" default an unassigned scoped
+  // user would otherwise get.
+  for (const auditor of usersByRole["READ_ONLY_AUDITOR"] ?? []) {
+    await prisma.userCampusAccess.create({ data: { userId: auditor.id, campusId: mainCampus.id } });
   }
 
   console.log("Creating employers...");

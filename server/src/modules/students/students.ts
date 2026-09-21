@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import type { Request, Response } from "express";
 import { z } from "zod";
+import { getAccessibleProgramIds, studentProgramScopeFilter } from "../../lib/accessScope";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { paginatedResponse } from "../../lib/crudHelpers";
@@ -46,8 +47,10 @@ export const listStudentsQuerySchema = paginationQuerySchema.extend({
 });
 type ListStudentsQuery = z.infer<typeof listStudentsQuerySchema>;
 
-async function findOwnedStudent(institutionId: number, id: number) {
-  const student = await prisma.student.findFirst({ where: { id, institutionId } });
+async function findOwnedStudent(institutionId: number, id: number, accessibleProgramIds: number[] | null) {
+  const student = await prisma.student.findFirst({
+    where: { id, institutionId, ...studentProgramScopeFilter(accessibleProgramIds) },
+  });
   if (!student) throw ApiError.notFound("Student not found");
   return student;
 }
@@ -55,10 +58,12 @@ async function findOwnedStudent(institutionId: number, id: number) {
 export async function list(req: Request, res: Response) {
   const { page, pageSize, search } = req.query as unknown as ListStudentsQuery;
   const institutionId = req.user!.institutionId;
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
 
   const where: Prisma.StudentWhereInput = {
     institutionId,
     ...(search && studentNameSearchFilter(search)),
+    ...studentProgramScopeFilter(accessibleProgramIds),
   };
 
   await paginatedResponse(
@@ -74,11 +79,13 @@ export async function list(req: Request, res: Response) {
 export async function exportStudents(req: Request, res: Response) {
   const { search } = req.query as unknown as ListStudentsQuery;
   const institutionId = req.user!.institutionId;
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
 
   const students = await prisma.student.findMany({
     where: {
       institutionId,
       ...(search && studentNameSearchFilter(search)),
+      ...studentProgramScopeFilter(accessibleProgramIds),
     },
     include: { communicationPreference: true },
     orderBy: { lastName: "asc" },
@@ -108,8 +115,13 @@ export async function exportStudents(req: Request, res: Response) {
 }
 
 export async function show(req: Request, res: Response) {
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
   const student = await prisma.student.findFirst({
-    where: { id: Number(req.params.id), institutionId: req.user!.institutionId },
+    where: {
+      id: Number(req.params.id),
+      institutionId: req.user!.institutionId,
+      ...studentProgramScopeFilter(accessibleProgramIds),
+    },
     include: { communicationPreference: true },
   });
   if (!student) throw ApiError.notFound("Student not found");
@@ -138,7 +150,8 @@ export async function update(
   res: Response,
 ) {
   const id = Number(req.params.id);
-  await findOwnedStudent(req.user!.institutionId, id);
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+  await findOwnedStudent(req.user!.institutionId, id, accessibleProgramIds);
   const student = await prisma.student.update({ where: { id }, data: req.body });
   sendData(res, { student });
 }

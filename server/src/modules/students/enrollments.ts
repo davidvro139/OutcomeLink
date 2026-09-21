@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { ALLOWABLE_SUBTRACTION_REASONS, ENROLLMENT_STATUSES } from "@outcomelink/shared";
 import { z } from "zod";
+import { assertProgramAccessible, getAccessibleProgramIds, studentProgramScopeFilter } from "../../lib/accessScope";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { prisma } from "../../lib/prisma";
@@ -31,15 +32,22 @@ export const updateEnrollmentSchema = createEnrollmentSchema.partial().extend({
 });
 type UpdateEnrollmentInput = z.infer<typeof updateEnrollmentSchema>;
 
-async function findOwnedStudent(institutionId: number, studentId: number) {
-  const student = await prisma.student.findFirst({ where: { id: studentId, institutionId } });
+async function findOwnedStudent(
+  institutionId: number,
+  studentId: number,
+  accessibleProgramIds: number[] | null,
+) {
+  const student = await prisma.student.findFirst({
+    where: { id: studentId, institutionId, ...studentProgramScopeFilter(accessibleProgramIds) },
+  });
   if (!student) throw ApiError.notFound("Student not found");
   return student;
 }
 
 export async function list(req: Request, res: Response) {
   const studentId = Number(req.params.studentId);
-  await findOwnedStudent(req.user!.institutionId, studentId);
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+  await findOwnedStudent(req.user!.institutionId, studentId, accessibleProgramIds);
   const enrollments = await prisma.studentEnrollment.findMany({
     where: { studentId },
     orderBy: { startDate: "desc" },
@@ -52,7 +60,9 @@ export async function create(
   res: Response,
 ) {
   const studentId = Number(req.params.studentId);
-  await findOwnedStudent(req.user!.institutionId, studentId);
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+  await findOwnedStudent(req.user!.institutionId, studentId, accessibleProgramIds);
+  assertProgramAccessible(req.body.programId, accessibleProgramIds);
   const enrollment = await prisma.studentEnrollment.create({ data: { ...req.body, studentId } });
   sendData(res, { enrollment }, 201);
 }
@@ -63,10 +73,13 @@ export async function update(
 ) {
   const studentId = Number(req.params.studentId);
   const id = Number(req.params.id);
-  await findOwnedStudent(req.user!.institutionId, studentId);
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+  await findOwnedStudent(req.user!.institutionId, studentId, accessibleProgramIds);
+  assertProgramAccessible(req.body.programId, accessibleProgramIds);
 
   const existing = await prisma.studentEnrollment.findFirst({ where: { id, studentId } });
   if (!existing) throw ApiError.notFound("Enrollment not found");
+  assertProgramAccessible(existing.programId, accessibleProgramIds);
 
   const enrollment = await prisma.studentEnrollment.update({ where: { id }, data: req.body });
   sendData(res, { enrollment });

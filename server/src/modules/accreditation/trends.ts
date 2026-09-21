@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { CPL_METRICS, type CplMetric } from "@outcomelink/shared";
 import { z } from "zod";
+import { getAccessibleProgramIds } from "../../lib/accessScope";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { prisma } from "../../lib/prisma";
@@ -27,6 +28,10 @@ export async function trends(req: Request, res: Response) {
   const { programId } = req.query as unknown as TrendsQuery;
 
   if (programId) {
+    const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+    if (accessibleProgramIds && !accessibleProgramIds.includes(programId)) {
+      throw ApiError.badRequest("Unknown programId");
+    }
     const program = await prisma.program.findFirst({ where: { id: programId, institutionId } });
     if (!program) throw ApiError.badRequest("Unknown programId");
   }

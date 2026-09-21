@@ -1,10 +1,18 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
+import { getAccessibleProgramIds } from "../../lib/accessScope";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { prisma } from "../../lib/prisma";
 import { sendXlsx } from "../../lib/xlsx";
 import { runValidation } from "./validators/validationEngine";
+
+/** A null programId (e.g. a duplicate-student issue) isn't owned by any one program, so it's visible to every scoped role. */
+function issueProgramScopeFilter(accessibleProgramIds: number[] | null) {
+  return accessibleProgramIds
+    ? { OR: [{ programId: null }, { programId: { in: accessibleProgramIds } }] }
+    : {};
+}
 
 async function findOwnedPeriod(institutionId: number, reportingPeriodId: number) {
   const period = await prisma.reportingPeriod.findFirst({
@@ -31,12 +39,14 @@ export async function listIssues(req: Request, res: Response) {
   const reportingPeriodId = Number(req.params.id);
   await findOwnedPeriod(req.user!.institutionId, reportingPeriodId);
   const { severity, includeResolved } = req.query as unknown as ListIssuesQuery;
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
 
   const issues = await prisma.validationIssue.findMany({
     where: {
       reportingPeriodId,
       severity,
       ...(includeResolved ? {} : { resolvedAt: null }),
+      ...issueProgramScopeFilter(accessibleProgramIds),
     },
     include: {
       student: { select: { id: true, firstName: true, lastName: true } },
@@ -52,12 +62,14 @@ export async function exportIssues(req: Request, res: Response) {
   const reportingPeriodId = Number(req.params.id);
   const period = await findOwnedPeriod(req.user!.institutionId, reportingPeriodId);
   const { severity, includeResolved } = req.query as unknown as ListIssuesQuery;
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
 
   const issues = await prisma.validationIssue.findMany({
     where: {
       reportingPeriodId,
       severity,
       ...(includeResolved ? {} : { resolvedAt: null }),
+      ...issueProgramScopeFilter(accessibleProgramIds),
     },
     include: {
       student: { select: { id: true, firstName: true, lastName: true } },
@@ -95,9 +107,10 @@ export async function resolveIssue(req: Request, res: Response) {
   const reportingPeriodId = Number(req.params.id);
   const issueId = Number(req.params.issueId);
   await findOwnedPeriod(req.user!.institutionId, reportingPeriodId);
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
 
   const issue = await prisma.validationIssue.findFirst({
-    where: { id: issueId, reportingPeriodId },
+    where: { id: issueId, reportingPeriodId, ...issueProgramScopeFilter(accessibleProgramIds) },
   });
   if (!issue) throw ApiError.notFound("Validation issue not found");
 
@@ -133,6 +146,7 @@ export async function bulkResolveIssues(
   const reportingPeriodId = Number(req.params.id);
   await findOwnedPeriod(req.user!.institutionId, reportingPeriodId);
   const { issueIds } = req.body;
+  const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
 
   const user = await prisma.user.findUnique({
     where: { id: req.user!.sub },
@@ -140,7 +154,12 @@ export async function bulkResolveIssues(
   });
 
   const result = await prisma.validationIssue.updateMany({
-    where: { id: { in: issueIds }, reportingPeriodId, resolvedAt: null },
+    where: {
+      id: { in: issueIds },
+      reportingPeriodId,
+      resolvedAt: null,
+      ...issueProgramScopeFilter(accessibleProgramIds),
+    },
     data: { resolvedAt: new Date(), resolvedBy: user?.name ?? String(req.user!.sub) },
   });
   sendData(res, { resolvedCount: result.count });

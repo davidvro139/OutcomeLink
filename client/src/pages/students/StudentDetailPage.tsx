@@ -17,7 +17,13 @@ export function StudentDetailPage() {
   const upsertPreference = useUpsertCommunicationPreference(studentId);
 
   if (isLoading) return <Loader m="xl" />;
-  if (!student) return null;
+  if (!student) {
+    return (
+      <Text c="dimmed" ta="center" py="xl">
+        Student not found — they may not exist, or you may not have access to them.
+      </Text>
+    );
+  }
 
   async function handleDoNotContactToggle(checked: boolean) {
     try {

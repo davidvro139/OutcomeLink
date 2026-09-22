@@ -32,18 +32,46 @@ import { useAuth } from "../auth/AuthContext";
 import { GlobalSearch } from "../components/GlobalSearch";
 import { NotificationBell } from "../components/NotificationBell";
 
-const NAV_ITEMS = [
-  { to: "/", label: "Dashboard", icon: IconLayoutDashboard },
-  { to: "/programs", label: "Programs", icon: IconSchool },
-  { to: "/students", label: "Students", icon: IconUsers },
-  { to: "/employers", label: "Employers", icon: IconBriefcase },
-  { to: "/followups", label: "Follow-Up Queue", icon: IconClipboardCheck },
-  { to: "/licensure", label: "Licensure Queue", icon: IconCertificate },
-  { to: "/imports", label: "Bulk Import", icon: IconUpload },
-  { to: "/accreditation/reporting-periods", label: "Accreditation", icon: IconChartBar },
-  { to: "/accreditation/trends", label: "Trends", icon: IconTrendingUp },
-  { to: "/report-builder", label: "Report Builder", icon: IconReportAnalytics },
-  { to: "/users", label: "Users", icon: IconUserCog },
+interface NavItem {
+  to: string;
+  label: string;
+  icon: typeof IconLayoutDashboard;
+}
+
+// Grouped per the user's own note in docs/TODO.md ("category/section
+// division in the left menu to help organize") — a flat list of 11 items
+// had grown hard to scan. `label: null` renders with no section header
+// (just Dashboard, since it isn't really a category of its own).
+const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
+  {
+    label: null,
+    items: [{ to: "/", label: "Dashboard", icon: IconLayoutDashboard }],
+  },
+  {
+    label: "Students & Outcomes",
+    items: [
+      { to: "/programs", label: "Programs", icon: IconSchool },
+      { to: "/students", label: "Students", icon: IconUsers },
+      { to: "/employers", label: "Employers", icon: IconBriefcase },
+      { to: "/followups", label: "Follow-Up Queue", icon: IconClipboardCheck },
+      { to: "/licensure", label: "Licensure Queue", icon: IconCertificate },
+    ],
+  },
+  {
+    label: "Accreditation",
+    items: [
+      { to: "/accreditation/reporting-periods", label: "Accreditation", icon: IconChartBar },
+      { to: "/accreditation/trends", label: "Trends", icon: IconTrendingUp },
+      { to: "/report-builder", label: "Report Builder", icon: IconReportAnalytics },
+    ],
+  },
+  {
+    label: "Administration",
+    items: [
+      { to: "/imports", label: "Bulk Import", icon: IconUpload },
+      { to: "/users", label: "Users", icon: IconUserCog },
+    ],
+  },
 ];
 
 /** The authenticated app shell: header with search + user menu, navbar, content area for routed pages. */
@@ -121,21 +149,30 @@ export function AppLayout() {
       </AppShell.Header>
 
       <AppShell.Navbar p="md">
-        <Stack gap={4}>
-          {NAV_ITEMS.map((item) => (
-            <NavLink
-              key={item.to}
-              component={Link}
-              to={item.to}
-              label={item.label}
-              leftSection={<item.icon size={18} />}
-              active={
-                item.to === "/"
-                  ? location.pathname === "/"
-                  : location.pathname.startsWith(item.to)
-              }
-              onClick={closeNav}
-            />
+        <Stack gap="lg">
+          {NAV_SECTIONS.map((section) => (
+            <Stack key={section.label ?? "top"} gap={4}>
+              {section.label && (
+                <Text size="xs" fw={700} c="dimmed" tt="uppercase" px={8}>
+                  {section.label}
+                </Text>
+              )}
+              {section.items.map((item) => (
+                <NavLink
+                  key={item.to}
+                  component={Link}
+                  to={item.to}
+                  label={item.label}
+                  leftSection={<item.icon size={18} />}
+                  active={
+                    item.to === "/"
+                      ? location.pathname === "/"
+                      : location.pathname.startsWith(item.to)
+                  }
+                  onClick={closeNav}
+                />
+              ))}
+            </Stack>
           ))}
         </Stack>
       </AppShell.Navbar>

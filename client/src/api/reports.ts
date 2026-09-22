@@ -1,6 +1,32 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "../lib/apiClient";
 
+export interface PlacementLocation {
+  key: string;
+  city: string | null;
+  state: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  placementCount: number;
+  employers: { id: number; name: string; placementCount: number }[];
+}
+
+export interface GeographicPlacementsReport {
+  totalPlacements: number;
+  mappedPlacements: number;
+  unmappedPlacements: number;
+  locations: PlacementLocation[];
+}
+
+export function useGeographicPlacementsReport(reportingPeriodId: number) {
+  return useQuery({
+    queryKey: ["reports", "geographic-placements", reportingPeriodId],
+    queryFn: () => apiRequest<GeographicPlacementsReport>(
+      `/api/reports/geographic-placements?reportingPeriodId=${reportingPeriodId}`,
+    ),
+  });
+}
+
 export interface TimeToEmploymentReport {
   overall: { count: number; averageDays: number | null; medianDays: number | null };
   distribution: { immediate30: number; days31to60: number; days61to90: number; over90: number };

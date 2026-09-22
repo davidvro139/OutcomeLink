@@ -62,6 +62,20 @@ export function useEmployer(id: number | undefined) {
   });
 }
 
+export function useUpdateEmployerLocation(id: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (location: { city: string; state: string }) =>
+      apiRequest(`/api/employers/${id}`, { method: "PATCH", body: JSON.stringify(location) }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["employers"] }),
+        queryClient.invalidateQueries({ queryKey: ["reports", "geographic-placements"] }),
+      ]);
+    },
+  });
+}
+
 export function useCreateEmployer() {
   const queryClient = useQueryClient();
   return useMutation({

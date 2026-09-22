@@ -5,9 +5,17 @@ import { requireAuth, requireRole } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
 import { exportCustomReport, runCustomReport, runReportSchema } from "./customReportBuilder";
 import * as reports from "./reports";
+import { geographicPlacements } from "./geographicPlacements";
 import * as savedReports from "./savedReports";
 
 export const reportsRouter = Router();
+
+reportsRouter.get(
+  "/geographic-placements",
+  requireAuth,
+  validate(reports.reportingPeriodQuerySchema, "query"),
+  asyncHandler(geographicPlacements),
+);
 
 reportsRouter.post(
   "/custom/run",

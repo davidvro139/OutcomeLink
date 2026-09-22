@@ -18,6 +18,7 @@ import { useParams } from "react-router-dom";
 import { type CreateContactInput, useCreateContact, useEmployer } from "../../api/employers";
 import { AuditHistory } from "../../components/AuditHistory";
 import { stripEmptyStrings } from "../../lib/forms";
+import { EmployerLocationPanel } from "./EmployerLocationPanel";
 
 export function EmployerDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -90,6 +91,7 @@ export function EmployerDetailPage() {
         </Table.Tbody>
       </Table>
 
+      <EmployerLocationPanel key={`${employer.id}:${employer.city}:${employer.state}`} employer={employer} />
       <AuditHistory entityType="Employer" entityId={employerId} />
 
       <Modal opened={opened} onClose={close} title="Add Contact">

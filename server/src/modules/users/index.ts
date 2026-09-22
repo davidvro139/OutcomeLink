@@ -1,1 +1,1 @@
-export { usersRouter } from "./users.routes";
+export { publicUsersRouter, usersRouter } from "./users.routes";

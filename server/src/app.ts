@@ -23,7 +23,7 @@ import { scheduledReportsRouter } from "./modules/scheduledReports";
 import { searchRouter } from "./modules/search";
 import { studentsRouter } from "./modules/students";
 import { publicSurveysRouter, surveysRouter } from "./modules/surveys";
-import { usersRouter } from "./modules/users";
+import { publicUsersRouter, usersRouter } from "./modules/users";
 
 export function createApp() {
   const app = express();
@@ -58,6 +58,7 @@ export function createApp() {
   app.use("/api/reports", reportsRouter);
   app.use("/api", surveysRouter);
   app.use("/api/public/surveys", publicSurveysRouter);
+  app.use("/api/public/set-password", publicUsersRouter);
   app.use("/api/imports", importsRouter);
   app.use("/api/notifications", notificationsRouter);
   app.use("/api/scheduled-reports", scheduledReportsRouter);

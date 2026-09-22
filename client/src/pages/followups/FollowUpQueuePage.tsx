@@ -1,9 +1,46 @@
-import { Anchor, Badge, Button, Checkbox, Group, Loader, NumberInput, Stack, Table, Text, Title } from "@mantine/core";
+import { Anchor, Badge, Button, Checkbox, Group, Loader, NumberInput, Select, Stack, Table, Text, Title } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+import { notifications } from "@mantine/notifications";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useFollowUpQueue } from "../../api/followups";
+import { useAssignFollowUp, useFollowUpQueue } from "../../api/followups";
+import { useUsers } from "../../api/users";
+import { BulkAssignModal } from "./BulkAssignModal";
 import { BulkFollowUpModal } from "./BulkFollowUpModal";
+
+function AssignedToCell({ studentId, assignedTo }: { studentId: number; assignedTo: { id: number; name: string } | null }) {
+  const { data: staff } = useUsers();
+  const assign = useAssignFollowUp();
+
+  async function handleChange(value: string | null) {
+    try {
+      await assign.mutateAsync({ studentId, staffUserId: value ? Number(value) : null });
+    } catch (err) {
+      notifications.show({
+        message: err instanceof Error ? err.message : "Failed to assign",
+        color: "red",
+      });
+    }
+  }
+
+  const staffOptions = (staff ?? [])
+    .filter((u) => u.role !== "READ_ONLY_AUDITOR")
+    .map((u) => ({ value: String(u.id), label: u.name }));
+
+  return (
+    <Select
+      placeholder="Unassigned"
+      data={staffOptions}
+      value={assignedTo ? String(assignedTo.id) : null}
+      onChange={handleChange}
+      clearable
+      searchable
+      size="xs"
+      w={180}
+      disabled={assign.isPending}
+    />
+  );
+}
 
 /** Spec §12: task-oriented follow-up queue with overdue highlighting. */
 export function FollowUpQueuePage() {
@@ -11,6 +48,7 @@ export function FollowUpQueuePage() {
   const { data, isLoading } = useFollowUpQueue({ minDaysOverdue });
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkOpened, { open: openBulk, close: closeBulk }] = useDisclosure(false);
+  const [bulkAssignOpened, { open: openBulkAssign, close: closeBulkAssign }] = useDisclosure(false);
 
   const rows = data?.items ?? [];
   const allSelected = rows.length > 0 && rows.every((row) => selectedIds.has(row.student.id));
@@ -38,6 +76,11 @@ export function FollowUpQueuePage() {
     setSelectedIds(new Set());
   }
 
+  function handleBulkAssignClose() {
+    closeBulkAssign();
+    setSelectedIds(new Set());
+  }
+
   return (
     <Stack p="xl" gap="md">
       <Title order={2}>Follow-Up Queue</Title>
@@ -52,7 +95,12 @@ export function FollowUpQueuePage() {
           min={0}
         />
         {selectedIds.size > 0 && (
-          <Button onClick={openBulk}>Log Follow-Up for {selectedIds.size} Selected</Button>
+          <Group gap="xs">
+            <Button variant="light" onClick={openBulkAssign}>
+              Assign {selectedIds.size} Selected
+            </Button>
+            <Button onClick={openBulk}>Log Follow-Up for {selectedIds.size} Selected</Button>
+          </Group>
         )}
       </Group>
 
@@ -109,7 +157,9 @@ export function FollowUpQueuePage() {
                 <Table.Td>
                   {row.nextFollowUpDate ? new Date(row.nextFollowUpDate).toLocaleDateString() : "—"}
                 </Table.Td>
-                <Table.Td>{row.assignedTo?.name ?? "Unassigned"}</Table.Td>
+                <Table.Td>
+                  <AssignedToCell studentId={row.student.id} assignedTo={row.assignedTo} />
+                </Table.Td>
                 <Table.Td>
                   {row.daysOverdue > 0 ? (
                     <Badge color="red">{row.daysOverdue} days</Badge>
@@ -132,6 +182,12 @@ export function FollowUpQueuePage() {
       <BulkFollowUpModal
         opened={bulkOpened}
         onClose={handleBulkClose}
+        studentIds={[...selectedIds]}
+        studentLabels={studentLabels}
+      />
+      <BulkAssignModal
+        opened={bulkAssignOpened}
+        onClose={handleBulkAssignClose}
         studentIds={[...selectedIds]}
         studentLabels={studentLabels}
       />

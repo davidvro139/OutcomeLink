@@ -1,8 +1,9 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { getAccessibleProgramIds } from "../../lib/accessScope";
+import { getAccessibleProgramIds, getProgramNotificationRecipients } from "../../lib/accessScope";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
+import { createNotification } from "../../lib/notifications";
 import { prisma } from "../../lib/prisma";
 import { sendXlsx } from "../../lib/xlsx";
 import { runValidation } from "./validators/validationEngine";
@@ -24,9 +25,94 @@ async function findOwnedPeriod(institutionId: number, reportingPeriodId: number)
 
 export async function validate(req: Request, res: Response) {
   const reportingPeriodId = Number(req.params.id);
-  await findOwnedPeriod(req.user!.institutionId, reportingPeriodId);
-  await runValidation(reportingPeriodId);
+  const period = await findOwnedPeriod(req.user!.institutionId, reportingPeriodId);
+  await runValidationAndNotify(reportingPeriodId, period.institutionId);
   sendData(res, { validated: true });
+}
+
+function openIssueKey(issue: { issueType: string; studentId: number | null; programId: number | null }): string {
+  return JSON.stringify([issue.issueType, issue.studentId, issue.programId]);
+}
+
+/**
+ * Recipient for a new ERROR-severity issue: that program's configured
+ * ProgramFollowUpOwner (Advanced Workflow Automation, Phase 3, docs/TODO.md)
+ * if one exists, else Program Administrators with access to it, else — for
+ * an issue with no programId at all (e.g. a duplicate-student check) —
+ * institution-wide administrators directly.
+ */
+async function resolveValidationRecipients(
+  programId: number | null,
+  institutionId: number,
+): Promise<{ id: number }[]> {
+  if (programId === null) {
+    return prisma.user.findMany({
+      where: { institutionId, role: { in: ["SYSTEM_ADMINISTRATOR", "INSTITUTIONAL_ADMINISTRATOR"] }, active: true },
+      select: { id: true },
+    });
+  }
+  const owner = await prisma.programFollowUpOwner.findUnique({ where: { programId } });
+  if (owner) return [{ id: owner.staffUserId }];
+  return getProgramNotificationRecipients(programId, institutionId);
+}
+
+/**
+ * Wraps runValidation() with a diff against the issue set open *before* this
+ * run — runValidation deletes and recreates every open issue from scratch
+ * each time, so "notify on new issues" has to compare against what was
+ * already open, not just "an issue got created." Shared by the manual
+ * "Run Validation" button and the nightly automatic re-run (Advanced
+ * Workflow Automation), so both trigger identical notification behavior.
+ * Only ERROR severity notifies — WARNING/INFORMATION would be noisy on
+ * institutions with a lot of open issues. Grouped by recipient, one digest
+ * notification per recipient per run, not one per issue — same anti-spam
+ * shape as the missing-outcomes digest and Scheduled Reports.
+ */
+export async function runValidationAndNotify(reportingPeriodId: number, institutionId: number): Promise<void> {
+  const before = await prisma.validationIssue.findMany({
+    where: { reportingPeriodId, resolvedAt: null },
+    select: { issueType: true, studentId: true, programId: true },
+  });
+  const beforeKeys = new Set(before.map(openIssueKey));
+
+  await runValidation(reportingPeriodId);
+
+  const after = await prisma.validationIssue.findMany({
+    where: { reportingPeriodId, resolvedAt: null, severity: "ERROR" },
+    select: { issueType: true, studentId: true, programId: true },
+  });
+  const newIssues = after.filter((issue) => !beforeKeys.has(openIssueKey(issue)));
+  if (newIssues.length === 0) return;
+
+  const countByProgramId = new Map<number | null, number>();
+  for (const issue of newIssues) {
+    const key = issue.programId ?? null;
+    countByProgramId.set(key, (countByProgramId.get(key) ?? 0) + 1);
+  }
+
+  const period = await prisma.reportingPeriod.findUnique({
+    where: { id: reportingPeriodId },
+    select: { label: true },
+  });
+
+  const countByUserId = new Map<number, number>();
+  for (const [programId, count] of countByProgramId) {
+    for (const recipient of await resolveValidationRecipients(programId, institutionId)) {
+      countByUserId.set(recipient.id, (countByUserId.get(recipient.id) ?? 0) + count);
+    }
+  }
+
+  await Promise.all(
+    [...countByUserId].map(([userId, count]) =>
+      createNotification({
+        userId,
+        type: "VALIDATION_ERROR",
+        message: `${count} new validation error${count === 1 ? "" : "s"} found in "${period?.label ?? reportingPeriodId}".`,
+        referenceEntityType: "ReportingPeriod",
+        referenceEntityId: reportingPeriodId,
+      }),
+    ),
+  );
 }
 
 export const listIssuesQuerySchema = z.object({

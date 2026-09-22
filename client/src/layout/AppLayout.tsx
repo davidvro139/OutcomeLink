@@ -23,6 +23,7 @@ import {
   IconSchool,
   IconTrendingUp,
   IconUpload,
+  IconUserCog,
   IconUsers,
 } from "@tabler/icons-react";
 import { ROLE_LABELS } from "@outcomelink/shared";
@@ -42,6 +43,7 @@ const NAV_ITEMS = [
   { to: "/accreditation/reporting-periods", label: "Accreditation", icon: IconChartBar },
   { to: "/accreditation/trends", label: "Trends", icon: IconTrendingUp },
   { to: "/report-builder", label: "Report Builder", icon: IconReportAnalytics },
+  { to: "/users", label: "Users", icon: IconUserCog },
 ];
 
 /** The authenticated app shell: header with search + user menu, navbar, content area for routed pages. */

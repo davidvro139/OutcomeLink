@@ -325,6 +325,14 @@ model User {
   active        Boolean   @default(true)
   lastLoginAt   DateTime? @map("last_login_at")
   createdAt     DateTime  @default(now()) @map("created_at")
+  // User Administration (docs/TODO.md): one live token at a time, serving both
+  // invitations (an invited user's passwordHash is an unguessable placeholder
+  // until they complete this) and admin-initiated password resets — the same
+  // "no email, so hand out a copyable link" mechanism the Graduate/Employer
+  // Survey system's responseToken already established. Generating a new one
+  // overwrites any previous value, so a stale link is automatically superseded.
+  passwordSetToken          String?   @unique @map("password_set_token")
+  passwordSetTokenExpiresAt DateTime? @map("password_set_token_expires_at")
 
   institution Institution @relation(fields: [institutionId], references: [id])
 

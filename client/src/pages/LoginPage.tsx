@@ -38,16 +38,27 @@ const DEMO_ACCOUNTS: { role: Role; name: string; email: string }[] = [
   { role: "READ_ONLY_AUDITOR", name: "Quinn Alvarado", email: "quinn.alvarado@mwtc.edu" },
 ];
 
+interface LoginLocationState {
+  from?: Location;
+  prefillEmail?: string;
+  successMessage?: string;
+}
+
 export function LoginPage() {
   const { status, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const locationState = location.state as LoginLocationState | undefined;
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  // Read once at mount — e.g. arriving here right after SetPasswordPage
+  // completes, the same way that page's own success is communicated without
+  // a shared server-side session.
+  const [successMessage] = useState(locationState?.successMessage ?? null);
 
   const form = useForm<LoginFormValues>({
-    initialValues: { email: "", password: "" },
+    initialValues: { email: locationState?.prefillEmail ?? "", password: "" },
     validate: {
       email: (value) => (/^\S+@\S+\.\S+$/.test(value) ? null : "Enter a valid email"),
       password: (value) => (value.length > 0 ? null : "Password is required"),
@@ -55,7 +66,7 @@ export function LoginPage() {
   });
 
   if (status === "authenticated") {
-    const destination = (location.state as { from?: Location })?.from?.pathname ?? "/";
+    const destination = locationState?.from?.pathname ?? "/";
     return <Navigate to={destination} replace />;
   }
 
@@ -86,6 +97,8 @@ export function LoginPage() {
               Sign in to continue
             </Text>
           </div>
+
+          {successMessage && <Alert color="green">{successMessage}</Alert>}
 
           {error && (
             <Alert color="red" title="Sign in failed">

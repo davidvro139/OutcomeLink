@@ -17,11 +17,13 @@ import { ProgramDetailPage } from "./pages/programs/ProgramDetailPage";
 import { ProgramsListPage } from "./pages/programs/ProgramsListPage";
 import { ReportBuilderPage } from "./pages/reportBuilder/ReportBuilderPage";
 import { ScheduledReportsPage } from "./pages/reportBuilder/ScheduledReportsPage";
+import { SetPasswordPage } from "./pages/SetPasswordPage";
 import { StudentDetailPage } from "./pages/students/StudentDetailPage";
 import { StudentsListPage } from "./pages/students/StudentsListPage";
 import { EmployerSurveyPage } from "./pages/surveys/EmployerSurveyPage";
 import { GraduateSurveyPage } from "./pages/surveys/GraduateSurveyPage";
 import { DataConnectionsPage } from "./pages/imports/DataConnectionsPage";
+import { UsersPage } from "./pages/users/UsersPage";
 
 function App() {
   return (
@@ -29,6 +31,7 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/survey/graduate/:token" element={<GraduateSurveyPage />} />
       <Route path="/survey/employer/:token" element={<EmployerSurveyPage />} />
+      <Route path="/set-password/:token" element={<SetPasswordPage />} />
       <Route
         element={
           <RequireAuth>
@@ -64,6 +67,8 @@ function App() {
           path="/accreditation/reporting-periods/:id"
           element={<ReportingPeriodDetailPage />}
         />
+
+        <Route path="/users" element={<UsersPage />} />
       </Route>
     </Routes>
   );

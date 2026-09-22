@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
+import { createNotification } from "../../lib/notifications";
 import { prisma } from "../../lib/prisma";
 import { OPERATIONAL_ROLES } from "../../lib/roles";
 import { getUnresolvedOutcomeStudentIds } from "../reports/reports";
@@ -51,14 +52,12 @@ export async function generateMissingOutcomesDigest(
 
   await Promise.all(
     recipients.map((recipient) =>
-      prisma.notification.create({
-        data: {
-          userId: recipient.id,
-          type: "MISSING_OUTCOMES_DIGEST",
-          message,
-          referenceEntityType: "ReportingPeriod",
-          referenceEntityId: reportingPeriodId,
-        },
+      createNotification({
+        userId: recipient.id,
+        type: "MISSING_OUTCOMES_DIGEST",
+        message,
+        referenceEntityType: "ReportingPeriod",
+        referenceEntityId: reportingPeriodId,
       }),
     ),
   );

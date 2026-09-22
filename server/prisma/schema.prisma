@@ -187,6 +187,7 @@ model Institution {
   savedReports          SavedReport[]
   dataSourceConnections DataSourceConnection[]
   scheduledReportSubscriptions ScheduledReportSubscription[]
+  programFollowUpOwners ProgramFollowUpOwner[]
 
   @@map("institutions")
 }
@@ -249,8 +250,29 @@ model Program {
   improvementPlans      ImprovementPlan[]
   userAccess            UserProgramAccess[]
   negotiatedBenchmarks  NegotiatedBenchmark[]
+  followUpOwner         ProgramFollowUpOwner?
 
   @@map("programs")
+}
+
+/// Advanced Workflow Automation (Phase 3, docs/TODO.md): the single staff
+/// member auto-assignment should hand new follow-up work to for this
+/// program. Optional and admin-managed — a program with no row here just
+/// means auto-assignment skips it, same as a student with no assignment at
+/// all today. Distinct from UserProgramAccess (who may *see* this program's
+/// data) — this is specifically "who owns chasing it down."
+model ProgramFollowUpOwner {
+  id            Int      @id @default(autoincrement())
+  institutionId Int      @map("institution_id")
+  programId     Int      @unique @map("program_id")
+  staffUserId   Int      @map("staff_user_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  institution Institution @relation(fields: [institutionId], references: [id])
+  program     Program     @relation(fields: [programId], references: [id])
+  staffUser   User        @relation(fields: [staffUserId], references: [id])
+
+  @@map("program_follow_up_owners")
 }
 
 /// A Commission-approved alternate benchmark for one program+metric, per
@@ -315,6 +337,8 @@ model User {
   notifications    Notification[]
   savedReports     SavedReport[]
   scheduledReportSubscriptions ScheduledReportSubscription[]
+  programFollowUpOwnerOf       ProgramFollowUpOwner[]
+  assignedFollowUpStudents     Student[]                      @relation("StudentFollowUpAssignment")
 
   @@map("users")
 }
@@ -357,8 +381,15 @@ model Student {
   email             String?
   phone             String?
   createdAt         DateTime @default(now()) @map("created_at")
+  // The first *real* follow-up ownership field in the schema (Advanced
+  // Workflow Automation, Phase 3, docs/TODO.md) — distinct from
+  // FollowUpAttempt.staffUserId, which only records who logged one past
+  // attempt. Nullable: unassigned is the correct default until an admin
+  // configures auto-assignment or a staff member assigns by hand.
+  assignedStaffUserId Int?   @map("assigned_staff_user_id")
 
   institution             Institution                     @relation(fields: [institutionId], references: [id])
+  assignedStaffUser       User?                           @relation("StudentFollowUpAssignment", fields: [assignedStaffUserId], references: [id])
   communicationPreference StudentCommunicationPreference?
   enrollments             StudentEnrollment[]
   employmentRecords       EmploymentRecord[]

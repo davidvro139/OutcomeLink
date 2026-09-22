@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import type { ScheduledReportFrequency } from "@outcomelink/shared";
 import type { AccessTokenPayload } from "../../lib/jwt";
+import { createNotification } from "../../lib/notifications";
 import { prisma } from "../../lib/prisma";
 import { scheduledReportStorage } from "../../lib/storage";
 import { buildXlsxBuffer } from "../../lib/xlsx";
@@ -83,28 +84,24 @@ export async function runSubscription(subscriptionId: number) {
       data: { subscriptionId, status: "SUCCESS", fileReference, rowCount: effectiveRowCount },
     });
 
-    await prisma.notification.create({
-      data: {
-        userId: subscription.createdBy,
-        type: "SCHEDULED_REPORT_READY",
-        message: `Your scheduled report "${subscription.name}" ran — ${effectiveRowCount} row${effectiveRowCount === 1 ? "" : "s"}.`,
-        referenceEntityType: "ScheduledReportRun",
-        referenceEntityId: run.id,
-      },
+    await createNotification({
+      userId: subscription.createdBy,
+      type: "SCHEDULED_REPORT_READY",
+      message: `Your scheduled report "${subscription.name}" ran — ${effectiveRowCount} row${effectiveRowCount === 1 ? "" : "s"}.`,
+      referenceEntityType: "ScheduledReportRun",
+      referenceEntityId: run.id,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     run = await prisma.scheduledReportRun.create({
       data: { subscriptionId, status: "FAILED", errorMessage: message },
     });
-    await prisma.notification.create({
-      data: {
-        userId: subscription.createdBy,
-        type: "SCHEDULED_REPORT_READY",
-        message: `Your scheduled report "${subscription.name}" failed to run: ${message}`,
-        referenceEntityType: "ScheduledReportRun",
-        referenceEntityId: run.id,
-      },
+    await createNotification({
+      userId: subscription.createdBy,
+      type: "SCHEDULED_REPORT_READY",
+      message: `Your scheduled report "${subscription.name}" failed to run: ${message}`,
+      referenceEntityType: "ScheduledReportRun",
+      referenceEntityId: run.id,
     });
   }
 

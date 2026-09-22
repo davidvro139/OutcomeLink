@@ -86,3 +86,42 @@ export function assertProgramAccessible(
     throw ApiError.notFound("Program not found");
   }
 }
+
+/**
+ * The reverse direction of getAccessibleProgramIds() — given a program,
+ * which users should hear about it — for Advanced Workflow Automation's
+ * (Phase 3, docs/TODO.md) escalation and validation-issue notifications.
+ * Prefers Program Administrators with access (direct or via campus) to this
+ * specific program; falls back to institution-wide administrators if none
+ * are configured, so a program nobody's been explicitly assigned to still
+ * has someone to notify rather than silently notifying no one.
+ */
+export async function getProgramNotificationRecipients(
+  programId: number,
+  institutionId: number,
+): Promise<{ id: number }[]> {
+  const program = await prisma.program.findUnique({
+    where: { id: programId },
+    select: { campusId: true },
+  });
+  if (!program) return [];
+
+  const programAdmins = await prisma.user.findMany({
+    where: {
+      institutionId,
+      role: "PROGRAM_ADMINISTRATOR",
+      active: true,
+      OR: [
+        { programAccess: { some: { programId } } },
+        { campusAccess: { some: { campusId: program.campusId } } },
+      ],
+    },
+    select: { id: true },
+  });
+  if (programAdmins.length > 0) return programAdmins;
+
+  return prisma.user.findMany({
+    where: { institutionId, role: { in: ["SYSTEM_ADMINISTRATOR", "INSTITUTIONAL_ADMINISTRATOR"] }, active: true },
+    select: { id: true },
+  });
+}

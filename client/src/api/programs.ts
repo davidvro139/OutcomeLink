@@ -133,3 +133,42 @@ export function useCreateNegotiatedBenchmark(programId: number) {
       queryClient.invalidateQueries({ queryKey: ["programs", programId, "negotiated-benchmarks"] }),
   });
 }
+
+export interface ProgramFollowUpOwner {
+  id: number;
+  programId: number;
+  staffUser: { id: number; name: string };
+}
+
+export function useProgramFollowUpOwner(programId: number | undefined) {
+  return useQuery({
+    queryKey: ["programs", programId, "follow-up-owner"],
+    queryFn: () =>
+      apiRequest<{ owner: ProgramFollowUpOwner | null }>(
+        `/api/programs/${programId}/follow-up-owner`,
+      ).then((r) => r.owner),
+    enabled: programId !== undefined,
+  });
+}
+
+export function useSetProgramFollowUpOwner(programId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (staffUserId: number) =>
+      apiRequest<{ owner: ProgramFollowUpOwner }>(`/api/programs/${programId}/follow-up-owner`, {
+        method: "PUT",
+        body: JSON.stringify({ staffUserId }),
+      }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["programs", programId, "follow-up-owner"] }),
+  });
+}
+
+export function useRemoveProgramFollowUpOwner(programId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiRequest(`/api/programs/${programId}/follow-up-owner`, { method: "DELETE" }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["programs", programId, "follow-up-owner"] }),
+  });
+}

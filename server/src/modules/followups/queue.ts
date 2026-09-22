@@ -7,9 +7,10 @@ import { paginationQuerySchema } from "../../lib/pagination";
 import { prisma } from "../../lib/prisma";
 
 /**
- * Follow-Up Queue (spec §12). "Assigned To" is read from the student's most
- * recent follow-up attempt, since the schema has no separate task-assignment
- * concept yet — a student with no attempts shows as unassigned. The
+ * Follow-Up Queue (spec §12). "Assigned To" prefers Student.assignedStaffUserId
+ * — the real ownership field added for Advanced Workflow Automation (Phase 3,
+ * docs/TODO.md) — falling back to whoever logged the most recent follow-up
+ * attempt for students that predate real assignment ever being set. The
  * "Reporting period" filter from the spec is deferred until the outcomes/
  * accreditation modules (a later stage) give us something to filter by.
  *
@@ -58,7 +59,9 @@ export async function queue(req: Request, res: Response) {
     where: {
       institutionId,
       ...(enrollmentConditions.length > 0 && { enrollments: { some: { AND: enrollmentConditions } } }),
-      ...(staffUserId && { followUpAttempts: { some: { staffUserId } } }),
+      ...(staffUserId && {
+        OR: [{ assignedStaffUserId: staffUserId }, { followUpAttempts: { some: { staffUserId } } }],
+      }),
     },
     include: {
       enrollments: {
@@ -75,9 +78,10 @@ export async function queue(req: Request, res: Response) {
         take: 1,
         include: { staffUser: { select: { id: true, name: true } } },
       },
+      assignedStaffUser: { select: { id: true, name: true } },
       _count: { select: { followUpAttempts: true } },
     },
-    orderBy: { lastName: "asc" },
+    orderBy: [{ lastName: "asc" }, { id: "asc" }],
   });
 
   const now = Date.now();
@@ -96,7 +100,7 @@ export async function queue(req: Request, res: Response) {
         lastContact: latest?.attemptedAt ?? null,
         lastOutcome: latest?.outcome ?? null,
         nextFollowUpDate: latest?.nextFollowUpDate ?? null,
-        assignedTo: latest?.staffUser ?? null,
+        assignedTo: student.assignedStaffUser ?? latest?.staffUser ?? null,
         daysOverdue,
       };
     })

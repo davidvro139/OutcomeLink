@@ -24,6 +24,7 @@ import {
   useProgram,
 } from "../../api/programs";
 import { AuditHistory } from "../../components/AuditHistory";
+import { FollowUpOwnerPanel } from "./FollowUpOwnerPanel";
 
 const CAN_MANAGE = ["SYSTEM_ADMINISTRATOR"];
 
@@ -203,6 +204,8 @@ export function ProgramDetailPage() {
           </Text>
         )}
       </Stack>
+
+      <FollowUpOwnerPanel programId={program.id} />
 
       <AuditHistory entityType="Program" entityId={program.id} />
     </Stack>

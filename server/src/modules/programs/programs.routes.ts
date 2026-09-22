@@ -3,6 +3,7 @@ import { asyncHandler } from "../../lib/asyncHandler";
 import { requireAuth, requireRole } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
 import { negotiatedBenchmarks } from "../accreditation/benchmarks";
+import * as followUpOwners from "../followups/programFollowUpOwners";
 import * as campuses from "./campuses";
 import * as cohorts from "./cohorts";
 import * as departments from "./departments";
@@ -10,6 +11,7 @@ import * as institution from "./institution";
 import * as programs from "./programs";
 
 const SYSTEM_ADMIN = "SYSTEM_ADMINISTRATOR" as const;
+const CAN_MANAGE_FOLLOW_UP_OWNERS = [SYSTEM_ADMIN, "INSTITUTIONAL_ADMINISTRATOR"] as const;
 
 export const programsRouter = Router();
 
@@ -146,4 +148,27 @@ programsRouter.post(
   requireRole(SYSTEM_ADMIN),
   validate(negotiatedBenchmarks.createNegotiatedBenchmarkSchema),
   asyncHandler(negotiatedBenchmarks.create),
+);
+
+// Follow-up owner (nested under a program) — Advanced Workflow Automation
+// (Phase 3, docs/TODO.md): the one staff member auto-assignment hands new
+// follow-up work to for this program.
+programsRouter.get(
+  "/programs/:programId/follow-up-owner",
+  requireAuth,
+  requireRole(...CAN_MANAGE_FOLLOW_UP_OWNERS),
+  asyncHandler(followUpOwners.show),
+);
+programsRouter.put(
+  "/programs/:programId/follow-up-owner",
+  requireAuth,
+  requireRole(...CAN_MANAGE_FOLLOW_UP_OWNERS),
+  validate(followUpOwners.setProgramFollowUpOwnerSchema),
+  asyncHandler(followUpOwners.set),
+);
+programsRouter.delete(
+  "/programs/:programId/follow-up-owner",
+  requireAuth,
+  requireRole(...CAN_MANAGE_FOLLOW_UP_OWNERS),
+  asyncHandler(followUpOwners.remove),
 );

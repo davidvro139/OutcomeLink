@@ -93,6 +93,40 @@ export function useBulkCreateFollowUpAttempts() {
   });
 }
 
+export function useAssignFollowUp() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ studentId, staffUserId }: { studentId: number; staffUserId: number | null }) =>
+      apiRequest<{ student: { id: number; assignedStaffUser: { id: number; name: string } | null } }>(
+        `/api/followups/${studentId}/assign`,
+        { method: "PATCH", body: JSON.stringify({ staffUserId }) },
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["followups", "queue"] }),
+  });
+}
+
+export interface BulkAssignFollowUpInput {
+  studentIds: number[];
+  staffUserId: number | null;
+}
+
+export interface BulkAssignFollowUpResult {
+  assignedCount: number;
+  skipped: { studentId: number; reason: string }[];
+}
+
+export function useBulkAssignFollowUp() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: BulkAssignFollowUpInput) =>
+      apiRequest<BulkAssignFollowUpResult>("/api/followups/assign/bulk", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["followups", "queue"] }),
+  });
+}
+
 export function useCreateFollowUpAttempt(studentId: number) {
   const queryClient = useQueryClient();
   return useMutation({

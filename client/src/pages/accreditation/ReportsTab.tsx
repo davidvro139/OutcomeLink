@@ -15,6 +15,7 @@ import {
   useUnknownOutcomesReport,
 } from "../../api/reports";
 import { useStartGraduateCampaign } from "../../api/surveys";
+import { GeographicPlacementsPanel } from "./GeographicPlacementsPanel";
 
 const CAN_START_CAMPAIGN = [
   "SYSTEM_ADMINISTRATOR",
@@ -491,6 +492,7 @@ export function ReportsTab({ reportingPeriodId }: { reportingPeriodId: number })
         <Tabs.Tab value="unknown-outcomes">Unknown Outcomes</Tabs.Tab>
         <Tabs.Tab value="follow-up-effectiveness">Follow-Up Effectiveness</Tabs.Tab>
         <Tabs.Tab value="skills-gap">Skills Gap Analysis</Tabs.Tab>
+        <Tabs.Tab value="geographic-placements">Geographic Placements</Tabs.Tab>
       </Tabs.List>
 
       <Tabs.Panel value="time-to-employment" pl="md">
@@ -510,6 +512,9 @@ export function ReportsTab({ reportingPeriodId }: { reportingPeriodId: number })
       </Tabs.Panel>
       <Tabs.Panel value="skills-gap" pl="md">
         <SkillsGapAnalysisPanel />
+      </Tabs.Panel>
+      <Tabs.Panel value="geographic-placements" pl="md" style={{ minWidth: 0, flex: 1 }}>
+        <GeographicPlacementsPanel reportingPeriodId={reportingPeriodId} />
       </Tabs.Panel>
     </Tabs>
   );

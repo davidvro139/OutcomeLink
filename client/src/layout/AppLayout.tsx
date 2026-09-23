@@ -30,12 +30,15 @@ import { ROLE_LABELS } from "@outcomelink/shared";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { GlobalSearch } from "../components/GlobalSearch";
+import { type Permissions, usePermissions } from "../auth/usePermissions";
 import { NotificationBell } from "../components/NotificationBell";
 
 interface NavItem {
   to: string;
   label: string;
   icon: typeof IconLayoutDashboard;
+  /** Permission the destination page needs; the link is hidden without it. */
+  requires?: keyof Permissions;
 }
 
 // Grouped per the user's own note in docs/TODO.md ("category/section
@@ -68,8 +71,8 @@ const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
   {
     label: "Administration",
     items: [
-      { to: "/imports", label: "Bulk Import", icon: IconUpload },
-      { to: "/users", label: "Users", icon: IconUserCog },
+      { to: "/imports", label: "Bulk Import", icon: IconUpload, requires: "canManageStudents" },
+      { to: "/users", label: "Users", icon: IconUserCog, requires: "canAdminister" },
     ],
   },
 ];
@@ -77,6 +80,7 @@ const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
 /** The authenticated app shell: header with search + user menu, navbar, content area for routed pages. */
 export function AppLayout() {
   const { user, logout } = useAuth();
+  const permissions = usePermissions();
   const location = useLocation();
   const [navOpened, { toggle: toggleNav, close: closeNav }] = useDisclosure(false);
 
@@ -150,30 +154,35 @@ export function AppLayout() {
 
       <AppShell.Navbar p="md">
         <Stack gap="lg">
-          {NAV_SECTIONS.map((section) => (
-            <Stack key={section.label ?? "top"} gap={4}>
-              {section.label && (
-                <Text size="xs" fw={700} c="dimmed" tt="uppercase" px={8}>
-                  {section.label}
-                </Text>
-              )}
-              {section.items.map((item) => (
-                <NavLink
-                  key={item.to}
-                  component={Link}
-                  to={item.to}
-                  label={item.label}
-                  leftSection={<item.icon size={18} />}
-                  active={
-                    item.to === "/"
-                      ? location.pathname === "/"
-                      : location.pathname.startsWith(item.to)
-                  }
-                  onClick={closeNav}
-                />
-              ))}
-            </Stack>
-          ))}
+          {NAV_SECTIONS.map((section) => ({
+            ...section,
+            items: section.items.filter((item) => !item.requires || permissions[item.requires]),
+          }))
+            .filter((section) => section.items.length > 0)
+            .map((section) => (
+              <Stack key={section.label ?? "top"} gap={4}>
+                {section.label && (
+                  <Text size="xs" fw={700} c="dimmed" tt="uppercase" px={8}>
+                    {section.label}
+                  </Text>
+                )}
+                {section.items.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    component={Link}
+                    to={item.to}
+                    label={item.label}
+                    leftSection={<item.icon size={18} />}
+                    active={
+                      item.to === "/"
+                        ? location.pathname === "/"
+                        : location.pathname.startsWith(item.to)
+                    }
+                    onClick={closeNav}
+                  />
+                ))}
+              </Stack>
+            ))}
         </Stack>
       </AppShell.Navbar>
 

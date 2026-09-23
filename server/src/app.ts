@@ -13,6 +13,7 @@ import { employersRouter } from "./modules/employers";
 import { evidenceRouter } from "./modules/evidence";
 import { followupsRouter } from "./modules/followups";
 import { importsRouter } from "./modules/imports";
+import { jobRunsRouter } from "./modules/jobRuns";
 import { licensureRouter } from "./modules/licensure";
 import { notificationsRouter } from "./modules/notifications";
 import { outcomesRouter } from "./modules/outcomes";
@@ -62,6 +63,7 @@ export function createApp() {
   app.use("/api/imports", importsRouter);
   app.use("/api/notifications", notificationsRouter);
   app.use("/api/scheduled-reports", scheduledReportsRouter);
+  app.use("/api/job-runs", jobRunsRouter);
   // Further domain routers are mounted here as each module lands.
 
   app.use(notFoundHandler);

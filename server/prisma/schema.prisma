@@ -1237,3 +1237,45 @@ model ReportExportJob {
 
   @@map("report_export_jobs")
 }
+
+enum JobRunStatus {
+  RUNNING
+  RETRY_PENDING
+  SUCCESS
+  FAILED
+}
+
+enum JobTrigger {
+  SCHEDULE
+  MANUAL
+}
+
+/// Reusable scheduled-job infrastructure (docs/TODO.md): one row per logical
+/// job execution — a cron tick, a manual "run now", or a scheduled report
+/// subscription firing — updated in place across its retry attempts, so it
+/// doubles as the delivery history. `params` is what the handler needs to run
+/// (and is narrowed on a partial failure so a retry redoes only the failed
+/// part); `institutionId` is null for a system-wide job. Deliberately no
+/// foreign keys: a history row should outlive (and never block deleting) the
+/// institution or user it mentions.
+model JobRun {
+  id            Int          @id @default(autoincrement())
+  institutionId Int?         @map("institution_id")
+  jobType       String       @map("job_type")
+  trigger       JobTrigger
+  requestedBy   Int?         @map("requested_by")
+  status        JobRunStatus
+  attempt       Int          @default(1)
+  maxAttempts   Int          @default(1) @map("max_attempts")
+  params        Json?
+  result        Json?
+  errorMessage  String?      @map("error_message") @db.Text
+  createdAt     DateTime     @default(now()) @map("created_at")
+  startedAt     DateTime?    @map("started_at")
+  finishedAt    DateTime?    @map("finished_at")
+  nextAttemptAt DateTime?    @map("next_attempt_at")
+
+  @@index([institutionId, createdAt])
+  @@index([status, nextAttemptAt])
+  @@map("job_runs")
+}

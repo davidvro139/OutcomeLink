@@ -1,6 +1,6 @@
-import cron from "node-cron";
 import type { ScheduledReportFrequency } from "@outcomelink/shared";
 import type { AccessTokenPayload } from "../../lib/jwt";
+import { DEFAULT_BACKOFF_MS, registerJob, runJob } from "../../lib/jobRunner";
 import { createNotification } from "../../lib/notifications";
 import { prisma } from "../../lib/prisma";
 import { scheduledReportStorage } from "../../lib/storage";
@@ -55,7 +55,8 @@ function toAccessTokenPayload(user: { id: number; role: AccessTokenPayload["role
  * Notification, success or failure, so a broken subscription surfaces
  * instead of silently never delivering anything.
  */
-export async function runSubscription(subscriptionId: number) {
+export async function runSubscription(subscriptionId: number, options: { notifyOnFailure?: boolean } = {}) {
+  const notifyOnFailure = options.notifyOnFailure ?? true;
   const subscription = await prisma.scheduledReportSubscription.findUniqueOrThrow({
     where: { id: subscriptionId },
     include: { savedReport: true, creator: true },
@@ -118,13 +119,17 @@ export async function runSubscription(subscriptionId: number) {
     run = await prisma.scheduledReportRun.create({
       data: { subscriptionId, status: "FAILED", errorMessage: message },
     });
-    await createNotification({
-      userId: subscription.createdBy,
-      type: "SCHEDULED_REPORT_READY",
-      message: `Your scheduled report "${subscription.name}" failed to run: ${message}`,
-      referenceEntityType: "ScheduledReportRun",
-      referenceEntityId: run.id,
-    });
+    // A scheduled attempt that will be retried stays quiet until its last try
+    // fails — every attempt is still recorded as its own run above.
+    if (notifyOnFailure) {
+      await createNotification({
+        userId: subscription.createdBy,
+        type: "SCHEDULED_REPORT_READY",
+        message: `Your scheduled report "${subscription.name}" failed to run: ${message}`,
+        referenceEntityType: "ScheduledReportRun",
+        referenceEntityId: run.id,
+      });
+    }
   }
 
   await prisma.scheduledReportSubscription.update({
@@ -138,31 +143,47 @@ export async function runSubscription(subscriptionId: number) {
 /**
  * Hourly tick is finer than the finest supported frequency (DAILY) — actual
  * cadence per subscription comes entirely from its own `nextRunAt`
- * (computeNextRunAt above), not from this interval. This is the first
- * time-based background task anywhere in this app (docs/TODO.md's Scheduled
- * Reports entry has the full "why this didn't exist until now" reasoning) —
- * skipped in tests (see server/src/index.ts) so a test run doesn't start a
- * real, unbounded interval no test ever tears down.
+ * (computeNextRunAt above), not from this interval. Each due subscription is
+ * its own tracked job run (docs/TODO.md's reusable scheduled-job
+ * infrastructure), so a transient failure is retried with backoff and every
+ * attempt shows in job history; the creator is only notified of a failure
+ * once the last attempt has failed.
  */
-export function startScheduler(): void {
-  cron.schedule("0 * * * *", () => {
-    void runDueSubscriptions();
-  });
-}
-
-async function runDueSubscriptions(): Promise<void> {
+async function enqueueDueSubscriptions(): Promise<void> {
   const due = await prisma.scheduledReportSubscription.findMany({
     where: { active: true, nextRunAt: { lte: new Date() }, creator: { active: true } },
-    select: { id: true },
+    select: { id: true, institutionId: true },
   });
   for (const subscription of due) {
     try {
-      await runSubscription(subscription.id);
+      await runJob("SCHEDULED_REPORT", {
+        institutionId: subscription.institutionId,
+        params: { subscriptionId: subscription.id },
+        trigger: "SCHEDULE",
+      });
     } catch (err) {
-      // runSubscription already records a FAILED run for report-generation
-      // errors; this is only a last-resort guard so one broken subscription
-      // can't stop the rest of the batch from running this tick.
-      console.error(`Scheduled report subscription ${subscription.id} failed`, err);
+      // runJob records handler failures itself; this only guards against the
+      // bookkeeping failing so one subscription can't stop the rest.
+      console.error(`Scheduled report subscription ${subscription.id} could not be run`, err);
     }
   }
 }
+
+registerJob({
+  type: "SCHEDULED_REPORT",
+  maxAttempts: 3,
+  backoffMs: DEFAULT_BACKOFF_MS,
+  schedule: { cron: "0 * * * *", trigger: enqueueDueSubscriptions },
+  handler: async ({ params, isFinalAttempt }) => {
+    const subscriptionId = Number(params.subscriptionId);
+    const stillActive = await prisma.scheduledReportSubscription.findFirst({
+      where: { id: subscriptionId, active: true },
+      select: { id: true },
+    });
+    if (!stillActive) return { skipped: "Subscription was deleted or deactivated" };
+
+    const run = await runSubscription(subscriptionId, { notifyOnFailure: isFinalAttempt });
+    if (run.status === "FAILED") throw new Error(run.errorMessage ?? "Scheduled report failed");
+    return { scheduledReportRunId: run.id, rowCount: run.rowCount };
+  },
+});

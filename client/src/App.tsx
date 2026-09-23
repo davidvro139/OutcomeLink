@@ -23,6 +23,7 @@ import { StudentsListPage } from "./pages/students/StudentsListPage";
 import { EmployerSurveyPage } from "./pages/surveys/EmployerSurveyPage";
 import { GraduateSurveyPage } from "./pages/surveys/GraduateSurveyPage";
 import { DataConnectionsPage } from "./pages/imports/DataConnectionsPage";
+import { JobHistoryPage } from "./pages/jobs/JobHistoryPage";
 import { UsersPage } from "./pages/users/UsersPage";
 
 function App() {
@@ -69,6 +70,7 @@ function App() {
         />
 
         <Route path="/users" element={<UsersPage />} />
+        <Route path="/jobs" element={<JobHistoryPage />} />
       </Route>
     </Routes>
   );

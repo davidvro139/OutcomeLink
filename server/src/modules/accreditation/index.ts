@@ -1,2 +1,4 @@
 export * from "./accreditation.routes";
-export { startNightlyValidationScheduler } from "./validationScheduler";
+
+// Registers the nightly-validation job with the job runner (see lib/jobRunner.ts).
+import "./validationScheduler";

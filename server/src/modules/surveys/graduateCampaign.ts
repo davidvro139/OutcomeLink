@@ -4,6 +4,7 @@ import { z } from "zod";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { recordCommunicationEvent } from "../../lib/communicationEvents";
+import { DEFAULT_BACKOFF_MS, registerJob, runJob } from "../../lib/jobRunner";
 import { prisma } from "../../lib/prisma";
 import { getUnresolvedOutcomeStudentIds } from "../reports/reports";
 
@@ -39,6 +40,21 @@ export async function startCampaign(
   });
   if (!period) throw ApiError.notFound("Reporting period not found");
 
+  // A tracked job run (docs/TODO.md's reusable scheduled-job infrastructure):
+  // the send is recorded in job history, and a failure can be retried from
+  // there — safe to repeat, since a student with a still-pending survey is
+  // skipped.
+  const run = await runJob("GRADUATE_CAMPAIGN", {
+    institutionId,
+    params: { reportingPeriodId, ...(channel ? { channel } : {}) },
+    trigger: "MANUAL",
+    requestedBy: req.user!.sub,
+    rethrow: true,
+  });
+  sendData(res, run.result, 201);
+}
+
+async function runCampaign(institutionId: number, reportingPeriodId: number, channel: string | undefined) {
   const targetStudentIds = await getUnresolvedOutcomeStudentIds(institutionId, reportingPeriodId);
 
   // Don't re-send to someone who already has a survey out that hasn't been
@@ -73,9 +89,17 @@ export async function startCampaign(
     ),
   );
 
-  sendData(
-    res,
-    { targetedCount: targetStudentIds.length, sentCount: createdSurveys.length, skipped },
-    201,
-  );
+  return { targetedCount: targetStudentIds.length, sentCount: createdSurveys.length, skipped };
 }
+
+registerJob({
+  type: "GRADUATE_CAMPAIGN",
+  maxAttempts: 1,
+  backoffMs: DEFAULT_BACKOFF_MS,
+  handler: ({ institutionId, params }) =>
+    runCampaign(
+      institutionId!,
+      Number(params.reportingPeriodId),
+      typeof params.channel === "string" ? params.channel : undefined,
+    ),
+});

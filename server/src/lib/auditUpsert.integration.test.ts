@@ -129,7 +129,7 @@ describe("audit log covers upsert (integration)", () => {
       });
     });
 
-    expect(await prisma.auditLogEntry.count({ where: { entityType: { in: ["StudentClassification", "CplCalculationExplanation"] } } })).toBe(0);
-    expect(await prisma.auditLogEntry.count({ where: { entityType: "ProgramFollowUpOwner" } })).toBe(1);
+    expect(await prisma.auditLogEntry.count({ where: { userId: adminId, entityType: { in: ["StudentClassification", "CplCalculationExplanation"] } } })).toBe(0);
+    expect(await prisma.auditLogEntry.count({ where: { userId: adminId, entityType: "ProgramFollowUpOwner" } })).toBe(1);
   });
 });

@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
-import cron from "node-cron";
 import { sendData } from "../../lib/apiResponse";
+import { DEFAULT_BACKOFF_MS, registerJob, runJob } from "../../lib/jobRunner";
 import { runFollowUpAutoAssignment } from "./assignment";
 import { runFollowUpEscalation } from "./escalation";
 
@@ -12,20 +12,32 @@ export async function runFollowUpAutomation() {
 }
 
 /** Manual "Run Now" — the exact same job the cron tick runs, so a manual and automatic run can never behave differently. */
-export async function runNow(_req: Request, res: Response) {
-  const result = await runFollowUpAutomation();
-  sendData(res, result, 201);
+export async function runNow(req: Request, res: Response) {
+  const run = await runJob("FOLLOW_UP_AUTOMATION", {
+    institutionId: req.user!.institutionId,
+    trigger: "MANUAL",
+    requestedBy: req.user!.sub,
+    rethrow: true,
+  });
+  sendData(res, run.result, 201);
 }
 
 /**
  * Daily, alongside the hourly Scheduled Reports tick and the nightly
- * validation re-run — a third independent cron registration rather than
- * folding into either of those, so each feature's schedule stays
- * independently reasoned-about. Only reached from the real server
- * entrypoint (see server/src/index.ts), never from tests.
+ * validation re-run — each feature keeps its own schedule, now all driven by
+ * the shared job runner (retries with backoff, history). A system-wide job
+ * (it loops every institution itself), so its scheduled runs have no
+ * institution of their own.
  */
-export function startFollowUpAutomationScheduler(): void {
-  cron.schedule("0 6 * * *", () => {
-    void runFollowUpAutomation();
-  });
-}
+registerJob({
+  type: "FOLLOW_UP_AUTOMATION",
+  maxAttempts: 3,
+  backoffMs: DEFAULT_BACKOFF_MS,
+  handler: async () => ({ ...(await runFollowUpAutomation()) }),
+  schedule: {
+    cron: "0 6 * * *",
+    trigger: async () => {
+      await runJob("FOLLOW_UP_AUTOMATION", { institutionId: null, trigger: "SCHEDULE" });
+    },
+  },
+});

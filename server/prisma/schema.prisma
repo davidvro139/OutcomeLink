@@ -131,6 +131,11 @@ enum NotificationType {
   // ScheduledReportRun, not the subscription, so the client can resolve
   // straight to a download without a second lookup.
   SCHEDULED_REPORT_READY
+  // Report pagination and bounded exports (docs/TODO.md) — an on-demand
+  // Custom Report Builder export too large to generate synchronously
+  // finished (or failed) in the background. referenceEntityType/Id point at
+  // the ReportExportJob, same reasoning as SCHEDULED_REPORT_READY above.
+  REPORT_EXPORT_READY
 }
 
 enum AuditAction {
@@ -188,6 +193,7 @@ model Institution {
   dataSourceConnections DataSourceConnection[]
   scheduledReportSubscriptions ScheduledReportSubscription[]
   programFollowUpOwners ProgramFollowUpOwner[]
+  reportExportJobs      ReportExportJob[]
 
   @@map("institutions")
 }
@@ -347,6 +353,7 @@ model User {
   scheduledReportSubscriptions ScheduledReportSubscription[]
   programFollowUpOwnerOf       ProgramFollowUpOwner[]
   assignedFollowUpStudents     Student[]                      @relation("StudentFollowUpAssignment")
+  reportExportJobs             ReportExportJob[]
 
   @@map("users")
 }
@@ -1195,4 +1202,38 @@ model ScheduledReportRun {
   subscription ScheduledReportSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 
   @@map("scheduled_report_runs")
+}
+
+enum ReportExportJobStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+/// Report pagination and bounded exports (docs/TODO.md): an on-demand Custom
+/// Report Builder export whose totalCount crossed the synchronous-export
+/// threshold. Generated fire-and-forget outside the request that created it
+/// (this app's first genuinely async, non-cron background unit of work —
+/// Scheduled Reports' "Run Now" is still a synchronous await, just outside
+/// the subscription's *original* creating request). No message queue exists
+/// here, so a job stuck PENDING across a server restart stays PENDING
+/// forever — an accepted, documented limitation at this app's scale, the
+/// same honesty every other "no job-scheduler infrastructure" note in this
+/// schema already carries.
+model ReportExportJob {
+  id            Int                   @id @default(autoincrement())
+  institutionId Int                   @map("institution_id")
+  requestedBy   Int                   @map("requested_by")
+  definition    Json
+  status        ReportExportJobStatus @default(PENDING)
+  fileReference String?               @map("file_reference")
+  rowCount      Int?                  @map("row_count")
+  errorMessage  String?               @map("error_message") @db.Text
+  createdAt     DateTime              @default(now()) @map("created_at")
+  completedAt   DateTime?             @map("completed_at")
+
+  institution Institution @relation(fields: [institutionId], references: [id])
+  requester   User        @relation(fields: [requestedBy], references: [id])
+
+  @@map("report_export_jobs")
 }

@@ -1,6 +1,6 @@
 import type { LicensureResultStatus } from "@outcomelink/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "../lib/apiClient";
+import { apiRequest, apiRequestPaginated } from "../lib/apiClient";
 
 export interface LicensureResult {
   id: number;
@@ -78,10 +78,11 @@ export function useUpdateLicensureResult(studentId: number) {
   });
 }
 
-export function useLicensureQueue() {
+export function useLicensureQueue(page = 1) {
   return useQuery({
-    queryKey: ["licensure", "queue"],
+    queryKey: ["licensure", "queue", page],
     queryFn: () =>
-      apiRequest<{ queue: LicensureQueueRow[] }>("/api/licensure/queue").then((r) => r.queue),
+      apiRequestPaginated<LicensureQueueRow>(`/api/licensure/queue?page=${page}&pageSize=50`),
+    placeholderData: (previousData) => previousData,
   });
 }

@@ -3,6 +3,7 @@ import {
   ENROLLMENT_STATUS_LABELS,
   EMPLOYMENT_STATUSES,
   REPORT_BUILDER_MAX_PERIODS,
+  REPORT_BUILDER_SYNC_EXPORT_THRESHOLD,
   REPORT_ENTITY_LABELS,
   REPORT_ENTITY_TYPES,
   REPORT_FIELDS_BY_ENTITY,
@@ -47,7 +48,9 @@ import {
   useSavedReports,
   useSaveReport,
 } from "../../api/reportBuilder";
+import { useQueueReportExport } from "../../api/reportExportJobs";
 import { downloadFile } from "../../lib/apiClient";
+import { ExportJobsPanel } from "./ExportJobsPanel";
 
 type FilterValueMap = Record<string, string[] | number[] | boolean | undefined>;
 
@@ -391,6 +394,7 @@ export function ReportBuilderPage() {
   const [saveModalOpened, { open: openSaveModal, close: closeSaveModal }] = useDisclosure(false);
   const [saveName, setSaveName] = useState("");
   const [exporting, setExporting] = useState(false);
+  const queueExport = useQueueReportExport();
 
   const { data: programs } = usePrograms();
   const { data: campuses } = useCampuses();
@@ -464,6 +468,18 @@ export function ReportBuilderPage() {
   async function handleExport() {
     setExporting(true);
     try {
+      // Report pagination and bounded exports (docs/TODO.md): a result over the
+      // synchronous threshold queues a background job instead of a direct
+      // download — one button, no two-kinds-of-export concept for the user.
+      if (result && result.totalCount > REPORT_BUILDER_SYNC_EXPORT_THRESHOLD) {
+        await queueExport.mutateAsync(buildDefinition());
+        notifications.show({
+          message: `This report has ${result.totalCount.toLocaleString()} rows, so it's being generated in the background — you'll get a notification when it's ready (see Export Jobs below).`,
+          color: "blue",
+          autoClose: 8000,
+        });
+        return;
+      }
       await downloadFile(
         "/api/reports/custom/export",
         `custom-report-${entityType.toLowerCase()}.xlsx`,
@@ -541,6 +557,8 @@ export function ReportBuilderPage() {
           </Button>
         </Group>
       </Group>
+
+      <ExportJobsPanel />
 
       <Group align="flex-start" gap="xl" wrap="wrap">
         <Stack gap="md" style={{ flex: "0 0 260px" }}>

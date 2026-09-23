@@ -144,7 +144,7 @@ export function ExecutiveDashboard() {
           <Text size="xs" c="dimmed" tt="uppercase">
             Licensure Queue
           </Text>
-          <Title order={3}>{licensureQueue?.length ?? "—"}</Title>
+          <Title order={3}>{licensureQueue?.pagination.totalItems ?? "—"}</Title>
         </Paper>
       </SimpleGrid>
     </Stack>

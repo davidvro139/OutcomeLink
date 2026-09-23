@@ -53,3 +53,8 @@ export const importStorage: StorageAdapter = new LocalDiskStorageAdapter(
 export const scheduledReportStorage: StorageAdapter = new LocalDiskStorageAdapter(
   path.join(process.cwd(), "uploads", "scheduled-reports"),
 );
+
+/** Generated .xlsx workbooks from queued Custom Report Builder exports (docs/TODO.md's "Report pagination and bounded exports") — one file per ReportExportJob. */
+export const reportExportStorage: StorageAdapter = new LocalDiskStorageAdapter(
+  path.join(process.cwd(), "uploads", "report-exports"),
+);

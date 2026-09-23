@@ -153,7 +153,7 @@ describe("licensure results (integration)", () => {
     // so they should NOT appear in the queue.
     const resolvedQueue = await request(app).get("/api/licensure/queue").set("Authorization", `Bearer ${adminToken}`);
     expect(resolvedQueue.status).toBe(200);
-    expect(resolvedQueue.body.data.queue.some((row: { student: { id: number } }) => row.student.id === studentId)).toBe(false);
+    expect(resolvedQueue.body.data.some((row: { student: { id: number } }) => row.student.id === studentId)).toBe(false);
 
     // A fresh graduate completer with no licensure result yet should appear.
     const student2 = await prisma.student.create({
@@ -172,7 +172,7 @@ describe("licensure results (integration)", () => {
 
     const queueRes = await request(app).get("/api/licensure/queue").set("Authorization", `Bearer ${adminToken}`);
     expect(queueRes.status).toBe(200);
-    const row = queueRes.body.data.queue.find((r: { student: { id: number } }) => r.student.id === student2.id);
+    const row = queueRes.body.data.find((r: { student: { id: number } }) => r.student.id === student2.id);
     expect(row).toBeDefined();
     expect(row.latestResult).toBeNull();
   });

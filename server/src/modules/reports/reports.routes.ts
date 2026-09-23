@@ -6,6 +6,7 @@ import { validate } from "../../middleware/validate";
 import { exportCustomReport, runCustomReport, runReportSchema } from "./customReportBuilder";
 import * as reports from "./reports";
 import { geographicPlacements } from "./geographicPlacements";
+import * as reportExportJobs from "./reportExportJobs";
 import * as savedReports from "./savedReports";
 
 export const reportsRouter = Router();
@@ -29,6 +30,19 @@ reportsRouter.post(
   validate(runReportSchema),
   asyncHandler(exportCustomReport),
 );
+reportsRouter.post(
+  "/custom/export-jobs",
+  requireAuth,
+  validate(runReportSchema),
+  asyncHandler(reportExportJobs.queueExport),
+);
+reportsRouter.get("/custom/export-jobs", requireAuth, asyncHandler(reportExportJobs.list));
+reportsRouter.get(
+  "/custom/export-jobs/:id/download",
+  requireAuth,
+  asyncHandler(reportExportJobs.downloadJob),
+);
+
 reportsRouter.get("/custom/saved", requireAuth, asyncHandler(savedReports.list));
 reportsRouter.post(
   "/custom/saved",

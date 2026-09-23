@@ -268,6 +268,11 @@ function UnknownOutcomesPanel({ reportingPeriodId }: { reportingPeriodId: number
       </Table>
 
       <Title order={5}>Students seeking or with unknown status</Title>
+      {data.studentsTruncated && (
+        <Text size="sm" c="dimmed">
+          Showing the first {data.students.length} of {data.totalSeekingOrUnknown} students — the totals above cover everyone.
+        </Text>
+      )}
       <Table striped highlightOnHover>
         <Table.Thead>
           <Table.Tr>

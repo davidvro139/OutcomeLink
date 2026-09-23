@@ -8,11 +8,13 @@ import {
   useNotifications,
   type Notification,
 } from "../api/notifications";
+import { downloadReportExportJob } from "../api/reportExportJobs";
 import { downloadScheduledReportRun } from "../api/scheduledReports";
 
-async function handleDownloadRun(runId: number) {
+async function handleDownload(n: Notification) {
   try {
-    await downloadScheduledReportRun(runId);
+    const id = n.referenceEntityId!;
+    await (n.type === "REPORT_EXPORT_READY" ? downloadReportExportJob(id) : downloadScheduledReportRun(id));
   } catch (err) {
     // apiRequestBlob throws with the raw HTTP status text ("Not Found"), not the server's JSON
     // error message — a 404 here specifically means the run (or its file) no longer exists, so
@@ -32,7 +34,7 @@ async function handleDownloadRun(runId: number) {
 // "no generated file" error rather than silently doing nothing, which is honest enough not to be
 // worth an extra request just to distinguish success from failure up front.
 function isDownloadableReport(n: Notification): boolean {
-  return n.type === "SCHEDULED_REPORT_READY" && n.referenceEntityId !== null;
+  return (n.type === "SCHEDULED_REPORT_READY" || n.type === "REPORT_EXPORT_READY") && n.referenceEntityId !== null;
 }
 
 /**
@@ -106,7 +108,7 @@ export function NotificationBell() {
                         size="xs"
                         onClick={(e) => {
                           e.stopPropagation();
-                          void handleDownloadRun(n.referenceEntityId!);
+                          void handleDownload(n);
                         }}
                       >
                         Download

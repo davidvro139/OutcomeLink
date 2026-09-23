@@ -260,6 +260,18 @@ export interface UnknownOutcomesProgramCount {
 const unknownOutcomesStudentSelect = { id: true, internalStudentId: true, firstName: true, lastName: true } as const;
 
 /**
+ * Report pagination and bounded exports (docs/TODO.md): caps the per-student
+ * `students` list the interactive endpoint below returns — the aggregate
+ * `totalSeekingOrUnknown`/`totalMissingRecord`/`byProgram` counts are
+ * unaffected either way. Only the HTTP handler passes this; the Scheduled
+ * Reports "Missing Verification Report" built-in (builtInReports.ts) calls
+ * computeUnknownOutcomes with no limit at all, since that report's whole
+ * purpose is a complete, downloadable list — unlike this endpoint, which
+ * only ever renders inline in the browser.
+ */
+export const UNKNOWN_OUTCOMES_STUDENTS_LIMIT = 200;
+
+/**
  * Unknown Outcome: graduate completers this period the classifier placed in
  * SEEKING_OR_UNKNOWN (has an outcome record, but no resolved employment
  * status) or who have no outcome record at all — the population Follow-Up
@@ -270,6 +282,7 @@ export async function computeUnknownOutcomes(
   institutionId: number,
   reportingPeriodId: number,
   accessibleProgramIds: number[] | null,
+  studentsLimit?: number,
 ) {
   const seekingOrUnknown = await prisma.studentClassification.findMany({
     where: {
@@ -313,13 +326,16 @@ export async function computeUnknownOutcomes(
   for (const c of seekingOrUnknown) bump(c.studentEnrollment.program, "seekingOrUnknown");
   for (const i of missingOutcomeIssues) bump(i.program, "missingRecord");
 
+  const allStudents = seekingOrUnknown.map((c) => ({
+    student: c.studentEnrollment.student,
+    program: c.studentEnrollment.program,
+  }));
+
   return {
     totalSeekingOrUnknown: seekingOrUnknown.length,
     totalMissingRecord: missingOutcomeIssues.length,
-    students: seekingOrUnknown.map((c) => ({
-      student: c.studentEnrollment.student,
-      program: c.studentEnrollment.program,
-    })),
+    students: studentsLimit !== undefined ? allStudents.slice(0, studentsLimit) : allStudents,
+    studentsTruncated: studentsLimit !== undefined && allStudents.length > studentsLimit,
     byProgram: [...byProgram.values()].sort(
       (a, b) => b.seekingOrUnknown + b.missingRecord - (a.seekingOrUnknown + a.missingRecord),
     ),
@@ -331,7 +347,10 @@ export async function unknownOutcomes(req: Request, res: Response) {
   const { reportingPeriodId } = req.query as unknown as ReportingPeriodQuery;
   await findOwnedPeriod(institutionId, reportingPeriodId);
   const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
-  sendData(res, await computeUnknownOutcomes(institutionId, reportingPeriodId, accessibleProgramIds));
+  sendData(
+    res,
+    await computeUnknownOutcomes(institutionId, reportingPeriodId, accessibleProgramIds, UNKNOWN_OUTCOMES_STUDENTS_LIMIT),
+  );
 }
 
 /**
@@ -432,6 +451,8 @@ const SKILL_DIMENSION_LABELS: Record<SkillDimension, string> = {
  * placementQuality() above documents — they're an aggregate baseline with no
  * student or program named, not a list of records to leak.
  */
+const SKILLS_GAP_NOTES_LIMIT = 20;
+
 export async function skillsGapAnalysis(req: Request, res: Response) {
   const institutionId = req.user!.institutionId;
   const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
@@ -525,7 +546,13 @@ export async function skillsGapAnalysis(req: Request, res: Response) {
       responseCount: Math.max(...SKILL_DIMENSIONS.map((d) => agg.ratings[d].length), 0),
       averages,
       gaps,
-      skillsGapNotes: agg.notes.sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime()),
+      // Free-text notes are the one genuinely unbounded, ever-growing piece
+      // here (the ratings/averages/gaps above are aggregates) — capped to
+      // the most recent SKILLS_GAP_NOTES_LIMIT, already sorted newest first
+      // (docs/TODO.md's "Report pagination and bounded exports").
+      skillsGapNotes: agg.notes
+        .sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime())
+        .slice(0, SKILLS_GAP_NOTES_LIMIT),
     };
   });
 

@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { apiRequest, setAccessToken } from "../lib/apiClient";
+import { apiRequest, setAccessToken, setSessionExpiredHandler } from "../lib/apiClient";
 import { AuthContext, type AuthStatus, type AuthUser } from "./AuthContext";
 
 /**
@@ -33,6 +33,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     previousUserId.current = userId;
   }, [userId, queryClient]);
+
+  // A request that 401s and can't be recovered by a token refresh means the
+  // session is over — drop to unauthenticated so RequireAuth sends the user to
+  // login, rather than leaving a UI that looks logged in but fails every call.
+  useEffect(() => {
+    setSessionExpiredHandler(() => {
+      void queryClient.cancelQueries();
+      setAccessToken(null);
+      setUser(null);
+      setStatus("unauthenticated");
+    });
+    return () => setSessionExpiredHandler(null);
+  }, [queryClient]);
 
   useEffect(() => {
     let cancelled = false;

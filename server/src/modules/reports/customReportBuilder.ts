@@ -1,5 +1,7 @@
 import type { Request, Response } from "express";
 import {
+  ENROLLMENT_STATUSES,
+  EMPLOYMENT_STATUSES,
   REPORT_BUILDER_MAX_PERIODS,
   REPORT_BUILDER_PREVIEW_LIMIT,
   REPORT_BUILDER_SYNC_EXPORT_THRESHOLD,
@@ -100,6 +102,77 @@ function validateDefinition(input: RunReportInput) {
   );
   if (needsPeriod && !hasPeriod) {
     throw ApiError.badRequest("Selected fields require at least one reporting period");
+  }
+}
+
+/** Filter fields whose values must come from a fixed vocabulary, not free text. */
+const FILTER_ENUM_VALUES: Record<string, readonly string[]> = {
+  enrollmentStatus: ENROLLMENT_STATUSES,
+  employmentStatus: EMPLOYMENT_STATUSES,
+};
+
+/** Filter fields holding database ids, and how to check each belongs to the caller's institution. */
+const FILTER_ID_CHECKS: Record<string, (institutionId: number, ids: number[]) => Promise<number>> = {
+  programId: (institutionId, ids) => prisma.program.count({ where: { id: { in: ids }, institutionId } }),
+  campusId: (institutionId, ids) => prisma.campus.count({ where: { id: { in: ids }, institutionId } }),
+};
+
+/**
+ * Value-level validation of each filter against its own definition
+ * (docs/TODO.md's "validate report filters against their field definitions"):
+ * runReportSchema only guarantees a value is *some* string[]/number[]/boolean,
+ * so a mismatched type, an unknown enum value, or a foreign id used to either
+ * blow up inside Prisma as a 500 or be silently dropped (an empty array was
+ * skipped entirely, and a duplicate field let the last one win). Each is now
+ * a clear 400. A same-institution id outside a scoped caller's access is
+ * deliberately NOT rejected here — that still returns zero rows, per
+ * effectiveProgramIdFilter — only ids that don't exist in the institution at all.
+ */
+async function validateFilterValues(institutionId: number, input: RunReportInput) {
+  const defs = new Map(REPORT_FILTERS_BY_ENTITY[input.entityType].map((f) => [f.key, f]));
+  const seen = new Set<string>();
+
+  for (const filter of input.filters) {
+    if (seen.has(filter.field)) throw ApiError.badRequest(`Filter "${filter.field}" was specified more than once`);
+    seen.add(filter.field);
+
+    const def = defs.get(filter.field)!; // existence already checked by validateDefinition
+    const { value } = filter;
+    const label = `Filter "${filter.field}"`;
+
+    if (def.operator === "eq") {
+      if (Array.isArray(value)) throw ApiError.badRequest(`${label} takes a single value, not a list`);
+      if (typeof value !== def.valueType) throw ApiError.badRequest(`${label} must be a ${def.valueType}`);
+      continue;
+    }
+
+    if (!Array.isArray(value)) throw ApiError.badRequest(`${label} must be a list of ${def.valueType}s`);
+    if (value.length === 0) throw ApiError.badRequest(`${label} must include at least one value (omit the filter to not filter)`);
+    if (value.length > 100) throw ApiError.badRequest(`${label} has too many values (max 100)`);
+    if (!(value as unknown[]).every((v) => typeof v === def.valueType)) {
+      throw ApiError.badRequest(`${label} values must all be ${def.valueType}s`);
+    }
+
+    if (def.valueType === "number") {
+      const ids = value as number[];
+      if (!ids.every((v) => Number.isInteger(v) && v > 0)) throw ApiError.badRequest(`${label} values must be positive integers`);
+      const check = FILTER_ID_CHECKS[filter.field];
+      if (check && (await check(institutionId, [...new Set(ids)])) !== new Set(ids).size) {
+        throw ApiError.badRequest(`${label} references an unknown id`);
+      }
+    }
+
+    if (def.valueType === "string") {
+      const strings = value as string[];
+      if (strings.some((v) => v.trim().length === 0 || v.length > 200)) {
+        throw ApiError.badRequest(`${label} values must be non-empty strings up to 200 characters`);
+      }
+      const allowed = FILTER_ENUM_VALUES[filter.field];
+      const invalid = allowed && strings.filter((v) => !allowed.includes(v));
+      if (invalid && invalid.length > 0) {
+        throw ApiError.badRequest(`${label} has unknown value(s): ${invalid.join(", ")}`);
+      }
+    }
   }
 }
 
@@ -417,6 +490,7 @@ async function runQuery(
 ): Promise<{ rows: Row[]; totalCount: number; comparingPeriods: boolean }> {
   validateDefinition(input);
   const institutionId = user.institutionId;
+  await validateFilterValues(institutionId, input);
   const [periods, accessibleProgramIds] = await Promise.all([
     resolvePeriods(institutionId, input),
     getAccessibleProgramIds(user),

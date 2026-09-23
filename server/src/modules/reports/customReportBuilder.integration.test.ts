@@ -453,4 +453,45 @@ describe("custom report builder (integration)", () => {
       expect(list.body.data.savedReports.map((r: { id: number }) => r.id)).not.toContain(savedReportId);
     });
   });
+
+  describe("filter value validation", () => {
+    const run = (entityType: string, filters: unknown[], token = adminToken) =>
+      request(app).post("/api/reports/custom/run").set("Authorization", `Bearer ${token}`).send({ entityType, fields: ["name"], filters });
+
+    it.each([
+      ["a scalar where a list is expected", "EMPLOYER", [{ field: "industry", value: true }]],
+      ["a list where a scalar is expected", "EMPLOYER", [{ field: "active", value: [true] }]],
+      ["the wrong scalar type", "EMPLOYER", [{ field: "active", value: ["yes"] }]],
+      ["numbers for a string filter", "EMPLOYER", [{ field: "state", value: [1, 2] }]],
+      ["strings for an id filter", "PROGRAM", [{ field: "campusId", value: ["abc"] }]],
+      ["a non-positive id", "PROGRAM", [{ field: "campusId", value: [0] }]],
+      ["a fractional id", "PROGRAM", [{ field: "campusId", value: [1.5] }]],
+      ["an empty list (previously silently ignored)", "EMPLOYER", [{ field: "industry", value: [] }]],
+      ["a blank string value", "EMPLOYER", [{ field: "industry", value: ["  "] }]],
+      ["the same filter twice (previously last-one-wins)", "EMPLOYER", [{ field: "industry", value: ["A"] }, { field: "industry", value: ["B"] }]],
+    ])("rejects %s with a 400 instead of a 500 or a silently dropped filter", async (_label, entityType, filters) => {
+      const res = await run(entityType, filters);
+      expect(res.status).toBe(400);
+    });
+
+    it("rejects an unknown enum value for an enum-backed filter", async () => {
+      const res = await request(app)
+        .post("/api/reports/custom/run")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ entityType: "STUDENT", fields: ["internalStudentId"], filters: [{ field: "enrollmentStatus", value: ["NOT_A_STATUS"] }] });
+      expect(res.status).toBe(400);
+      expect(res.body.error.message).toContain("NOT_A_STATUS");
+    });
+
+    it("rejects ids that don't exist in the caller's institution", async () => {
+      const foreign = await run("PROGRAM", [{ field: "campusId", value: [999999] }]);
+      expect(foreign.status).toBe(400);
+      expect(foreign.body.error.message).toContain("unknown id");
+    });
+
+    it("still accepts valid filters", async () => {
+      const res = await run("PROGRAM", [{ field: "campusId", value: [campusId] }, { field: "licensureRequired", value: false }]);
+      expect(res.status).toBe(200);
+    });
+  });
 });

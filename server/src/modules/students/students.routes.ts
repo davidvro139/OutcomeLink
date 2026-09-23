@@ -1,3 +1,4 @@
+import { STUDENT_MANAGER_ROLES } from "@outcomelink/shared";
 import { Router } from "express";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { requireAuth, requireRole } from "../../middleware/auth";
@@ -8,11 +9,7 @@ import * as enrollments from "./enrollments";
 import * as merge from "./merge";
 import * as students from "./students";
 
-const CAN_MANAGE_STUDENTS = [
-  "SYSTEM_ADMINISTRATOR",
-  "INSTITUTIONAL_ADMINISTRATOR",
-  "PROGRAM_ADMINISTRATOR",
-] as const;
+const CAN_MANAGE_STUDENTS = STUDENT_MANAGER_ROLES;
 
 export const studentsRouter = Router();
 

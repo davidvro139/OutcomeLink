@@ -42,8 +42,10 @@ import {
 } from "../../api/outcomes";
 import { stripEmptyStrings } from "../../lib/forms";
 import { StudentExplanationPanel } from "./StudentExplanationPanel";
+import { usePermissions } from "../../auth/usePermissions";
 
 export function EnrollmentsTab({ studentId }: { studentId: number }) {
+  const { canManageStudents } = usePermissions();
   const { data: enrollments, isLoading } = useEnrollments(studentId);
   const { data: programs } = usePrograms();
   const { data: campuses } = useCampuses();
@@ -84,9 +86,11 @@ export function EnrollmentsTab({ studentId }: { studentId: number }) {
     <Stack gap="md">
       <Group justify="space-between">
         <Text fw={500}>Enrollments</Text>
-        <Button size="xs" variant="light" onClick={toggleForm}>
-          {formOpened ? "Cancel" : "New Enrollment"}
-        </Button>
+        {canManageStudents && (
+          <Button size="xs" variant="light" onClick={toggleForm}>
+            {formOpened ? "Cancel" : "New Enrollment"}
+          </Button>
+        )}
       </Group>
 
       {formOpened && (
@@ -181,6 +185,7 @@ function EnrollmentDetail({
   enrollmentObjective: string | null;
   reportableForAccreditation: boolean;
 }) {
+  const { canWrite, canManageStudents } = usePermissions();
   const updateEnrollment = useUpdateEnrollment(studentId);
   const { data: reportingPeriods } = useReportingPeriods();
   const { data: outcomeRecords } = useOutcomeRecords(studentId, enrollmentId);
@@ -285,51 +290,66 @@ function EnrollmentDetail({
 
   return (
     <Stack gap="md">
-      <Group align="flex-end">
-        <Select
-          label="Update status"
-          data={ENROLLMENT_STATUSES.map((s) => ({ value: s, label: ENROLLMENT_STATUS_LABELS[s] }))}
-          defaultValue={enrollmentStatus}
-          onChange={handleStatusChange}
-          w={260}
-        />
-        {currentStatus === "WITHDRAWN" && (
+      {canManageStudents && (
+        <Group align="flex-end">
           <Select
-            label="Allowable subtraction reason (if any)"
-            description="Excludes this withdrawal from the completion rate entirely, rather than counting it against the institution"
-            placeholder="None — counts as an ordinary withdrawal"
-            data={ALLOWABLE_SUBTRACTION_REASONS.map((r) => ({
-              value: r,
-              label: ALLOWABLE_SUBTRACTION_REASON_LABELS[r],
+            label="Update status"
+            data={ENROLLMENT_STATUSES.map((s) => ({
+              value: s,
+              label: ENROLLMENT_STATUS_LABELS[s],
             }))}
-            defaultValue={allowableSubtractionReason}
-            onChange={handleAllowableSubtractionReasonChange}
-            clearable
-            allowDeselect={false}
-            w={360}
+            defaultValue={enrollmentStatus}
+            onChange={handleStatusChange}
+            w={260}
           />
-        )}
-      </Group>
+          {currentStatus === "WITHDRAWN" && (
+            <Select
+              label="Allowable subtraction reason (if any)"
+              description="Excludes this withdrawal from the completion rate entirely, rather than counting it against the institution"
+              placeholder="None — counts as an ordinary withdrawal"
+              data={ALLOWABLE_SUBTRACTION_REASONS.map((r) => ({
+                value: r,
+                label: ALLOWABLE_SUBTRACTION_REASON_LABELS[r],
+              }))}
+              defaultValue={allowableSubtractionReason}
+              onChange={handleAllowableSubtractionReasonChange}
+              clearable
+              allowDeselect={false}
+              w={360}
+            />
+          )}
+        </Group>
+      )}
 
       <Group>
         <Text size="sm" c="dimmed">
           Objective: {enrollmentObjective ?? "not specified"}
         </Text>
-        <Checkbox
-          label="Reportable for accreditation"
-          description="Uncheck for enrollments out of scope for CPL reporting"
-          checked={reportableForAccreditation}
-          onChange={(e) => handleReportableChange(e.currentTarget.checked)}
-        />
+        {canManageStudents ? (
+          <Checkbox
+            label="Reportable for accreditation"
+            description="Uncheck for enrollments out of scope for CPL reporting"
+            checked={reportableForAccreditation}
+            onChange={(e) => handleReportableChange(e.currentTarget.checked)}
+          />
+        ) : (
+          <Text size="sm" c="dimmed">
+            {reportableForAccreditation
+              ? "Reportable for accreditation"
+              : "Not reportable for accreditation"}
+          </Text>
+        )}
       </Group>
 
       <Group justify="space-between">
         <Text fw={500} size="sm">
           Outcome records
         </Text>
-        <Button size="xs" variant="light" onClick={toggleOutcomeForm}>
-          {outcomeFormOpen ? "Cancel" : "Add Outcome Record"}
-        </Button>
+        {canWrite && (
+          <Button size="xs" variant="light" onClick={toggleOutcomeForm}>
+            {outcomeFormOpen ? "Cancel" : "Add Outcome Record"}
+          </Button>
+        )}
       </Group>
 
       {outcomeFormOpen && (

@@ -10,6 +10,7 @@ import {
   useUpdateLicensureResult,
 } from "../../api/licensure";
 import { usePrograms } from "../../api/programs";
+import { usePermissions } from "../../auth/usePermissions";
 
 const RESULT_COLORS: Record<string, string> = {
   PASSED: "green",
@@ -20,6 +21,7 @@ const RESULT_COLORS: Record<string, string> = {
 };
 
 export function LicensureTab({ studentId }: { studentId: number }) {
+  const { canWrite } = usePermissions();
   const { data: results, isLoading } = useLicensureResults(studentId);
   const { data: programs } = usePrograms();
   const createResult = useCreateLicensureResult(studentId);
@@ -53,7 +55,10 @@ export function LicensureTab({ studentId }: { studentId: number }) {
   async function handleResultChange(id: number, result: string | null) {
     if (!result) return;
     try {
-      await updateResult.mutateAsync({ id, input: { result: result as CreateLicensureResultInput["result"] } });
+      await updateResult.mutateAsync({
+        id,
+        input: { result: result as CreateLicensureResultInput["result"] },
+      });
       notifications.show({ message: "Licensure result updated", color: "green" });
     } catch (err) {
       notifications.show({
@@ -67,9 +72,11 @@ export function LicensureTab({ studentId }: { studentId: number }) {
     <Stack gap="md">
       <Group justify="space-between">
         <Text fw={500}>Licensure attempts</Text>
-        <Button size="xs" variant="light" onClick={toggleForm}>
-          {formOpened ? "Cancel" : "Record Attempt"}
-        </Button>
+        {canWrite && (
+          <Button size="xs" variant="light" onClick={toggleForm}>
+            {formOpened ? "Cancel" : "Record Attempt"}
+          </Button>
+        )}
       </Group>
 
       {formOpened && (
@@ -145,15 +152,23 @@ export function LicensureTab({ studentId }: { studentId: number }) {
                 {result.examDate ? new Date(result.examDate).toLocaleDateString() : "—"}
               </Table.Td>
               <Table.Td>
-                <Select
-                  size="xs"
-                  w={140}
-                  data={LICENSURE_RESULT_STATUSES.map((s) => ({ value: s, label: s }))}
-                  value={result.result}
-                  onChange={(v) => handleResultChange(result.id, v)}
-                  allowDeselect={false}
-                  styles={{ input: { color: `var(--mantine-color-${RESULT_COLORS[result.result]}-4)` } }}
-                />
+                {!canWrite ? (
+                  <Text size="sm" c={RESULT_COLORS[result.result]}>
+                    {result.result}
+                  </Text>
+                ) : (
+                  <Select
+                    size="xs"
+                    w={140}
+                    data={LICENSURE_RESULT_STATUSES.map((s) => ({ value: s, label: s }))}
+                    value={result.result}
+                    onChange={(v) => handleResultChange(result.id, v)}
+                    allowDeselect={false}
+                    styles={{
+                      input: { color: `var(--mantine-color-${RESULT_COLORS[result.result]}-4)` },
+                    }}
+                  />
+                )}
               </Table.Td>
             </Table.Tr>
           ))}

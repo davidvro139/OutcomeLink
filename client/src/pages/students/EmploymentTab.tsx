@@ -1,4 +1,14 @@
-import { Button, Checkbox, Group, Modal, Select, Stack, Table, Text, TextInput } from "@mantine/core";
+import {
+  Button,
+  Checkbox,
+  Group,
+  Modal,
+  Select,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+} from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -15,8 +25,10 @@ import {
   useEmploymentRecords,
 } from "../../api/placements";
 import { EvidencePanel } from "../../components/EvidencePanel";
+import { usePermissions } from "../../auth/usePermissions";
 
 export function EmploymentTab({ studentId }: { studentId: number }) {
+  const { canWrite, canManageEmployers } = usePermissions();
   const { data: records, isLoading } = useEmploymentRecords(studentId);
   const { data: employers } = useEmployers();
   const createRecord = useCreateEmploymentRecord(studentId);
@@ -94,9 +106,11 @@ export function EmploymentTab({ studentId }: { studentId: number }) {
     <Stack gap="md">
       <Group justify="space-between">
         <Text fw={500}>Employment history</Text>
-        <Button size="xs" variant="light" onClick={toggleForm}>
-          {formOpened ? "Cancel" : "Log Employment"}
-        </Button>
+        {canWrite && (
+          <Button size="xs" variant="light" onClick={toggleForm}>
+            {formOpened ? "Cancel" : "Log Employment"}
+          </Button>
+        )}
       </Group>
 
       {formOpened && (
@@ -112,9 +126,11 @@ export function EmploymentTab({ studentId }: { studentId: number }) {
                 searchable
                 style={{ flex: 1 }}
               />
-              <Button variant="light" size="sm" onClick={openEmployerModal}>
-                New employer
-              </Button>
+              {canManageEmployers && (
+                <Button variant="light" size="sm" onClick={openEmployerModal}>
+                  New employer
+                </Button>
+              )}
             </Group>
             <TextInput label="Job title" required {...form.getInputProps("jobTitle")} />
             <input type="date" {...form.getInputProps("startDate")} style={{ padding: 8 }} />

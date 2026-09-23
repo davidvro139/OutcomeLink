@@ -19,8 +19,10 @@ import { Link } from "react-router-dom";
 import { type CreateStudentInput, useCreateStudent, useStudents } from "../../api/students";
 import { downloadFile } from "../../lib/apiClient";
 import { stripEmptyStrings } from "../../lib/forms";
+import { usePermissions } from "../../auth/usePermissions";
 
 export function StudentsListPage() {
+  const { canManageStudents } = usePermissions();
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebouncedValue(search, 300);
   const [page, setPage] = useState(1);
@@ -76,7 +78,7 @@ export function StudentsListPage() {
           <Button variant="light" onClick={handleExport} loading={exporting}>
             Export to Excel
           </Button>
-          <Button onClick={open}>New Student</Button>
+          {canManageStudents && <Button onClick={open}>New Student</Button>}
         </Group>
       </Group>
 

@@ -11,6 +11,7 @@ import {
 } from "../../api/accreditation";
 import { downloadFile } from "../../lib/apiClient";
 import { MergeDuplicatesModal } from "./MergeDuplicatesModal";
+import { usePermissions } from "../../auth/usePermissions";
 
 const SEVERITY_COLORS: Record<string, string> = {
   ERROR: "red",
@@ -20,6 +21,8 @@ const SEVERITY_COLORS: Record<string, string> = {
 
 /** Spec §21-22: ERROR/WARNING/INFORMATION list, clickable through to the record. */
 export function ValidationTab({ reportingPeriodId }: { reportingPeriodId: number }) {
+  const { canManageStudents } = usePermissions();
+  const { canAdminister } = usePermissions();
   const { data: issues, isLoading } = useValidationIssues(reportingPeriodId);
   const { data: period } = useReportingPeriod(reportingPeriodId);
   const resolveIssue = useResolveValidationIssue(reportingPeriodId);
@@ -100,7 +103,8 @@ export function ValidationTab({ reportingPeriodId }: { reportingPeriodId: number
 
   const errorCount = issues?.filter((i) => i.severity === "ERROR").length ?? 0;
   const warningCount = issues?.filter((i) => i.severity === "WARNING").length ?? 0;
-  const allSelected = !!issues && issues.length > 0 && issues.every((i) => selectedIssueIds.has(i.id));
+  const allSelected =
+    !!issues && issues.length > 0 && issues.every((i) => selectedIssueIds.has(i.id));
   const someSelected = !!issues && issues.some((i) => selectedIssueIds.has(i.id));
 
   function toggleAll() {
@@ -120,7 +124,7 @@ export function ValidationTab({ reportingPeriodId }: { reportingPeriodId: number
           </Badge>
         </Group>
         <Group>
-          {selectedIssueIds.size > 0 && (
+          {selectedIssueIds.size > 0 && canAdminister && (
             <Button size="xs" onClick={handleBulkResolve} loading={bulkResolve.isPending}>
               Resolve {selectedIssueIds.size} Selected
             </Button>
@@ -182,24 +186,28 @@ export function ValidationTab({ reportingPeriodId }: { reportingPeriodId: number
                 <Table.Td>{issue.program?.name ?? "—"}</Table.Td>
                 <Table.Td>
                   <Group gap={4} wrap="nowrap">
-                    {issue.issueType === "POSSIBLE_DUPLICATE_STUDENT" && issue.student && (
+                    {issue.issueType === "POSSIBLE_DUPLICATE_STUDENT" &&
+                      issue.student &&
+                      canManageStudents && (
+                        <Button
+                          size="xs"
+                          variant="light"
+                          color="orange"
+                          onClick={() => handleOpenMerge(issue.student!.id, issue.id)}
+                        >
+                          Merge
+                        </Button>
+                      )}
+                    {canAdminister && (
                       <Button
                         size="xs"
-                        variant="light"
-                        color="orange"
-                        onClick={() => handleOpenMerge(issue.student!.id, issue.id)}
+                        variant="subtle"
+                        onClick={() => handleResolve(issue.id)}
+                        loading={resolveIssue.isPending}
                       >
-                        Merge
+                        Resolve
                       </Button>
                     )}
-                    <Button
-                      size="xs"
-                      variant="subtle"
-                      onClick={() => handleResolve(issue.id)}
-                      loading={resolveIssue.isPending}
-                    >
-                      Resolve
-                    </Button>
                   </Group>
                 </Table.Td>
               </Table.Tr>

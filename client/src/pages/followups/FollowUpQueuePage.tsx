@@ -1,14 +1,35 @@
-import { Anchor, Badge, Button, Checkbox, Group, Loader, NumberInput, Select, Stack, Table, Text, Title } from "@mantine/core";
+import {
+  Anchor,
+  Badge,
+  Button,
+  Checkbox,
+  Group,
+  Loader,
+  NumberInput,
+  Select,
+  Stack,
+  Table,
+  Text,
+  Title,
+} from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAssignFollowUp, useFollowUpQueue } from "../../api/followups";
 import { useUsers } from "../../api/users";
+import { usePermissions } from "../../auth/usePermissions";
 import { BulkAssignModal } from "./BulkAssignModal";
 import { BulkFollowUpModal } from "./BulkFollowUpModal";
 
-function AssignedToCell({ studentId, assignedTo }: { studentId: number; assignedTo: { id: number; name: string } | null }) {
+function AssignedToCell({
+  studentId,
+  assignedTo,
+}: {
+  studentId: number;
+  assignedTo: { id: number; name: string } | null;
+}) {
+  const { canWrite } = usePermissions();
   const { data: staff } = useUsers();
   const assign = useAssignFollowUp();
 
@@ -27,6 +48,8 @@ function AssignedToCell({ studentId, assignedTo }: { studentId: number; assigned
     .filter((u) => u.role !== "READ_ONLY_AUDITOR")
     .map((u) => ({ value: String(u.id), label: u.name }));
 
+  if (!canWrite) return <Text size="sm">{assignedTo?.name ?? "Unassigned"}</Text>;
+
   return (
     <Select
       placeholder="Unassigned"
@@ -44,6 +67,7 @@ function AssignedToCell({ studentId, assignedTo }: { studentId: number; assigned
 
 /** Spec §12: task-oriented follow-up queue with overdue highlighting. */
 export function FollowUpQueuePage() {
+  const { canWrite } = usePermissions();
   const [minDaysOverdue, setMinDaysOverdue] = useState<number | undefined>(undefined);
   const { data, isLoading } = useFollowUpQueue({ minDaysOverdue });
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -94,7 +118,7 @@ export function FollowUpQueuePage() {
           w={220}
           min={0}
         />
-        {selectedIds.size > 0 && (
+        {canWrite && selectedIds.size > 0 && (
           <Group gap="xs">
             <Button variant="light" onClick={openBulkAssign}>
               Assign {selectedIds.size} Selected
@@ -110,14 +134,16 @@ export function FollowUpQueuePage() {
         <Table striped highlightOnHover>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th w={36}>
-                <Checkbox
-                  checked={allSelected}
-                  indeterminate={someSelected && !allSelected}
-                  onChange={toggleAll}
-                  aria-label="Select all"
-                />
-              </Table.Th>
+              {canWrite && (
+                <Table.Th w={36}>
+                  <Checkbox
+                    checked={allSelected}
+                    indeterminate={someSelected && !allSelected}
+                    onChange={toggleAll}
+                    aria-label="Select all"
+                  />
+                </Table.Th>
+              )}
               <Table.Th>Student</Table.Th>
               <Table.Th>Program</Table.Th>
               <Table.Th>Campus</Table.Th>
@@ -135,13 +161,15 @@ export function FollowUpQueuePage() {
                 key={row.student.id}
                 bg={row.daysOverdue > 0 ? "var(--mantine-color-red-light)" : undefined}
               >
-                <Table.Td>
-                  <Checkbox
-                    checked={selectedIds.has(row.student.id)}
-                    onChange={() => toggleOne(row.student.id)}
-                    aria-label={`Select ${row.student.firstName} ${row.student.lastName}`}
-                  />
-                </Table.Td>
+                {canWrite && (
+                  <Table.Td>
+                    <Checkbox
+                      checked={selectedIds.has(row.student.id)}
+                      onChange={() => toggleOne(row.student.id)}
+                      aria-label={`Select ${row.student.firstName} ${row.student.lastName}`}
+                    />
+                  </Table.Td>
+                )}
                 <Table.Td>
                   <Anchor component={Link} to={`/students/${row.student.id}`}>
                     {row.student.firstName} {row.student.lastName}

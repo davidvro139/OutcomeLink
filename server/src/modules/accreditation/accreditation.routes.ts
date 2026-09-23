@@ -1,3 +1,4 @@
+import { ADMIN_ROLES } from "@outcomelink/shared";
 import { Router } from "express";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { OPERATIONAL_ROLES } from "../../lib/roles";
@@ -13,7 +14,7 @@ import * as ruleSets from "./rules/ruleSets";
 import * as validation from "./validation";
 
 const SYSTEM_ADMIN = "SYSTEM_ADMINISTRATOR" as const;
-const CAN_FINALIZE = [SYSTEM_ADMIN, "INSTITUTIONAL_ADMINISTRATOR"] as const;
+const CAN_FINALIZE = ADMIN_ROLES;
 
 export const accreditationRouter = Router();
 

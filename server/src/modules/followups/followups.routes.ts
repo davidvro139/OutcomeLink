@@ -1,3 +1,4 @@
+import { ADMIN_ROLES } from "@outcomelink/shared";
 import { Router } from "express";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { OPERATIONAL_ROLES } from "../../lib/roles";
@@ -8,7 +9,7 @@ import * as automation from "./automationScheduler";
 import * as attempts from "./followUpAttempts";
 import * as queueModule from "./queue";
 
-const CAN_MANAGE_AUTOMATION = ["SYSTEM_ADMINISTRATOR", "INSTITUTIONAL_ADMINISTRATOR"] as const;
+const CAN_MANAGE_AUTOMATION = ADMIN_ROLES;
 
 export const followupsRouter = Router();
 

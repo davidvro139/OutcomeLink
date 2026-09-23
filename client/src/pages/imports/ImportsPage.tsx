@@ -1,11 +1,25 @@
 import { IMPORT_ACCEPTED_FILE_EXTENSIONS } from "@outcomelink/shared";
-import { Anchor, Badge, Button, FileInput, Group, Loader, Modal, Stack, Table, Text, TextInput, Title } from "@mantine/core";
+import {
+  Anchor,
+  Badge,
+  Button,
+  FileInput,
+  Group,
+  Loader,
+  Modal,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+  Title,
+} from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { type ImportBatch, useImportBatches, useUploadImportBatch } from "../../api/imports";
+import { usePermissions } from "../../auth/usePermissions";
 
 // Matches imports.routes.ts's CAN_MANAGE_CONNECTIONS.
 const CAN_MANAGE_CONNECTIONS = ["SYSTEM_ADMINISTRATOR", "INSTITUTIONAL_ADMINISTRATOR"];
@@ -24,6 +38,7 @@ const STATUS_COLORS: Record<string, string> = {
  * and entry point into the upload wizard. Accepts CSV or Excel (spec §51).
  */
 export function ImportsPage() {
+  const { canManageStudents } = usePermissions();
   const { user } = useAuth();
   const canManageConnections = !!user && CAN_MANAGE_CONNECTIONS.includes(user.role);
   const { data: batches, isLoading } = useImportBatches();
@@ -37,7 +52,10 @@ export function ImportsPage() {
     if (!file || !sourceSystem.trim()) return;
     try {
       const result = await upload.mutateAsync({ file, sourceSystem: sourceSystem.trim() });
-      notifications.show({ message: "File uploaded — set up the column mapping next", color: "green" });
+      notifications.show({
+        message: "File uploaded — set up the column mapping next",
+        color: "green",
+      });
       close();
       setSourceSystem("");
       setFile(null);
@@ -60,7 +78,7 @@ export function ImportsPage() {
               Data Source Connections
             </Button>
           )}
-          <Button onClick={open}>New Import</Button>
+          {canManageStudents && <Button onClick={open}>New Import</Button>}
         </Group>
       </Group>
 
@@ -125,7 +143,11 @@ export function ImportsPage() {
             value={file}
             onChange={setFile}
           />
-          <Button onClick={handleUpload} loading={upload.isPending} disabled={!file || !sourceSystem.trim()}>
+          <Button
+            onClick={handleUpload}
+            loading={upload.isPending}
+            disabled={!file || !sourceSystem.trim()}
+          >
             Upload
           </Button>
         </Stack>

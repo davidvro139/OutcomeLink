@@ -1,3 +1,4 @@
+import { ADMIN_ROLES } from "@outcomelink/shared";
 import { Router } from "express";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { requireAuth, requireRole } from "../../middleware/auth";
@@ -5,7 +6,7 @@ import { validate } from "../../middleware/validate";
 import * as publicSetPassword from "./publicSetPassword";
 import * as users from "./users";
 
-const CAN_MANAGE_USERS = ["SYSTEM_ADMINISTRATOR", "INSTITUTIONAL_ADMINISTRATOR"] as const;
+const CAN_MANAGE_USERS = ADMIN_ROLES;
 
 export const usersRouter = Router();
 

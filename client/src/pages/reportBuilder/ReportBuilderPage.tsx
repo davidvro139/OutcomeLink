@@ -51,6 +51,7 @@ import {
 import { useQueueReportExport } from "../../api/reportExportJobs";
 import { downloadFile } from "../../lib/apiClient";
 import { ExportJobsPanel } from "./ExportJobsPanel";
+import { usePermissions } from "../../auth/usePermissions";
 
 type FilterValueMap = Record<string, string[] | number[] | boolean | undefined>;
 
@@ -218,14 +219,16 @@ function ReportChartPanel({
   const numericFields = selectedFields
     .map((key) => fieldDefs.find((d) => d.key === key))
     .filter(
-      (d): d is ReportFieldDef => !!d && (d.chartKind === "numeric-sum" || d.chartKind === "numeric-average"),
+      (d): d is ReportFieldDef =>
+        !!d && (d.chartKind === "numeric-sum" || d.chartKind === "numeric-average"),
     );
   const categoricalFields = selectedFields
     .map((key) => fieldDefs.find((d) => d.key === key))
     .filter((d): d is ReportFieldDef => !!d && d.chartKind === "categorical");
 
   const availableModes: { value: ChartMode; label: string }[] = [];
-  if (numericFields.length > 0) availableModes.push({ value: "TREND", label: "Trend across periods" });
+  if (numericFields.length > 0)
+    availableModes.push({ value: "TREND", label: "Trend across periods" });
   if (numericFields.length > 0 && selectedFields.length > 1) {
     availableModes.push({ value: "BY_LABEL", label: "Compare by column, per period" });
   }
@@ -241,8 +244,12 @@ function ReportChartPanel({
     );
   }
 
-  const mode = availableModes.some((m) => m.value === modeOverride) ? modeOverride! : availableModes[0].value;
-  const metricField = numericFields.some((f) => f.key === metricOverride) ? metricOverride! : numericFields[0]?.key;
+  const mode = availableModes.some((m) => m.value === modeOverride)
+    ? modeOverride!
+    : availableModes[0].value;
+  const metricField = numericFields.some((f) => f.key === metricOverride)
+    ? metricOverride!
+    : numericFields[0]?.key;
   const labelOptions = selectedFields.filter((f) => f !== metricField);
   const labelField = labelOptions.includes(labelOverride ?? "") ? labelOverride! : labelOptions[0];
   const categoryField = categoricalFields.some((f) => f.key === categoryOverride)
@@ -257,7 +264,8 @@ function ReportChartPanel({
   let truncatedGroups = false;
 
   if (mode === "TREND" && metricField) {
-    const kind = fieldDefs.find((d) => d.key === metricField)!.chartKind as "numeric-sum" | "numeric-average";
+    const kind = fieldDefs.find((d) => d.key === metricField)!.chartKind as
+      "numeric-sum" | "numeric-average";
     dataKey = "period";
     series = [{ name: "value", color: "blue.6" }];
     chartData = periodLabels.map((period) => {
@@ -268,9 +276,13 @@ function ReportChartPanel({
       return { period, value: aggregateNumeric(values, kind) };
     });
   } else if (mode === "BY_LABEL" && metricField && labelField) {
-    const kind = fieldDefs.find((d) => d.key === metricField)!.chartKind as "numeric-sum" | "numeric-average";
+    const kind = fieldDefs.find((d) => d.key === metricField)!.chartKind as
+      "numeric-sum" | "numeric-average";
     dataKey = "label";
-    series = periodLabels.map((p, i) => ({ name: p, color: CHART_PERIOD_COLORS[i % CHART_PERIOD_COLORS.length] }));
+    series = periodLabels.map((p, i) => ({
+      name: p,
+      color: CHART_PERIOD_COLORS[i % CHART_PERIOD_COLORS.length],
+    }));
     const labelOrder = distinctInOrder(result.rows, labelField);
     truncatedGroups = labelOrder.length > MAX_CHART_GROUPS;
     chartData = labelOrder.slice(0, MAX_CHART_GROUPS).map((labelValue) => {
@@ -278,7 +290,9 @@ function ReportChartPanel({
       for (const period of periodLabels) {
         const values = result.rows
           .filter(
-            (r) => String(r[labelField] ?? "—") === labelValue && r[REPORT_PERIOD_LABEL_FIELD_KEY] === period,
+            (r) =>
+              String(r[labelField] ?? "—") === labelValue &&
+              r[REPORT_PERIOD_LABEL_FIELD_KEY] === period,
           )
           .map((r) => r[metricField])
           .filter((v): v is number => typeof v === "number");
@@ -288,14 +302,19 @@ function ReportChartPanel({
     });
   } else if (mode === "CATEGORY_COUNT" && categoryField) {
     dataKey = "category";
-    series = periodLabels.map((p, i) => ({ name: p, color: CHART_PERIOD_COLORS[i % CHART_PERIOD_COLORS.length] }));
+    series = periodLabels.map((p, i) => ({
+      name: p,
+      color: CHART_PERIOD_COLORS[i % CHART_PERIOD_COLORS.length],
+    }));
     const categoryOrder = distinctInOrder(result.rows, categoryField);
     truncatedGroups = categoryOrder.length > MAX_CHART_GROUPS;
     chartData = categoryOrder.slice(0, MAX_CHART_GROUPS).map((categoryValue) => {
       const entry: Record<string, string | number> = { category: categoryValue };
       for (const period of periodLabels) {
         entry[period] = result.rows.filter(
-          (r) => String(r[categoryField] ?? "—") === categoryValue && r[REPORT_PERIOD_LABEL_FIELD_KEY] === period,
+          (r) =>
+            String(r[categoryField] ?? "—") === categoryValue &&
+            r[REPORT_PERIOD_LABEL_FIELD_KEY] === period,
         ).length;
       }
       return entry;
@@ -361,7 +380,8 @@ function ReportChartPanel({
 
       {truncatedGroups && (
         <Text size="xs" c="dimmed">
-          Showing the first {MAX_CHART_GROUPS} groups — narrow your filters or columns to see the rest.
+          Showing the first {MAX_CHART_GROUPS} groups — narrow your filters or columns to see the
+          rest.
         </Text>
       )}
 
@@ -370,9 +390,21 @@ function ReportChartPanel({
           No chartable data for this selection.
         </Text>
       ) : chartStyle === "BAR" ? (
-        <BarChart h={280} data={chartData} dataKey={dataKey} series={series} withLegend={series.length > 1} />
+        <BarChart
+          h={280}
+          data={chartData}
+          dataKey={dataKey}
+          series={series}
+          withLegend={series.length > 1}
+        />
       ) : (
-        <LineChart h={280} data={chartData} dataKey={dataKey} series={series} withLegend={series.length > 1} />
+        <LineChart
+          h={280}
+          data={chartData}
+          dataKey={dataKey}
+          series={series}
+          withLegend={series.length > 1}
+        />
       )}
     </Stack>
   );
@@ -387,6 +419,7 @@ function ReportChartPanel({
  * what server/src/modules/reports/customReportBuilder.ts accepts.
  */
 export function ReportBuilderPage() {
+  const { canWrite } = usePermissions();
   const [entityType, setEntityType] = useState<ReportEntityType>("STUDENT");
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [filterValues, setFilterValues] = useState<FilterValueMap>({});
@@ -430,7 +463,9 @@ export function ReportBuilderPage() {
   }
 
   function toggleField(key: string) {
-    setSelectedFields((prev) => (prev.includes(key) ? prev.filter((f) => f !== key) : [...prev, key]));
+    setSelectedFields((prev) =>
+      prev.includes(key) ? prev.filter((f) => f !== key) : [...prev, key],
+    );
   }
 
   function buildDefinition(): ReportDefinition {
@@ -452,7 +487,8 @@ export function ReportBuilderPage() {
   const missingPeriodForFields = selectedFields.some(
     (f) => fieldDefs.find((d) => d.key === f)?.requiresReportingPeriod,
   );
-  const canRun = selectedFields.length > 0 && (!missingPeriodForFields || reportingPeriodIds.length > 0);
+  const canRun =
+    selectedFields.length > 0 && (!missingPeriodForFields || reportingPeriodIds.length > 0);
 
   async function handleRun() {
     try {
@@ -535,7 +571,8 @@ export function ReportBuilderPage() {
   // Derived from the actual result rows (the request that produced them),
   // not the current reportingPeriodIds selection, since the user may have
   // changed the picker after running the report.
-  const showsPeriodColumn = (result?.rows.length ?? 0) > 0 && REPORT_PERIOD_LABEL_FIELD_KEY in result!.rows[0];
+  const showsPeriodColumn =
+    (result?.rows.length ?? 0) > 0 && REPORT_PERIOD_LABEL_FIELD_KEY in result!.rows[0];
 
   return (
     <Stack p="xl" gap="lg">
@@ -621,22 +658,19 @@ export function ReportBuilderPage() {
             <Button onClick={handleRun} loading={runReport.isPending} disabled={!canRun}>
               Run Report
             </Button>
-            <Button
-              variant="light"
-              onClick={handleExport}
-              loading={exporting}
-              disabled={!canRun}
-            >
+            <Button variant="light" onClick={handleExport} loading={exporting} disabled={!canRun}>
               Export to Excel
             </Button>
-            <Button
-              variant="light"
-              color="grape"
-              onClick={openSaveModal}
-              disabled={selectedFields.length === 0}
-            >
-              Save Report
-            </Button>
+            {canWrite && (
+              <Button
+                variant="light"
+                color="grape"
+                onClick={openSaveModal}
+                disabled={selectedFields.length === 0}
+              >
+                Save Report
+              </Button>
+            )}
           </Group>
         </Stack>
       </Group>
@@ -651,14 +685,16 @@ export function ReportBuilderPage() {
                 size="lg"
                 variant="light"
                 rightSection={
-                  <Text
-                    component="span"
-                    size="xs"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => handleDeleteSaved(r.id)}
-                  >
-                    ✕
-                  </Text>
+                  !canWrite ? undefined : (
+                    <Text
+                      component="span"
+                      size="xs"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => handleDeleteSaved(r.id)}
+                    >
+                      ✕
+                    </Text>
+                  )
                 }
               >
                 {r.name}
@@ -676,8 +712,8 @@ export function ReportBuilderPage() {
             <Title order={5}>Results ({result.totalCount})</Title>
             {result.truncated && (
               <Alert color="yellow" py={4}>
-                Showing the first {result.rows.length} of {result.totalCount} rows — export to
-                Excel for the full set.
+                Showing the first {result.rows.length} of {result.totalCount} rows — export to Excel
+                for the full set.
               </Alert>
             )}
           </Group>
@@ -695,38 +731,44 @@ export function ReportBuilderPage() {
                   </Title>
                   {result.truncated && (
                     <Text size="xs" c="dimmed" mb="xs">
-                      Based on the {result.rows.length} previewed rows only, not all {result.totalCount} —
-                      export to Excel for a chart over the full set.
+                      Based on the {result.rows.length} previewed rows only, not all{" "}
+                      {result.totalCount} — export to Excel for a chart over the full set.
                     </Text>
                   )}
-                  <ReportChartPanel result={result} fieldDefs={fieldDefs} selectedFields={selectedFields} />
+                  <ReportChartPanel
+                    result={result}
+                    fieldDefs={fieldDefs}
+                    selectedFields={selectedFields}
+                  />
                 </Paper>
               )}
               <Table.ScrollContainer minWidth={500}>
-              <Table striped highlightOnHover>
-                <Table.Thead>
-                  <Table.Tr>
-                    {showsPeriodColumn && <Table.Th>{REPORT_PERIOD_LABEL_HEADER}</Table.Th>}
-                    {selectedFields.map((f) => (
-                      <Table.Th key={f}>{fieldDefs.find((d) => d.key === f)?.label ?? f}</Table.Th>
-                    ))}
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {result.rows.map((row, i) => (
-                    <Table.Tr key={i}>
-                      {showsPeriodColumn && (
-                        <Table.Td>{String(row[REPORT_PERIOD_LABEL_FIELD_KEY] ?? "—")}</Table.Td>
-                      )}
+                <Table striped highlightOnHover>
+                  <Table.Thead>
+                    <Table.Tr>
+                      {showsPeriodColumn && <Table.Th>{REPORT_PERIOD_LABEL_HEADER}</Table.Th>}
                       {selectedFields.map((f) => (
-                        <Table.Td key={f}>
-                          {row[f] === null || row[f] === undefined ? "—" : String(row[f])}
-                        </Table.Td>
+                        <Table.Th key={f}>
+                          {fieldDefs.find((d) => d.key === f)?.label ?? f}
+                        </Table.Th>
                       ))}
                     </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {result.rows.map((row, i) => (
+                      <Table.Tr key={i}>
+                        {showsPeriodColumn && (
+                          <Table.Td>{String(row[REPORT_PERIOD_LABEL_FIELD_KEY] ?? "—")}</Table.Td>
+                        )}
+                        {selectedFields.map((f) => (
+                          <Table.Td key={f}>
+                            {row[f] === null || row[f] === undefined ? "—" : String(row[f])}
+                          </Table.Td>
+                        ))}
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
               </Table.ScrollContainer>
             </>
           )}

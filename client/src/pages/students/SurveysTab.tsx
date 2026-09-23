@@ -12,6 +12,7 @@ import {
   useSendEmployerSurvey,
   useSendGraduateSurvey,
 } from "../../api/surveys";
+import { usePermissions } from "../../auth/usePermissions";
 
 const CHANNEL_OPTIONS = ["EMAIL", "SMS", "MAIL", "PHONE"];
 
@@ -30,6 +31,7 @@ async function copyLink(kind: "graduate" | "employer", token: string) {
 }
 
 function GraduateSurveysSection({ studentId }: { studentId: number }) {
+  const { canWrite } = usePermissions();
   const { data: surveys, isLoading } = useGraduateSurveys(studentId);
   const sendSurvey = useSendGraduateSurvey(studentId);
   const [formOpened, { toggle: toggleForm, close: closeForm }] = useDisclosure(false);
@@ -39,7 +41,10 @@ function GraduateSurveysSection({ studentId }: { studentId: number }) {
   async function handleSend() {
     try {
       await sendSurvey.mutateAsync({ channel: channel ?? undefined });
-      notifications.show({ message: "Graduate survey created — copy the link below to send it", color: "green" });
+      notifications.show({
+        message: "Graduate survey created — copy the link below to send it",
+        color: "green",
+      });
       closeForm();
     } catch (err) {
       notifications.show({
@@ -53,14 +58,28 @@ function GraduateSurveysSection({ studentId }: { studentId: number }) {
     <Stack gap="md">
       <Group justify="space-between">
         <Text fw={500}>Graduate surveys</Text>
-        <Button size="xs" variant="light" onClick={toggleForm}>
-          {formOpened ? "Cancel" : "Send Graduate Survey"}
-        </Button>
+        {canWrite && (
+          <Button size="xs" variant="light" onClick={toggleForm}>
+            {formOpened ? "Cancel" : "Send Graduate Survey"}
+          </Button>
+        )}
       </Group>
 
       {formOpened && (
-        <Group align="flex-end" gap="sm" p="md" bg="var(--mantine-color-default)" style={{ borderRadius: 8 }}>
-          <Select label="Channel" data={CHANNEL_OPTIONS} value={channel} onChange={setChannel} w={160} />
+        <Group
+          align="flex-end"
+          gap="sm"
+          p="md"
+          bg="var(--mantine-color-default)"
+          style={{ borderRadius: 8 }}
+        >
+          <Select
+            label="Channel"
+            data={CHANNEL_OPTIONS}
+            value={channel}
+            onChange={setChannel}
+            w={160}
+          />
           <Button onClick={handleSend} loading={sendSurvey.isPending} size="sm">
             Create Survey Link
           </Button>
@@ -83,7 +102,9 @@ function GraduateSurveysSection({ studentId }: { studentId: number }) {
             <Fragment key={survey.id}>
               <Table.Tr
                 key={survey.id}
-                onClick={() => survey.response && setExpandedId(expandedId === survey.id ? null : survey.id)}
+                onClick={() =>
+                  survey.response && setExpandedId(expandedId === survey.id ? null : survey.id)
+                }
                 style={{ cursor: survey.response ? "pointer" : undefined }}
               >
                 <Table.Td>{new Date(survey.sentAt).toLocaleDateString()}</Table.Td>
@@ -95,7 +116,11 @@ function GraduateSurveysSection({ studentId }: { studentId: number }) {
                 </Table.Td>
                 <Table.Td>
                   {!survey.response && (
-                    <Button size="xs" variant="subtle" onClick={() => copyLink("graduate", survey.responseToken)}>
+                    <Button
+                      size="xs"
+                      variant="subtle"
+                      onClick={() => copyLink("graduate", survey.responseToken)}
+                    >
                       Copy Link
                     </Button>
                   )}
@@ -115,7 +140,8 @@ function GraduateSurveysSection({ studentId }: { studentId: number }) {
                         <b>Job title:</b> {survey.response.jobTitle ?? "—"}
                       </Text>
                       <Text size="sm">
-                        <b>Related to training:</b> {survey.response.relatedToTrainingResponse ?? "—"}
+                        <b>Related to training:</b>{" "}
+                        {survey.response.relatedToTrainingResponse ?? "—"}
                       </Text>
                       <Text size="sm">
                         <b>Continuing education:</b> {survey.response.continuingEducation ?? "—"}
@@ -157,6 +183,7 @@ function GraduateSurveysSection({ studentId }: { studentId: number }) {
 }
 
 function EmployerSurveysSection({ studentId }: { studentId: number }) {
+  const { canWrite } = usePermissions();
   const { data: surveys, isLoading } = useEmployerSurveys(studentId);
   const { data: employmentRecords } = useEmploymentRecords(studentId);
   const sendSurvey = useSendEmployerSurvey(studentId);
@@ -174,7 +201,10 @@ function EmployerSurveysSection({ studentId }: { studentId: number }) {
     if (!employerId) return;
     try {
       await sendSurvey.mutateAsync({ employerId: Number(employerId) });
-      notifications.show({ message: "Employer survey created — copy the link below to send it", color: "green" });
+      notifications.show({
+        message: "Employer survey created — copy the link below to send it",
+        color: "green",
+      });
       closeForm();
     } catch (err) {
       notifications.show({
@@ -188,13 +218,21 @@ function EmployerSurveysSection({ studentId }: { studentId: number }) {
     <Stack gap="md">
       <Group justify="space-between">
         <Text fw={500}>Employer surveys</Text>
-        <Button size="xs" variant="light" onClick={toggleForm}>
-          {formOpened ? "Cancel" : "Send Employer Survey"}
-        </Button>
+        {canWrite && (
+          <Button size="xs" variant="light" onClick={toggleForm}>
+            {formOpened ? "Cancel" : "Send Employer Survey"}
+          </Button>
+        )}
       </Group>
 
       {formOpened && (
-        <Group align="flex-end" gap="sm" p="md" bg="var(--mantine-color-default)" style={{ borderRadius: 8 }}>
+        <Group
+          align="flex-end"
+          gap="sm"
+          p="md"
+          bg="var(--mantine-color-default)"
+          style={{ borderRadius: 8 }}
+        >
           <Select
             label="Employer"
             description="Only employers with an employment record on file for this student"
@@ -204,7 +242,12 @@ function EmployerSurveysSection({ studentId }: { studentId: number }) {
             w={280}
             searchable
           />
-          <Button onClick={handleSend} loading={sendSurvey.isPending} disabled={!employerId} size="sm">
+          <Button
+            onClick={handleSend}
+            loading={sendSurvey.isPending}
+            disabled={!employerId}
+            size="sm"
+          >
             Create Survey Link
           </Button>
         </Group>
@@ -226,7 +269,9 @@ function EmployerSurveysSection({ studentId }: { studentId: number }) {
             <Fragment key={survey.id}>
               <Table.Tr
                 key={survey.id}
-                onClick={() => survey.response && setExpandedId(expandedId === survey.id ? null : survey.id)}
+                onClick={() =>
+                  survey.response && setExpandedId(expandedId === survey.id ? null : survey.id)
+                }
                 style={{ cursor: survey.response ? "pointer" : undefined }}
               >
                 <Table.Td>{survey.employer.name}</Table.Td>
@@ -238,7 +283,11 @@ function EmployerSurveysSection({ studentId }: { studentId: number }) {
                 </Table.Td>
                 <Table.Td>
                   {!survey.response && (
-                    <Button size="xs" variant="subtle" onClick={() => copyLink("employer", survey.responseToken)}>
+                    <Button
+                      size="xs"
+                      variant="subtle"
+                      onClick={() => copyLink("employer", survey.responseToken)}
+                    >
                       Copy Link
                     </Button>
                   )}
@@ -249,14 +298,18 @@ function EmployerSurveysSection({ studentId }: { studentId: number }) {
                   <Table.Td colSpan={4}>
                     <Stack gap={4} p="sm">
                       <Text size="sm">
-                        <b>Employment verification:</b> {survey.response.employmentVerification ?? "—"}
+                        <b>Employment verification:</b>{" "}
+                        {survey.response.employmentVerification ?? "—"}
                       </Text>
                       <Group gap="xl" wrap="wrap">
                         <Group gap={6}>
                           <Text size="sm" fw={500}>
                             Technical preparedness:
                           </Text>
-                          <Rating value={survey.response.technicalPreparednessRating ?? 0} readOnly />
+                          <Rating
+                            value={survey.response.technicalPreparednessRating ?? 0}
+                            readOnly
+                          />
                         </Group>
                         <Group gap={6}>
                           <Text size="sm" fw={500}>
@@ -286,7 +339,10 @@ function EmployerSurveysSection({ studentId }: { studentId: number }) {
                           <Text size="sm" fw={500}>
                             Would hire again:
                           </Text>
-                          <Rating value={survey.response.likelihoodToHireAgainRating ?? 0} readOnly />
+                          <Rating
+                            value={survey.response.likelihoodToHireAgainRating ?? 0}
+                            readOnly
+                          />
                         </Group>
                       </Group>
                       {survey.response.skillsGapNotes && (

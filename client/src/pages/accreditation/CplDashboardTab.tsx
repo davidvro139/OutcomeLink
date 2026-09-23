@@ -1,3 +1,4 @@
+import { usePermissions } from "../../auth/usePermissions";
 import type { CplMetric } from "@outcomelink/shared";
 import {
   Badge,
@@ -36,7 +37,11 @@ const METRICS: CplMetric[] = ["COMPLETION", "PLACEMENT", "LICENSURE"];
 // actually met could still show as "Below benchmark" here while the
 // Readiness tab correctly showed it as ready. Two views of the same fact
 // must never disagree.
-const STANDARD_BENCHMARKS: Record<CplMetric, number> = { COMPLETION: 60, PLACEMENT: 70, LICENSURE: 70 };
+const STANDARD_BENCHMARKS: Record<CplMetric, number> = {
+  COMPLETION: 60,
+  PLACEMENT: 70,
+  LICENSURE: 70,
+};
 
 interface DrillDownState {
   metric: CplMetric;
@@ -59,6 +64,7 @@ interface CreatePlanState {
  * spec §20's "no unexplained number" principle.
  */
 export function CplDashboardTab({ reportingPeriodId }: { reportingPeriodId: number }) {
+  const { canWrite } = usePermissions();
   const { data: results, isLoading } = useCplResults(reportingPeriodId);
   const { data: readinessData } = useReadiness(reportingPeriodId);
   const { data: period } = useReportingPeriod(reportingPeriodId);
@@ -131,7 +137,12 @@ export function CplDashboardTab({ reportingPeriodId }: { reportingPeriodId: numb
           color={belowBenchmark ? "red" : "green"}
           size="compact-sm"
           onClick={() =>
-            setDrillDown({ metric, programId: programId ?? undefined, bucket: "denominator", label })
+            setDrillDown({
+              metric,
+              programId: programId ?? undefined,
+              bucket: "denominator",
+              label,
+            })
           }
         >
           {percentage}%{" "}
@@ -146,7 +157,7 @@ export function CplDashboardTab({ reportingPeriodId }: { reportingPeriodId: numb
             </Badge>
           )}
         </Button>
-        {belowBenchmark && programId !== null && (
+        {canWrite && belowBenchmark && programId !== null && (
           <Tooltip label="Create improvement plan">
             <Button
               variant="subtle"
@@ -226,7 +237,11 @@ export function CplDashboardTab({ reportingPeriodId }: { reportingPeriodId: numb
       <Modal
         opened={createPlanState !== null}
         onClose={() => setCreatePlanState(null)}
-        title={createPlanState ? `Improvement Plan — ${createPlanState.programName} (${createPlanState.metric})` : ""}
+        title={
+          createPlanState
+            ? `Improvement Plan — ${createPlanState.programName} (${createPlanState.metric})`
+            : ""
+        }
         size="lg"
       >
         {createPlanState && (
@@ -319,7 +334,11 @@ function QuickCreatePlanForm({
           <Text size="sm" fw={500} mb={4}>
             Due date
           </Text>
-          <input type="date" {...form.getInputProps("dueDate")} style={{ padding: 8, width: "100%" }} />
+          <input
+            type="date"
+            {...form.getInputProps("dueDate")}
+            style={{ padding: 8, width: "100%" }}
+          />
         </div>
         <Text size="xs" c="dimmed">
           See the "Improvement Plans" tab for the full plan, including status and progress updates.

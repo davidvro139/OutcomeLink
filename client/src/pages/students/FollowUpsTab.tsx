@@ -9,8 +9,10 @@ import {
   useFollowUpAttempts,
 } from "../../api/followups";
 import { toDatetimeLocalValue } from "../../lib/forms";
+import { usePermissions } from "../../auth/usePermissions";
 
 export function FollowUpsTab({ studentId }: { studentId: number }) {
+  const { canWrite } = usePermissions();
   const { data: attempts, isLoading } = useFollowUpAttempts(studentId);
   const createAttempt = useCreateFollowUpAttempt(studentId);
   const [formOpened, { toggle: toggleForm }] = useDisclosure(false);
@@ -45,9 +47,11 @@ export function FollowUpsTab({ studentId }: { studentId: number }) {
     <Stack gap="md">
       <Group justify="space-between">
         <Text fw={500}>Follow-up history</Text>
-        <Button size="xs" variant="light" onClick={toggleForm}>
-          {formOpened ? "Cancel" : "Record Attempt"}
-        </Button>
+        {canWrite && (
+          <Button size="xs" variant="light" onClick={toggleForm}>
+            {formOpened ? "Cancel" : "Record Attempt"}
+          </Button>
+        )}
       </Group>
 
       {formOpened && (

@@ -28,6 +28,7 @@ import { ImprovementPlansTab } from "./ImprovementPlansTab";
 import { ReadinessTab } from "./ReadinessTab";
 import { ReportsTab } from "./ReportsTab";
 import { ValidationTab } from "./ValidationTab";
+import { usePermissions } from "../../auth/usePermissions";
 
 const STATUS_COLORS: Record<string, string> = {
   OPEN: "blue",
@@ -37,9 +38,17 @@ const STATUS_COLORS: Record<string, string> = {
   REOPENED: "orange",
 };
 
-const TAB_VALUES = ["dashboard", "readiness", "validation", "improvement-plans", "reports", "audit"];
+const TAB_VALUES = [
+  "dashboard",
+  "readiness",
+  "validation",
+  "improvement-plans",
+  "reports",
+  "audit",
+];
 
 export function ReportingPeriodDetailPage() {
+  const { canAdminister } = usePermissions();
   const { id } = useParams<{ id: string }>();
   const periodId = Number(id);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -137,13 +146,17 @@ export function ReportingPeriodDetailPage() {
       </Group>
 
       <Group>
-        <Button onClick={handleCompute} loading={compute.isPending} disabled={isLocked}>
-          Compute
-        </Button>
-        <Button variant="light" onClick={handleValidate} loading={validate.isPending}>
-          Run Validation
-        </Button>
-        {!isLocked && (
+        {canAdminister && (
+          <Button onClick={handleCompute} loading={compute.isPending} disabled={isLocked}>
+            Compute
+          </Button>
+        )}
+        {canAdminister && (
+          <Button variant="light" onClick={handleValidate} loading={validate.isPending}>
+            Run Validation
+          </Button>
+        )}
+        {!isLocked && canAdminister && (
           <Button
             variant="light"
             color="teal"
@@ -153,12 +166,12 @@ export function ReportingPeriodDetailPage() {
             Finalize
           </Button>
         )}
-        {period.status === "FINALIZED" && (
+        {period.status === "FINALIZED" && canAdminister && (
           <Button variant="light" color="grape" onClick={handleSubmit} loading={submit.isPending}>
             Mark Submitted
           </Button>
         )}
-        {isLocked && (
+        {isLocked && canAdminister && (
           <Button variant="light" color="orange" onClick={openReopen}>
             Reopen
           </Button>

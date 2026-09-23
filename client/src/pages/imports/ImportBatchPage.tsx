@@ -1,3 +1,4 @@
+import { usePermissions } from "../../auth/usePermissions";
 import {
   IMPORT_ENROLLMENT_TARGET_FIELDS,
   IMPORT_REQUIRED_ENROLLMENT_TARGET_FIELDS,
@@ -7,7 +8,20 @@ import {
   type ImportColumnMapping,
   type ImportTargetField,
 } from "@outcomelink/shared";
-import { Alert, Badge, Button, Checkbox, Group, Loader, Pagination, Select, Stack, Table, Text, Title } from "@mantine/core";
+import {
+  Alert,
+  Badge,
+  Button,
+  Checkbox,
+  Group,
+  Loader,
+  Pagination,
+  Select,
+  Stack,
+  Table,
+  Text,
+  Title,
+} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
@@ -90,7 +104,10 @@ function MappingStep({
     IMPORT_REQUIRED_TARGET_FIELDS.every((f) => byTarget[f]) &&
     (!mapsAnyEnrollmentField || IMPORT_REQUIRED_ENROLLMENT_TARGET_FIELDS.every((f) => byTarget[f]));
 
-  function fieldTable(fields: readonly ImportTargetField[], requiredFields: readonly ImportTargetField[]) {
+  function fieldTable(
+    fields: readonly ImportTargetField[],
+    requiredFields: readonly ImportTargetField[],
+  ) {
     return (
       <Table withTableBorder>
         <Table.Thead>
@@ -150,7 +167,10 @@ function MappingStep({
         import will also create one enrollment per row (for both new and already-existing students).
         Enrollment Status accepts either spelling (e.g. "Active" or "ACTIVE").
       </Text>
-      {fieldTable(IMPORT_ENROLLMENT_TARGET_FIELDS, mapsAnyEnrollmentField ? IMPORT_REQUIRED_ENROLLMENT_TARGET_FIELDS : [])}
+      {fieldTable(
+        IMPORT_ENROLLMENT_TARGET_FIELDS,
+        mapsAnyEnrollmentField ? IMPORT_REQUIRED_ENROLLMENT_TARGET_FIELDS : [],
+      )}
 
       <Checkbox
         label={`Save this mapping for future "${sourceSystem}" imports`}
@@ -164,7 +184,13 @@ function MappingStep({
   );
 }
 
-function PreviewSection({ batchId, mappedFields }: { batchId: number; mappedFields: ImportTargetField[] }) {
+function PreviewSection({
+  batchId,
+  mappedFields,
+}: {
+  batchId: number;
+  mappedFields: ImportTargetField[];
+}) {
   const [page, setPage] = useState(1);
   const { data, isLoading } = useImportPreview(batchId, page);
 
@@ -213,6 +239,7 @@ export function ImportBatchPage() {
   const { data, isLoading } = useImportBatch(batchId);
   const validateBatch = useValidateImportBatch(batchId);
   const commitBatch = useCommitImportBatch(batchId);
+  const { canManageStudents } = usePermissions();
 
   async function handleValidate() {
     try {
@@ -265,7 +292,7 @@ export function ImportBatchPage() {
         </Badge>
       </Group>
 
-      {(batch.status === "UPLOADED" || batch.status === "MAPPED") && (
+      {canManageStudents && (batch.status === "UPLOADED" || batch.status === "MAPPED") && (
         <MappingStep
           batchId={batch.id}
           sourceColumns={sourceColumns}
@@ -274,7 +301,7 @@ export function ImportBatchPage() {
         />
       )}
 
-      {batch.status === "MAPPED" && (
+      {canManageStudents && batch.status === "MAPPED" && (
         <Button onClick={handleValidate} loading={validateBatch.isPending}>
           Run Validation
         </Button>
@@ -282,14 +309,16 @@ export function ImportBatchPage() {
 
       {(batch.status === "VALIDATED" || batch.status === "PREVIEWED") && (
         <Stack gap="md">
-          <Group>
-            <Button variant="light" onClick={handleValidate} loading={validateBatch.isPending}>
-              Re-run Validation
-            </Button>
-            <Button onClick={handleCommit} loading={commitBatch.isPending} color="teal">
-              Commit Import
-            </Button>
-          </Group>
+          {canManageStudents && (
+            <Group>
+              <Button variant="light" onClick={handleValidate} loading={validateBatch.isPending}>
+                Re-run Validation
+              </Button>
+              <Button onClick={handleCommit} loading={commitBatch.isPending} color="teal">
+                Commit Import
+              </Button>
+            </Group>
+          )}
 
           {rowErrors.length > 0 && (
             <Stack gap="sm">
@@ -325,7 +354,9 @@ export function ImportBatchPage() {
 
           <PreviewSection
             batchId={batch.id}
-            mappedFields={Object.values(batch.columnMapping ?? {}).filter((f): f is ImportTargetField => !!f)}
+            mappedFields={Object.values(batch.columnMapping ?? {}).filter(
+              (f): f is ImportTargetField => !!f,
+            )}
           />
         </Stack>
       )}
@@ -336,7 +367,8 @@ export function ImportBatchPage() {
           {batch.importedEnrollmentCount !== null && (
             <>
               {" "}
-              {batch.importedEnrollmentCount} enrollment{batch.importedEnrollmentCount === 1 ? "" : "s"} created.
+              {batch.importedEnrollmentCount} enrollment
+              {batch.importedEnrollmentCount === 1 ? "" : "s"} created.
             </>
           )}
         </Alert>

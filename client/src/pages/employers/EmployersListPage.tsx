@@ -17,8 +17,10 @@ import { notifications } from "@mantine/notifications";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { type CreateEmployerInput, useCreateEmployer, useEmployers } from "../../api/employers";
+import { usePermissions } from "../../auth/usePermissions";
 
 export function EmployersListPage() {
+  const { canManageEmployers } = usePermissions();
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebouncedValue(search, 300);
   const [page, setPage] = useState(1);
@@ -54,7 +56,7 @@ export function EmployersListPage() {
           <Button variant="light" component={Link} to="/employers/analytics">
             View Analytics
           </Button>
-          <Button onClick={open}>New Employer</Button>
+          {canManageEmployers && <Button onClick={open}>New Employer</Button>}
         </Group>
       </Group>
 

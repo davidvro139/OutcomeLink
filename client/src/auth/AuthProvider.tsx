@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { apiRequest, setAccessToken, setSessionExpiredHandler } from "../lib/apiClient";
-import { AuthContext, type AuthStatus, type AuthUser } from "./AuthContext";
+import { AuthContext, type AuthStatus, type AuthUser, type SessionEndReason } from "./AuthContext";
 
 /**
  * On mount, attempts a silent refresh using the httpOnly refresh cookie —
@@ -11,6 +11,7 @@ import { AuthContext, type AuthStatus, type AuthUser } from "./AuthContext";
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>("loading");
+  const [sessionEndReason, setSessionEndReason] = useState<SessionEndReason>(null);
   const queryClient = useQueryClient();
 
   // Query keys carry no user/institution identity, so the shared cache would
@@ -41,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSessionExpiredHandler(() => {
       void queryClient.cancelQueries();
       setAccessToken(null);
+      setSessionEndReason("expired");
       setUser(null);
       setStatus("unauthenticated");
     });
@@ -82,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }>("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
     await queryClient.cancelQueries();
     setAccessToken(accessToken);
+    setSessionEndReason(null);
     setUser(loggedInUser);
     setStatus("authenticated");
   }, [queryClient]);
@@ -90,11 +93,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await apiRequest("/api/auth/logout", { method: "POST" }).catch(() => undefined);
     await queryClient.cancelQueries();
     setAccessToken(null);
+    setSessionEndReason("logout");
     setUser(null);
     setStatus("unauthenticated");
   }, [queryClient]);
 
-  const value = useMemo(() => ({ user, status, login, logout }), [user, status, login, logout]);
+  const value = useMemo(
+    () => ({ user, status, sessionEndReason, login, logout }),
+    [user, status, sessionEndReason, login, logout],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -14,7 +14,7 @@ import {
 import { useForm } from "@mantine/form";
 import { ROLE_LABELS, type Role } from "@outcomelink/shared";
 import { useState } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { ApiRequestError } from "../lib/apiClient";
 
@@ -46,7 +46,6 @@ interface LoginLocationState {
 
 export function LoginPage() {
   const { status, login } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
   const locationState = location.state as LoginLocationState | undefined;
   const [error, setError] = useState<string | null>(null);
@@ -75,8 +74,10 @@ export function LoginPage() {
     setSubmitting(true);
     setPendingEmail(email);
     try {
+      // No imperative navigate here: the declarative <Navigate> above fires once
+      // status flips to authenticated. Having both raced, and whichever ran
+      // last decided the destination.
       await login(email, password);
-      navigate("/", { replace: true });
     } catch (err) {
       setError(
         err instanceof ApiRequestError ? err.message : "Unable to log in. Please try again.",

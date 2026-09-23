@@ -27,7 +27,7 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import { ROLE_LABELS } from "@outcomelink/shared";
-import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { GlobalSearch } from "../components/GlobalSearch";
 import { NotificationBell } from "../components/NotificationBell";
@@ -77,13 +77,13 @@ const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
 /** The authenticated app shell: header with search + user menu, navbar, content area for routed pages. */
 export function AppLayout() {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
   const [navOpened, { toggle: toggleNav, close: closeNav }] = useDisclosure(false);
 
   async function handleLogout() {
+    // RequireAuth redirects to /login once status flips; a second imperative
+    // navigate here would be a competing source of truth for the destination.
     await logout();
-    navigate("/login", { replace: true });
   }
 
   return (

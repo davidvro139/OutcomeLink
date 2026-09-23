@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# A newer push to the same branch/PR makes an in-flight run obsolete.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Husky's `prepare` script would try to install git hooks inside CI.
+  HUSKY: "0"
+
+jobs:
+  static:
+    name: Lint and typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # server and client typecheck against the built shared package and the generated Prisma client.
+      - run: npm run build:shared
+      - run: npx prisma generate
+        working-directory: server
+      - run: npm run lint
+      - run: npm run typecheck
+
+  client:
+    name: Client tests and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build:shared
+      - run: npm test --workspace client
+      - run: npm run build --workspace client
+
+  server:
+    name: Server unit and integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      # The integration suite runs against a real, disposable MySQL database
+      # (jest.globalSetup.cjs resets `outcomelink_test` with `prisma migrate
+      # reset` on every run), so this one is created fresh for each CI run.
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-root-password
+          MYSQL_DATABASE: outcomelink_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci-root-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build:shared
+      - run: npx prisma generate
+        working-directory: server
+      - name: Create test environment file
+        working-directory: server
+        run: |
+          cp .env.test.example .env.test
+          sed -i 's#^DATABASE_URL=.*#DATABASE_URL="mysql://root:ci-root-password@127.0.0.1:3306/outcomelink_test"#' .env.test
+      - name: Unit tests
+        run: npm test
+        working-directory: server
+      - name: Integration tests
+        run: npm run test:integration
+        working-directory: server

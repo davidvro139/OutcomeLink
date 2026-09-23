@@ -26,7 +26,9 @@ export async function buildXlsxBuffer(sheets: XlsxSheet[]): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   workbook.created = new Date();
 
-  for (const sheetDef of sheets) {
+  // The provenance sheet always goes last so the data sheet stays the workbook's first tab.
+  const ordered = [...sheets].sort((a, b) => Number(a.name === "Report Info") - Number(b.name === "Report Info"));
+  for (const sheetDef of ordered) {
     const sheet = workbook.addWorksheet(sheetDef.name);
     sheet.columns = sheetDef.columns.map((c) => ({ ...c, width: c.width ?? 20 }));
     sheet.addRows(sheetDef.rows);

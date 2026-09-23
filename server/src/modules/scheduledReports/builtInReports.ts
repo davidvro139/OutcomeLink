@@ -43,13 +43,24 @@ async function resolveReportingPeriodId(
   return mostRecent.id;
 }
 
+/** Also returns the period actually used (a subscription with no fixed period runs against the most recent one), for the export's provenance. */
 export async function buildBuiltInReportSheet(
   institutionId: number,
   creator: AccessTokenPayload,
   builtInReportType: BuiltInReportType,
   fixedReportingPeriodId: number | null,
-): Promise<{ sheet: XlsxSheet; rowCount: number }> {
+): Promise<{ sheet: XlsxSheet; rowCount: number; reportingPeriodId: number | undefined }> {
   const reportingPeriodId = await resolveReportingPeriodId(institutionId, builtInReportType, fixedReportingPeriodId);
+  const built = await buildSheetFor(institutionId, creator, builtInReportType, reportingPeriodId);
+  return { ...built, reportingPeriodId };
+}
+
+async function buildSheetFor(
+  institutionId: number,
+  creator: AccessTokenPayload,
+  builtInReportType: BuiltInReportType,
+  reportingPeriodId: number | undefined,
+): Promise<{ sheet: XlsxSheet; rowCount: number }> {
   const accessibleProgramIds = await getAccessibleProgramIds(creator);
 
   switch (builtInReportType) {

@@ -55,8 +55,11 @@ export async function generateReportExport(jobId: number): Promise<void> {
   const requesterPayload = toAccessTokenPayload(job.requester);
 
   try {
-    const sheet = await buildCustomReportSheet(requesterPayload, job.definition as unknown as RunReportInput);
-    const buffer = await buildXlsxBuffer([sheet]);
+    const { sheets, rowCount } = await buildCustomReportSheet(
+      requesterPayload,
+      job.definition as unknown as RunReportInput,
+    );
+    const buffer = await buildXlsxBuffer(sheets);
     const { fileReference } = await reportExportStorage.save({
       buffer,
       originalName: "report-export.xlsx",
@@ -65,12 +68,12 @@ export async function generateReportExport(jobId: number): Promise<void> {
 
     await prisma.reportExportJob.update({
       where: { id: jobId },
-      data: { status: "SUCCESS", fileReference, rowCount: sheet.rows.length, completedAt: new Date() },
+      data: { status: "SUCCESS", fileReference, rowCount, completedAt: new Date() },
     });
     await createNotification({
       userId: job.requestedBy,
       type: "REPORT_EXPORT_READY",
-      message: `Your report export is ready — ${sheet.rows.length} row${sheet.rows.length === 1 ? "" : "s"}.`,
+      message: `Your report export is ready — ${rowCount} row${rowCount === 1 ? "" : "s"}.`,
       referenceEntityType: "ReportExportJob",
       referenceEntityId: jobId,
     });

@@ -9,18 +9,76 @@ import { logger } from "./logger";
  * unextended client used internally by the extension itself, so its own
  * writes to `audit_log_entries` don't recurse back through this logic.
  *
- * Scope: covers single-record create/update/delete only (not createMany/
- * updateMany/deleteMany/upsert, and not nested relation writes) — that
- * covers the CRUD patterns the modules in server/src/modules use. Update
- * diffs are computed per scalar field, matching docs/DATA_MODEL.md's
- * AuditLogEntry shape (one row per changed field, not per operation).
+ * Scope: covers single-record create/update/delete/upsert (not createMany/
+ * updateMany/deleteMany, and not nested relation writes) — that covers the
+ * CRUD patterns the modules in server/src/modules use. Update diffs are
+ * computed per scalar field, matching docs/DATA_MODEL.md's AuditLogEntry
+ * shape (one row per changed field, not per operation).
+ *
+ * upsert (docs/TODO.md's "audit upsert operations"): used for consent /
+ * do-not-contact, saved reports, mapping profiles and follow-up owners, so
+ * skipping it left exactly the writes with the strongest need for history
+ * unlogged. Prisma gives no signal for whether an upsert created or
+ * updated, so the row is read first (by the same unique `where`) and the
+ * write is logged as a create or a per-field diff accordingly.
  */
 
 const rawPrisma = new PrismaClient();
 
 type Delegate = {
-  findUnique: (args: { where: { id: number } }) => Promise<Record<string, unknown> | null>;
+  findUnique: (args: { where: unknown }) => Promise<Record<string, unknown> | null>;
 };
+
+/**
+ * Models whose upserts are derived, recomputable output rather than a user's
+ * edit — the CPL recalculation upserts one classification + explanation per
+ * enrollment per metric (thousands per run) from inputs that are themselves
+ * audited, so logging them would bury real history under noise.
+ */
+const UNAUDITED_UPSERT_MODELS = new Set(["StudentClassification", "CplCalculationExplanation"]);
+
+/**
+ * Some models have no history view of their own but belong to a record that
+ * does — their changes are filed under that parent so they show up where a
+ * reviewer would actually look (a student's do-not-contact history belongs
+ * on the student, not under an opaque preference-row id).
+ */
+interface AuditSubject {
+  entityType: string;
+  entityId: number;
+  fieldPrefix: string;
+  skipFields: string[];
+}
+const AUDIT_SUBJECTS: Record<string, (row: Record<string, unknown>) => AuditSubject> = {
+  StudentCommunicationPreference: (row) => ({
+    entityType: "Student",
+    entityId: row.studentId as number,
+    fieldPrefix: "communicationPreference.",
+    skipFields: ["studentId"],
+  }),
+};
+
+const RELATION_WRITE_KEYS = new Set([
+  "connect", "create", "connectOrCreate", "disconnect", "update", "upsert", "delete", "set",
+  "createMany", "updateMany", "deleteMany",
+]);
+
+/** A nested relation write (`{ connect: { id } }`), as opposed to a scalar value that happens to be an object (Date, JSON). */
+function isRelationWrite(value: unknown): boolean {
+  if (typeof value !== "object" || value === null || value instanceof Date || Array.isArray(value)) return false;
+  const keys = Object.keys(value);
+  return keys.length > 0 && keys.every((k) => RELATION_WRITE_KEYS.has(k));
+}
+
+/** Stable key order — MySQL normalizes JSON key order, so raw stringification would log phantom changes. */
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : 1));
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
 
 function delegateFor(model: string): Delegate {
   const property = model.charAt(0).toLowerCase() + model.slice(1);
@@ -60,7 +118,43 @@ async function writeAuditEntry(entry: AuditEntryInput) {
 
 function stringifyForAudit(value: unknown): string | null {
   if (value === null || value === undefined) return null;
-  return value instanceof Date ? value.toISOString() : String(value);
+  if (value instanceof Date) return value.toISOString();
+  // Prisma Decimal columns come back as Decimal objects but are written as plain numbers/strings.
+  if (typeof value === "object" && value.constructor?.name !== "Decimal") return canonicalJson(value);
+  return String(value);
+}
+
+/** One UPDATE entry per scalar field whose stringified value actually changed. */
+async function writeFieldDiffs(
+  model: string,
+  entityId: number,
+  before: Record<string, unknown> | null,
+  data: Record<string, unknown>,
+  userId: number,
+) {
+  const subject = AUDIT_SUBJECTS[model]?.(before ?? {});
+  for (const [field, newValue] of Object.entries(data)) {
+    // Skip nested relation writes (e.g. { connect: { id } }), but Date and JSON
+    // columns are real scalar values, not relation payloads — a blanket
+    // typeof-object skip would silently drop every date/JSON change.
+    if (newValue === undefined || isRelationWrite(newValue)) continue;
+    if (subject?.skipFields.includes(field)) continue;
+    // Compare the stringified forms, not the raw values: two distinct Date
+    // instances for the same instant are never === by reference, which would
+    // otherwise log a "change" on every no-op resubmission of the same date.
+    const previousValue = stringifyForAudit(before?.[field]);
+    const nextValue = stringifyForAudit(newValue);
+    if (previousValue === nextValue) continue;
+    await writeAuditEntry({
+      model: subject?.entityType ?? model,
+      entityId: subject?.entityId ?? entityId,
+      action: AuditAction.UPDATE,
+      userId,
+      fieldChanged: `${subject?.fieldPrefix ?? ""}${field}`,
+      previousValue,
+      newValue: nextValue,
+    });
+  }
 }
 
 export const prisma = rawPrisma.$extends({
@@ -69,7 +163,10 @@ export const prisma = rawPrisma.$extends({
     $allModels: {
       async $allOperations({ model, operation, args, query }) {
         const auditable =
-          operation === "create" || operation === "update" || operation === "delete";
+          operation === "create" ||
+          operation === "update" ||
+          operation === "delete" ||
+          operation === "upsert";
         if (model === "AuditLogEntry" || !auditable) {
           return query(args);
         }
@@ -80,6 +177,47 @@ export const prisma = rawPrisma.$extends({
           // aren't attributable to a user — skip rather than fail the write
           // or invent a fake actor.
           return query(args);
+        }
+
+        if (operation === "upsert") {
+          if (UNAUDITED_UPSERT_MODELS.has(model)) return query(args);
+          const {
+            where: upsertWhere,
+            create,
+            update,
+          } = args as {
+            where: unknown;
+            create?: Record<string, unknown>;
+            update?: Record<string, unknown>;
+          };
+          const before = await delegateFor(model).findUnique({ where: upsertWhere });
+          const result = await query(args);
+          const id = (result as { id?: number })?.id;
+          if (typeof id !== "number") return result;
+
+          if (before) {
+            await writeFieldDiffs(model, id, before, update ?? {}, userId);
+          } else if (AUDIT_SUBJECTS[model]) {
+            // A first-ever value for a subject-filed model is still worth
+            // seeing field by field (e.g. the initial do-not-contact flag).
+            const subject = AUDIT_SUBJECTS[model](result as Record<string, unknown>);
+            for (const [field, value] of Object.entries(create ?? {})) {
+              if (value === undefined || value === null || isRelationWrite(value)) continue;
+              if (subject.skipFields.includes(field)) continue;
+              await writeAuditEntry({
+                model: subject.entityType,
+                entityId: subject.entityId,
+                action: AuditAction.UPDATE,
+                userId,
+                fieldChanged: `${subject.fieldPrefix}${field}`,
+                previousValue: null,
+                newValue: stringifyForAudit(value),
+              });
+            }
+          } else {
+            await writeAuditEntry({ model, entityId: id, action: AuditAction.CREATE, userId });
+          }
+          return result;
         }
 
         if (operation === "create") {
@@ -101,29 +239,7 @@ export const prisma = rawPrisma.$extends({
 
           if (before && where?.id) {
             const data = (args as { data?: Record<string, unknown> }).data ?? {};
-            for (const [field, newValue] of Object.entries(data)) {
-              // Skip nested relation writes (e.g. { connect: { id } }), but Date is a
-              // real scalar value here, not a relation payload — typeof would otherwise
-              // silently drop every date-field change from the audit log.
-              if (typeof newValue === "object" && newValue !== null && !(newValue instanceof Date))
-                continue;
-              // Compare the stringified forms, not the raw values: two distinct Date
-              // instances for the same instant are never === by reference, which would
-              // otherwise log a "change" on every no-op resubmission of the same date.
-              const previousValue = stringifyForAudit(before[field]);
-              const nextValue = stringifyForAudit(newValue);
-              if (previousValue !== nextValue) {
-                await writeAuditEntry({
-                  model,
-                  entityId: where.id,
-                  action: AuditAction.UPDATE,
-                  userId,
-                  fieldChanged: field,
-                  previousValue,
-                  newValue: nextValue,
-                });
-              }
-            }
+            await writeFieldDiffs(model, where.id, before, data, userId);
           }
 
           return result;

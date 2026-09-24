@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { prisma } from "../../lib/prisma";
+import { evaluatePeriodCloseout } from "./closeout";
 
 export const createReportingPeriodSchema = z.object({
   ruleSetId: z.coerce.number().int().positive(),
@@ -90,7 +91,23 @@ async function actingUserName(userId: number): Promise<string> {
  * changed field (status/reopenedAt/reopenedBy/reopenReason), satisfying
  * "reopening must be recorded in the audit trail" without extra code.
  */
-export async function finalize(req: Request, res: Response) {
+export const finalizeReportingPeriodSchema = z.object({
+  /** Why finalizing is going ahead with blockers outstanding (required only then). */
+  overrideReason: z.string().trim().min(1).max(2000).optional(),
+});
+type FinalizeReportingPeriodInput = z.infer<typeof finalizeReportingPeriodSchema>;
+
+/**
+ * Guarded by the close-out checklist (docs/TODO.md): the period must have been
+ * signed off on the current results, and if blockers remain (results missing or
+ * stale, validation not current, open errors, off-track programs with no plan)
+ * an override reason is required and recorded. The sign-off itself can't be
+ * overridden — it is the confirmation that someone looked.
+ */
+export async function finalize(
+  req: Request<{ id: string }, unknown, FinalizeReportingPeriodInput>,
+  res: Response,
+) {
   const id = Number(req.params.id);
   const period = await findOwnedPeriod(req.user!.institutionId, id);
 
@@ -98,10 +115,33 @@ export async function finalize(req: Request, res: Response) {
     throw ApiError.conflict(`Cannot finalize a reporting period with status ${period.status}`);
   }
 
+  const closeout = await evaluatePeriodCloseout(req.user!.institutionId, id);
+  if (!closeout.signOffCurrent) {
+    throw new ApiError(
+      409,
+      "CLOSEOUT_BLOCKED",
+      "Sign off on the close-out checklist before finalizing — a sign-off is needed on the current results.",
+      { blockers: closeout.blockers, signOffRequired: true },
+    );
+  }
+  if (closeout.needsOverride && !req.body.overrideReason) {
+    throw new ApiError(
+      409,
+      "CLOSEOUT_BLOCKED",
+      "Finalizing is blocked: " + closeout.blockers.map((b) => b.message).join(" ") + " Provide an override reason to finalize anyway.",
+      { blockers: closeout.blockers, signOffRequired: false },
+    );
+  }
+
   const finalizedBy = await actingUserName(req.user!.sub);
   const reportingPeriod = await prisma.reportingPeriod.update({
     where: { id },
-    data: { status: "FINALIZED", finalizedAt: new Date(), finalizedBy },
+    data: {
+      status: "FINALIZED",
+      finalizedAt: new Date(),
+      finalizedBy,
+      finalizeOverrideReason: closeout.needsOverride ? req.body.overrideReason : null,
+    },
   });
   sendData(res, { reportingPeriod });
 }
@@ -140,7 +180,18 @@ export async function reopen(
   const reopenedBy = await actingUserName(req.user!.sub);
   const reportingPeriod = await prisma.reportingPeriod.update({
     where: { id },
-    data: { status: "REOPENED", reopenedAt: new Date(), reopenedBy, reopenReason: req.body.reason },
+    data: {
+      status: "REOPENED",
+      reopenedAt: new Date(),
+      reopenedBy,
+      reopenReason: req.body.reason,
+      // A reopened period has to be reviewed and signed off again.
+      signedOffAt: null,
+      signedOffBy: null,
+      signedOffNote: null,
+      signedOffResultsAt: null,
+      finalizeOverrideReason: null,
+    },
   });
   sendData(res, { reportingPeriod });
 }

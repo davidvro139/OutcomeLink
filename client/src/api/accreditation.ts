@@ -1,3 +1,4 @@
+import type { CloseoutBlocker, CloseoutStep } from "@outcomelink/shared";
 import type {
   CplMetric,
   ImprovementPlanStatus,
@@ -178,10 +179,13 @@ export function useSetOutcomesDeadline(id: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (outcomesDeadline: string | null) =>
-      apiRequest<{ reportingPeriod: ReportingPeriod }>(`/api/accreditation/reporting-periods/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ outcomesDeadline }),
-      }),
+      apiRequest<{ reportingPeriod: ReportingPeriod }>(
+        `/api/accreditation/reporting-periods/${id}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ outcomesDeadline }),
+        },
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accreditation", "reporting-periods", id] });
       queryClient.invalidateQueries({ queryKey: ["accreditation", "readiness", id] });
@@ -195,13 +199,16 @@ function useReportingPeriodAction(
 ) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body?: { reason: string }) =>
+    mutationFn: (body?: { reason?: string; overrideReason?: string; note?: string }) =>
       apiRequest(`/api/accreditation/reporting-periods/${id}/${action}`, {
         method: "POST",
         body: body ? JSON.stringify(body) : undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accreditation", "reporting-periods"] });
+      queryClient.invalidateQueries({ queryKey: ["accreditation", "closeout", id] });
+      queryClient.invalidateQueries({ queryKey: ["accreditation", "readiness", id] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "programs"] });
       queryClient.invalidateQueries({ queryKey: ["accreditation", "results", id] });
       queryClient.invalidateQueries({ queryKey: ["accreditation", "validation-issues", id] });
     },
@@ -213,6 +220,38 @@ export const useSubmitReportingPeriod = (id: number) => useReportingPeriodAction
 export const useReopenReportingPeriod = (id: number) => useReportingPeriodAction(id, "reopen");
 export const useComputeReportingPeriod = (id: number) => useReportingPeriodAction(id, "compute");
 export const useValidateReportingPeriod = (id: number) => useReportingPeriodAction(id, "validate");
+export const useSignOffReportingPeriod = (id: number) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { note?: string }) =>
+      apiRequest(`/api/accreditation/reporting-periods/${id}/closeout/sign-off`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["accreditation", "closeout", id] }),
+  });
+};
+
+export interface Closeout {
+  locked: boolean;
+  status: string;
+  steps: CloseoutStep[];
+  blockers: CloseoutBlocker[];
+  signOffCurrent: boolean;
+  canFinalize: boolean;
+  needsOverride: boolean;
+  signOff: { at: string; by: string | null; note: string | null } | null;
+  finalizeOverrideReason: string | null;
+}
+
+/** The ordered close-out checklist, evaluated fresh by the server on every load. */
+export function useCloseout(reportingPeriodId: number) {
+  return useQuery({
+    queryKey: ["accreditation", "closeout", reportingPeriodId],
+    queryFn: () =>
+      apiRequest<Closeout>(`/api/accreditation/reporting-periods/${reportingPeriodId}/closeout`),
+  });
+}
 
 export function useCplResults(reportingPeriodId: number | undefined) {
   return useQuery({
@@ -316,7 +355,9 @@ export interface TrendPoint {
     endDate: string;
     status: ReportingPeriodStatus;
   };
-  metrics: Partial<Record<CplMetric, { numerator: number; denominator: number; percentage: number }>>;
+  metrics: Partial<
+    Record<CplMetric, { numerator: number; denominator: number; percentage: number }>
+  >;
 }
 
 export function useTrends(programId: number | undefined) {

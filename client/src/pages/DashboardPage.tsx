@@ -100,7 +100,7 @@ export function DashboardPage() {
             icon={IconReportAnalytics}
           />
           <QuickLinkCard
-            to={`/accreditation/reporting-periods/${currentPeriod.id}`}
+            to={`/accreditation/reporting-periods/${currentPeriod.id}?tab=dashboard`}
             label="CPL Results Export"
             description="CPL Dashboard tab → Export to Excel"
             icon={IconFileSpreadsheet}

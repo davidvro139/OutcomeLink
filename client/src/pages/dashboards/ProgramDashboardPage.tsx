@@ -26,6 +26,7 @@ import {
 import { useAuth } from "../../auth/AuthContext";
 import { ProgramCard } from "./ProgramCard";
 import { STATUS_COLORS } from "./riskDisplay";
+import { formatDateOnly } from "../../lib/dates";
 
 /** Roles that may refresh the stored results — mirrors the server's recompute route. */
 const CAN_RECOMPUTE = [
@@ -191,7 +192,7 @@ export function ProgramDashboardPage() {
             </Text>
             {period.outcomesDeadline && (
               <Text size="sm" c={(period.daysUntilOutcomesDeadline ?? 0) <= 14 ? "red" : undefined}>
-                Outcomes deadline {new Date(period.outcomesDeadline).toLocaleDateString()} —{" "}
+                Outcomes deadline {formatDateOnly(period.outcomesDeadline)} —{" "}
                 {period.daysUntilOutcomesDeadline !== null && period.daysUntilOutcomesDeadline >= 0
                   ? `${period.daysUntilOutcomesDeadline} day${period.daysUntilOutcomesDeadline === 1 ? "" : "s"} left`
                   : "passed"}

@@ -4,6 +4,7 @@ import { asyncHandler } from "../../lib/asyncHandler";
 import { OPERATIONAL_ROLES } from "../../lib/roles";
 import { requireAuth, requireRole } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
+import * as closeout from "./closeout";
 import * as frameworks from "./frameworks/frameworks";
 import * as improvementPlans from "./improvementPlans";
 import * as readiness from "./readiness";
@@ -64,10 +65,19 @@ accreditationRouter.patch(
   asyncHandler(reportingPeriods.update),
 );
 
+accreditationRouter.get("/reporting-periods/:id/closeout", requireAuth, asyncHandler(closeout.show));
+accreditationRouter.post(
+  "/reporting-periods/:id/closeout/sign-off",
+  requireAuth,
+  requireRole(...CAN_FINALIZE),
+  validate(closeout.signOffSchema),
+  asyncHandler(closeout.signOff),
+);
 accreditationRouter.post(
   "/reporting-periods/:id/finalize",
   requireAuth,
   requireRole(...CAN_FINALIZE),
+  validate(reportingPeriods.finalizeReportingPeriodSchema),
   asyncHandler(reportingPeriods.finalize),
 );
 accreditationRouter.post(

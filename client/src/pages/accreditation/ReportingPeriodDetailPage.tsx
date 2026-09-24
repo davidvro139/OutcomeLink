@@ -16,7 +16,6 @@ import { useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import {
   useComputeReportingPeriod,
-  useFinalizeReportingPeriod,
   useReopenReportingPeriod,
   useReportingPeriod,
   useSubmitReportingPeriod,
@@ -24,11 +23,13 @@ import {
 } from "../../api/accreditation";
 import { AuditHistory } from "../../components/AuditHistory";
 import { CplDashboardTab } from "./CplDashboardTab";
+import { CloseoutTab } from "./CloseoutTab";
 import { ImprovementPlansTab } from "./ImprovementPlansTab";
 import { ReadinessTab } from "./ReadinessTab";
 import { ReportsTab } from "./ReportsTab";
 import { ValidationTab } from "./ValidationTab";
 import { usePermissions } from "../../auth/usePermissions";
+import { formatDateOnly } from "../../lib/dates";
 
 const STATUS_COLORS: Record<string, string> = {
   OPEN: "blue",
@@ -39,6 +40,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const TAB_VALUES = [
+  "closeout",
   "dashboard",
   "readiness",
   "validation",
@@ -53,11 +55,10 @@ export function ReportingPeriodDetailPage() {
   const periodId = Number(id);
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get("tab");
-  const activeTab = requestedTab && TAB_VALUES.includes(requestedTab) ? requestedTab : "dashboard";
+  const activeTab = requestedTab && TAB_VALUES.includes(requestedTab) ? requestedTab : "closeout";
   const { data: period, isLoading } = useReportingPeriod(periodId);
   const compute = useComputeReportingPeriod(periodId);
   const validate = useValidateReportingPeriod(periodId);
-  const finalize = useFinalizeReportingPeriod(periodId);
   const submit = useSubmitReportingPeriod(periodId);
   const reopen = useReopenReportingPeriod(periodId);
   const [reopenOpened, { open: openReopen, close: closeReopen }] = useDisclosure(false);
@@ -82,18 +83,6 @@ export function ReportingPeriodDetailPage() {
     } catch (err) {
       notifications.show({
         message: err instanceof Error ? err.message : "Validation failed",
-        color: "red",
-      });
-    }
-  }
-
-  async function handleFinalize() {
-    try {
-      await finalize.mutateAsync(undefined);
-      notifications.show({ message: "Reporting period finalized", color: "green" });
-    } catch (err) {
-      notifications.show({
-        message: err instanceof Error ? err.message : "Finalize failed",
         color: "red",
       });
     }
@@ -136,8 +125,7 @@ export function ReportingPeriodDetailPage() {
         <div>
           <Title order={2}>{period.label}</Title>
           <Text c="dimmed">
-            {new Date(period.startDate).toLocaleDateString()} –{" "}
-            {new Date(period.endDate).toLocaleDateString()}
+            {formatDateOnly(period.startDate)} – {formatDateOnly(period.endDate)}
           </Text>
         </div>
         <Badge color={STATUS_COLORS[period.status]} size="lg">
@@ -160,10 +148,9 @@ export function ReportingPeriodDetailPage() {
           <Button
             variant="light"
             color="teal"
-            onClick={handleFinalize}
-            loading={finalize.isPending}
+            onClick={() => setSearchParams({}, { replace: true })}
           >
-            Finalize
+            Close out…
           </Button>
         )}
         {period.status === "FINALIZED" && canAdminister && (
@@ -189,10 +176,11 @@ export function ReportingPeriodDetailPage() {
       <Tabs
         value={activeTab}
         onChange={(value) =>
-          setSearchParams(value && value !== "dashboard" ? { tab: value } : {}, { replace: true })
+          setSearchParams(value && value !== "closeout" ? { tab: value } : {}, { replace: true })
         }
       >
         <Tabs.List>
+          <Tabs.Tab value="closeout">Close-out</Tabs.Tab>
           <Tabs.Tab value="dashboard">CPL Dashboard</Tabs.Tab>
           <Tabs.Tab value="readiness">Readiness</Tabs.Tab>
           <Tabs.Tab value="validation">Data Validation</Tabs.Tab>
@@ -200,6 +188,12 @@ export function ReportingPeriodDetailPage() {
           <Tabs.Tab value="reports">Reports</Tabs.Tab>
           <Tabs.Tab value="audit">Audit History</Tabs.Tab>
         </Tabs.List>
+        <Tabs.Panel value="closeout" pt="md">
+          <CloseoutTab
+            reportingPeriodId={periodId}
+            onOpenTab={(tab) => setSearchParams({ tab }, { replace: true })}
+          />
+        </Tabs.Panel>
         <Tabs.Panel value="dashboard" pt="md">
           <CplDashboardTab reportingPeriodId={periodId} />
         </Tabs.Panel>

@@ -537,6 +537,18 @@ model ReportingPeriod {
   reopenedAt             DateTime?             @map("reopened_at")
   reopenedBy             String?               @map("reopened_by")
   reopenReason           String?               @map("reopen_reason") @db.Text
+  // Close-out checklist (docs/TODO.md): when validation last ran (stamped without an
+  // audit entry — it changes on every run), and the reviewer's sign-off, which
+  // vouches for one particular computed-at and goes stale if results or data
+  // change afterwards. finalizeOverrideReason is why finalize went ahead with
+  // blockers outstanding. Sign-off, override and reopen are audited as period
+  // field changes like the rest of the lifecycle.
+  validatedAt            DateTime?             @map("validated_at")
+  signedOffAt            DateTime?             @map("signed_off_at")
+  signedOffBy            String?               @map("signed_off_by")
+  signedOffNote          String?               @map("signed_off_note") @db.Text
+  signedOffResultsAt     DateTime?             @map("signed_off_results_at")
+  finalizeOverrideReason String?               @map("finalize_override_reason") @db.Text
 
   institution Institution @relation(fields: [institutionId], references: [id])
   ruleSet     RuleSet     @relation(fields: [ruleSetId], references: [id])

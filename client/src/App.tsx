@@ -26,6 +26,8 @@ import { DataConnectionsPage } from "./pages/imports/DataConnectionsPage";
 import { JobHistoryPage } from "./pages/jobs/JobHistoryPage";
 import { SettingsPage } from "./pages/settings/SettingsPage";
 import { ProgramDashboardPage } from "./pages/dashboards/ProgramDashboardPage";
+import { AboutPage } from "./pages/help/AboutPage";
+import { HelpPage } from "./pages/help/HelpPage";
 import { UsersPage } from "./pages/users/UsersPage";
 
 function App() {
@@ -35,6 +37,8 @@ function App() {
       <Route path="/survey/graduate/:token" element={<GraduateSurveyPage />} />
       <Route path="/survey/employer/:token" element={<EmployerSurveyPage />} />
       <Route path="/set-password/:token" element={<SetPasswordPage />} />
+      {/* Readable before signing in: what the tool is for and how data is protected. */}
+      <Route path="/about" element={<AboutPage />} />
       <Route
         element={
           <RequireAuth>
@@ -75,6 +79,9 @@ function App() {
         <Route path="/users" element={<UsersPage />} />
         <Route path="/jobs" element={<JobHistoryPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+
+        <Route path="/help" element={<HelpPage />} />
+        <Route path="/help/:slug" element={<HelpPage />} />
       </Route>
     </Routes>
   );

@@ -1,5 +1,6 @@
 import type { Role } from "@outcomelink/shared";
 import { fireEvent, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthContext } from "../../auth/AuthContext";
 import { renderWithProviders } from "../../test/renderWithProviders";
@@ -57,7 +58,9 @@ function renderAs(role: Role) {
         logout: vi.fn(),
       }}
     >
-      <CloseoutTab reportingPeriodId={7} onOpenTab={vi.fn()} />
+      <MemoryRouter>
+        <CloseoutTab reportingPeriodId={7} onOpenTab={vi.fn()} />
+      </MemoryRouter>
     </AuthContext.Provider>,
   );
 }

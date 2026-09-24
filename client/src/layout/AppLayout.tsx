@@ -26,6 +26,7 @@ import {
   IconUpload,
   IconMail,
   IconUserCog,
+  IconHelp,
   IconHistory,
   IconSettings,
   IconTargetArrow,
@@ -90,6 +91,10 @@ const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
       { to: "/jobs", label: "Job History", icon: IconHistory, requires: "canAdminister" },
       { to: "/settings", label: "Settings", icon: IconSettings, requires: "canAdminister" },
     ],
+  },
+  {
+    label: null,
+    items: [{ to: "/help", label: "Help", icon: IconHelp }],
   },
 ];
 
@@ -210,7 +215,7 @@ export function AppLayout() {
             }))
               .filter((section) => section.items.length > 0)
               .map((section) => (
-                <Stack key={section.label ?? "top"} gap={4}>
+                <Stack key={section.items[0]?.to ?? section.label} gap={4}>
                   {section.label && (
                     <Text size="xs" fw={700} c="dimmed" tt="uppercase" px={8}>
                       {section.label}

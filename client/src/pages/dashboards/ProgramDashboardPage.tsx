@@ -27,6 +27,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { ProgramCard } from "./ProgramCard";
 import { STATUS_COLORS } from "./riskDisplay";
 import { formatDateOnly } from "../../lib/dates";
+import { HelpLink } from "../../help/HelpLink";
 
 /** Roles that may refresh the stored results — mirrors the server's recompute route. */
 const CAN_RECOMPUTE = [
@@ -152,6 +153,7 @@ export function ProgramDashboardPage() {
       <Group justify="space-between" align="flex-end">
         <div>
           <Title order={2}>My Programs</Title>
+          <HelpLink slug="program-health" />
           <Text c="dimmed" size="sm">
             Where each program stands against its benchmarks, and whether it can still get there.
           </Text>

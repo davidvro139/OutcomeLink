@@ -52,6 +52,7 @@ import { useQueueReportExport } from "../../api/reportExportJobs";
 import { downloadFile } from "../../lib/apiClient";
 import { ExportJobsPanel } from "./ExportJobsPanel";
 import { usePermissions } from "../../auth/usePermissions";
+import { HelpLink } from "../../help/HelpLink";
 
 type FilterValueMap = Record<string, string[] | number[] | boolean | undefined>;
 
@@ -577,7 +578,10 @@ export function ReportBuilderPage() {
   return (
     <Stack p="xl" gap="lg">
       <Group justify="space-between">
-        <Title order={2}>Report Builder</Title>
+        <Group gap="md" align="baseline">
+          <Title order={2}>Report Builder</Title>
+          <HelpLink slug="reports" />
+        </Group>
         <Group gap="xs">
           {savedReports && savedReports.length > 0 && (
             <Select

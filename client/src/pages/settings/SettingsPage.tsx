@@ -1,8 +1,9 @@
-import { Stack, Tabs, Text, Title } from "@mantine/core";
+import { Group, Stack, Tabs, Text, Title } from "@mantine/core";
 import { usePermissions } from "../../auth/usePermissions";
 import { BackupPanel } from "./BackupPanel";
 import { EmailSettingsPanel } from "./EmailSettingsPanel";
 import { RetentionPanel } from "./RetentionPanel";
+import { HelpLink } from "../../help/HelpLink";
 
 /** Settings (docs/TODO.md): the operational settings that used to be server environment variables only. */
 export function SettingsPage() {
@@ -16,7 +17,10 @@ export function SettingsPage() {
   }
   return (
     <Stack p="xl" gap="md">
-      <Title order={2}>Settings</Title>
+      <Group gap="md" align="baseline">
+        <Title order={2}>Settings</Title>
+        <HelpLink slug="administration" />
+      </Group>
       <Tabs defaultValue="email" keepMounted={false}>
         <Tabs.List>
           <Tabs.Tab value="email">Email</Tabs.Tab>

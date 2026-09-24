@@ -26,6 +26,7 @@ import {
 } from "../../api/accreditation";
 import { ApiRequestError } from "../../lib/apiClient";
 import { usePermissions } from "../../auth/usePermissions";
+import { HelpLink } from "../../help/HelpLink";
 
 const STATE_STYLE: Record<CloseoutStepState, { color: string; label: string }> = {
   DONE: { color: "green", label: "Done" },
@@ -213,6 +214,7 @@ export function CloseoutTab({
 
   return (
     <Stack gap="md" maw={900}>
+      <HelpLink slug="closeout" />
       <Text size="sm" c="dimmed">
         Work down the list: each step shows what's done, what's holding the period back, and the
         action to take. Finalizing needs a current sign-off; if errors, stale results or off-track

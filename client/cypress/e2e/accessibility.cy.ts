@@ -49,6 +49,9 @@ const PAGES = [
   "/users",
   "/jobs",
   "/settings",
+  "/help",
+  "/help/security",
+  "/help/qa",
 ];
 
 {
@@ -56,6 +59,12 @@ const PAGES = [
     it("the sign-in page", () => {
       cy.visit("/login");
       cy.contains("button", "Sign in").should("be.visible");
+      expectNoViolations();
+    });
+
+    it("the public About page", () => {
+      cy.visit("/about");
+      cy.contains("h1", "About OutcomeLink").should("be.visible");
       expectNoViolations();
     });
 

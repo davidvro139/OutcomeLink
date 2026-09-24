@@ -140,6 +140,10 @@ Then open `http://localhost:8080` and sign in. Add the rest of the staff from **
   fi
   ```
 
+## Help content
+
+The in-app Help (user guide, Q&A, About and Security) is Markdown in [client/src/help/content/](client/src/help/content/), reviewed with the code it describes. When you change behavior a guide describes — and especially anything security-relevant (sign-in, roles and scoping, tokens, encryption, logging, retention) — update the matching file and its `reviewed` date in the same commit. `security.md` must stay true to the code; if a protection is removed or a limit is added, say so there.
+
 ## Where to look next
 
 - [docs/DATA_MODEL.md](docs/DATA_MODEL.md) — the database design

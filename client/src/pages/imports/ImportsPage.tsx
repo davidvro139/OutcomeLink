@@ -20,6 +20,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { type ImportBatch, useImportBatches, useUploadImportBatch } from "../../api/imports";
 import { usePermissions } from "../../auth/usePermissions";
+import { HelpLink } from "../../help/HelpLink";
 
 // Matches imports.routes.ts's CAN_MANAGE_CONNECTIONS.
 const CAN_MANAGE_CONNECTIONS = ["SYSTEM_ADMINISTRATOR", "INSTITUTIONAL_ADMINISTRATOR"];
@@ -71,7 +72,10 @@ export function ImportsPage() {
   return (
     <Stack p="xl" gap="md">
       <Group justify="space-between">
-        <Title order={2}>Bulk Import</Title>
+        <Group gap="md" align="baseline">
+          <Title order={2}>Bulk Import</Title>
+          <HelpLink slug="importing" />
+        </Group>
         <Group gap="xs">
           {canManageConnections && (
             <Button variant="light" component={Link} to="/imports/connections">

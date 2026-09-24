@@ -1,5 +1,6 @@
 import {
   Alert,
+  Anchor,
   Button,
   Center,
   Divider,
@@ -14,7 +15,7 @@ import {
 import { useForm } from "@mantine/form";
 import { ROLE_LABELS, type Role } from "@outcomelink/shared";
 import { useState } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { ApiRequestError } from "../lib/apiClient";
 
@@ -127,6 +128,10 @@ export function LoginPage() {
               </Button>
             </Stack>
           </form>
+
+          <Anchor component={Link} to="/about" size="sm" ta="center">
+            About OutcomeLink and how your data is protected
+          </Anchor>
 
           {import.meta.env.DEV && (
             <>

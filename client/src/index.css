@@ -24,6 +24,18 @@ body {
 }
 
 /* First tab stop on every page: jumps past the header and navigation (WCAG 2.4.1). Visible only when focused. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .skip-link {
   position: absolute;
   left: 8px;

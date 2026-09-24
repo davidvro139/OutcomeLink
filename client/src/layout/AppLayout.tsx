@@ -27,6 +27,7 @@ import {
   IconMail,
   IconUserCog,
   IconHistory,
+  IconSettings,
   IconUsers,
 } from "@tabler/icons-react";
 import { ROLE_LABELS } from "@outcomelink/shared";
@@ -82,6 +83,7 @@ const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
       { to: "/imports", label: "Bulk Import", icon: IconUpload, requires: "canManageStudents" },
       { to: "/users", label: "Users", icon: IconUserCog, requires: "canAdminister" },
       { to: "/jobs", label: "Job History", icon: IconHistory, requires: "canAdminister" },
+      { to: "/settings", label: "Settings", icon: IconSettings, requires: "canAdminister" },
     ],
   },
 ];

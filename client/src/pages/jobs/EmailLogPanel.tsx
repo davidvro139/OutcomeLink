@@ -7,6 +7,7 @@ import {
 } from "@outcomelink/shared";
 import {
   Alert,
+  Anchor,
   Badge,
   Group,
   Loader,
@@ -18,6 +19,7 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useEmailDeliveries, useEmailStatus } from "../../api/emailDeliveries";
 
 const STATUS_LABELS: Record<EmailDeliveryStatus, string> = { SENT: "Sent", FAILED: "Failed" };
@@ -38,9 +40,13 @@ export function EmailLogPanel() {
     <Stack gap="md">
       {emailStatus && !emailStatus.configured && (
         <Alert color="yellow" title="Email is not configured">
-          The server has no SMTP settings, so nothing is being sent: invitations, password resets
-          and surveys show a link to copy instead. Set SMTP_HOST and MAIL_FROM in the server
-          environment to turn email on.
+          Neither this institution nor the server has SMTP settings, so nothing is being sent:
+          invitations, password resets and surveys show a link to copy instead. A System
+          Administrator can turn email on in{" "}
+          <Anchor component={Link} to="/settings">
+            Settings → Email
+          </Anchor>
+          .
         </Alert>
       )}
 

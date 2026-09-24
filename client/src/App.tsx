@@ -24,6 +24,7 @@ import { EmployerSurveyPage } from "./pages/surveys/EmployerSurveyPage";
 import { GraduateSurveyPage } from "./pages/surveys/GraduateSurveyPage";
 import { DataConnectionsPage } from "./pages/imports/DataConnectionsPage";
 import { JobHistoryPage } from "./pages/jobs/JobHistoryPage";
+import { SettingsPage } from "./pages/settings/SettingsPage";
 import { UsersPage } from "./pages/users/UsersPage";
 
 function App() {
@@ -71,6 +72,7 @@ function App() {
 
         <Route path="/users" element={<UsersPage />} />
         <Route path="/jobs" element={<JobHistoryPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Route>
     </Routes>
   );

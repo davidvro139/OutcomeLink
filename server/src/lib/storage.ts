@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { env } from "../config/env";
 
@@ -17,6 +17,8 @@ export interface StorageAdapter {
   save(file: StoredFile): Promise<{ fileReference: string }>;
   /** Reads back a previously-saved file's bytes given its reference. */
   load(fileReference: string): Promise<Buffer>;
+  /** Removes a stored file; a file that is already gone is not an error. */
+  delete(fileReference: string): Promise<void>;
 }
 
 /**
@@ -37,6 +39,10 @@ export class LocalDiskStorageAdapter implements StorageAdapter {
 
   async load(fileReference: string): Promise<Buffer> {
     return readFile(path.join(this.uploadDir, fileReference));
+  }
+
+  async delete(fileReference: string): Promise<void> {
+    await rm(path.join(this.uploadDir, fileReference), { force: true });
   }
 }
 

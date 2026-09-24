@@ -126,7 +126,13 @@ export async function list(req: Request, res: Response) {
 export async function downloadJob(req: Request, res: Response) {
   const jobId = Number(req.params.id);
   const job = await findVisibleJob(req, jobId);
-  if (!job.fileReference) throw ApiError.notFound("This export has no generated file (it may have failed)");
+  if (!job.fileReference) {
+    throw ApiError.notFound(
+      job.status === "SUCCESS"
+        ? "This export's file has expired and was removed (see Settings, Data retention) — run the export again"
+        : "This export has no generated file (it may have failed)",
+    );
+  }
 
   const buffer = await reportExportStorage.load(job.fileReference);
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");

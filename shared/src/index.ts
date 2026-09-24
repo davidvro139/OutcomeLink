@@ -11,3 +11,4 @@ export * from "./reportBuilder";
 export * from "./scheduledReports";
 export * from "./jobs";
 export * from "./email";
+export * from "./settings";

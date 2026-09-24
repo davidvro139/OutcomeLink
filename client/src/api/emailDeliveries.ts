@@ -34,7 +34,7 @@ export function useEmailDeliveries(filters: EmailDeliveryFilters, enabled = true
 export function useEmailStatus() {
   return useQuery({
     queryKey: ["email-deliveries", "status"],
-    queryFn: () => apiRequest<{ configured: boolean }>("/api/email-deliveries/status"),
+    queryFn: () => apiRequest<{ configured: boolean; source: "institution" | "server" | "none" }>("/api/email-deliveries/status"),
     staleTime: 5 * 60 * 1000,
   });
 }

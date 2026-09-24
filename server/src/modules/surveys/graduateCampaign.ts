@@ -6,7 +6,7 @@ import { sendData } from "../../lib/apiResponse";
 import { recordCommunicationEvent } from "../../lib/communicationEvents";
 import { studentEmailTarget, type EmailOutcome } from "../../lib/emailDelivery";
 import { DEFAULT_BACKOFF_MS, registerJob, runJob } from "../../lib/jobRunner";
-import { isMailConfigured } from "../../lib/mailer";
+import { isMailConfiguredFor } from "../../lib/mailer";
 import { prisma } from "../../lib/prisma";
 import { getUnresolvedOutcomeStudentIds } from "../reports/reports";
 import { emailOutcomeNote, noteworthy, sendGraduateSurveyEmail } from "./surveyEmail";
@@ -70,7 +70,7 @@ export async function startCampaign(
  */
 async function runCampaign(institutionId: number, reportingPeriodId: number, channel: string | undefined) {
   const targetStudentIds = await getUnresolvedOutcomeStudentIds(institutionId, reportingPeriodId);
-  const emailing = isMailConfigured() && (!channel || channel.toUpperCase() === "EMAIL");
+  const emailing = (await isMailConfiguredFor(institutionId)) && (!channel || channel.toUpperCase() === "EMAIL");
   const surveyChannel = channel ?? (emailing ? "EMAIL" : undefined);
 
   // Don't re-send to someone who already has a survey out that hasn't been

@@ -3,7 +3,8 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import { sendData } from "../../lib/apiResponse";
 import { paginatedResponse } from "../../lib/crudHelpers";
-import { isMailConfigured } from "../../lib/mailer";
+import { resolveMailConfig } from "../../lib/mailConfig";
+import { isMailConfiguredFor } from "../../lib/mailer";
 import { paginationQuerySchema } from "../../lib/pagination";
 import { prisma } from "../../lib/prisma";
 
@@ -27,6 +28,7 @@ export async function list(req: Request, res: Response) {
 }
 
 /** Whether emails are being sent at all — when not, the client explains that links are shown to copy instead. */
-export async function status(_req: Request, res: Response) {
-  sendData(res, { configured: isMailConfigured() });
+export async function status(req: Request, res: Response) {
+  const { source } = await resolveMailConfig(req.user!.institutionId);
+  sendData(res, { configured: await isMailConfiguredFor(req.user!.institutionId), source });
 }

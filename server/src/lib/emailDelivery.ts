@@ -1,6 +1,6 @@
 import type { EmailPurpose } from "@prisma/client";
 import type { EmailContent } from "./emailTemplates";
-import { isMailConfigured, sendMail } from "./mailer";
+import { isMailConfiguredFor, sendMail } from "./mailer";
 import { prisma } from "./prisma";
 
 /**
@@ -26,11 +26,14 @@ interface DeliverInput {
 
 /** Sends one email and records the outcome. Never throws: a failed send is a result the caller reports, not an exception that aborts its own work. */
 export async function deliverEmail(input: DeliverInput): Promise<EmailOutcome> {
-  if (!isMailConfigured()) return { status: "SKIPPED", reason: EMAIL_NOT_CONFIGURED };
+  if (!(await isMailConfiguredFor(input.institutionId))) return { status: "SKIPPED", reason: EMAIL_NOT_CONFIGURED };
 
   let outcome: EmailOutcome = { status: "SENT" };
   try {
-    await sendMail({ to: input.to, subject: input.content.subject, text: input.content.text, html: input.content.html });
+    await sendMail(
+      { to: input.to, subject: input.content.subject, text: input.content.text, html: input.content.html },
+      input.institutionId,
+    );
   } catch (err) {
     outcome = { status: "FAILED", reason: err instanceof Error ? err.message : String(err) };
   }

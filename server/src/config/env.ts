@@ -25,6 +25,12 @@ const envSchema = z.object({
   // Where uploaded evidence, import files and generated reports are kept.
   // Defaults to ./uploads; a container mounts a persistent volume here.
   UPLOADS_DIR: z.string().optional(),
+  // Backup status (Settings → Backups). A backup job reports each run to
+  // POST /api/system/backup-checkin with this token; unset, the endpoint is
+  // off and no stale-backup alerts are raised.
+  BACKUP_CHECKIN_TOKEN: z.string().min(16, "BACKUP_CHECKIN_TOKEN must be at least 16 characters").optional(),
+  // How long without a successful backup before it counts as stale.
+  BACKUP_STALE_HOURS: z.coerce.number().int().min(1).default(36),
   // Encrypts DataSourceConnection.clientSecretEncrypted at rest (lib/secrets.ts)
   // — a real external credential (Dataverse/Azure AD app registration secret),
   // not something to leave in plaintext in the database.

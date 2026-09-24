@@ -25,6 +25,8 @@ import { placementsRouter } from "./modules/placements";
 import { programsRouter } from "./modules/programs";
 import { reportsRouter } from "./modules/reports";
 import { scheduledReportsRouter } from "./modules/scheduledReports";
+import { settingsRouter } from "./modules/settings";
+import { systemRouter } from "./modules/system";
 import { searchRouter } from "./modules/search";
 import { studentsRouter } from "./modules/students";
 import { publicSurveysRouter, surveysRouter } from "./modules/surveys";
@@ -85,6 +87,8 @@ export function createApp() {
   app.use("/api/scheduled-reports", scheduledReportsRouter);
   app.use("/api/job-runs", jobRunsRouter);
   app.use("/api/email-deliveries", emailDeliveriesRouter);
+  app.use("/api/settings", settingsRouter);
+  app.use("/api/system", systemRouter);
   // Further domain routers are mounted here as each module lands.
 
   app.use(notFoundHandler);

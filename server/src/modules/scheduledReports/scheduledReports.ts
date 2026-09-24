@@ -203,7 +203,13 @@ export async function downloadRun(req: Request, res: Response) {
   const run = await prisma.scheduledReportRun.findUnique({ where: { id: runId } });
   if (!run) throw ApiError.notFound("Report run not found");
   await findVisibleSubscription(req, run.subscriptionId);
-  if (!run.fileReference) throw ApiError.notFound("This run has no generated file (it may have failed)");
+  if (!run.fileReference) {
+    throw ApiError.notFound(
+      run.status === "SUCCESS"
+        ? "This run's file has expired and was removed (see Settings, Data retention) — use Run Now for a fresh copy"
+        : "This run has no generated file (it may have failed)",
+    );
+  }
 
   const buffer = await scheduledReportStorage.load(run.fileReference);
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");

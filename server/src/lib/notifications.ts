@@ -2,7 +2,7 @@ import type { NotificationType } from "@prisma/client";
 import { publicUrl } from "./appUrls";
 import { deliverEmail } from "./emailDelivery";
 import { staffNotificationEmail } from "./emailTemplates";
-import { isMailConfigured } from "./mailer";
+import { isMailConfiguredFor, isMailPossible } from "./mailer";
 import { prisma } from "./prisma";
 
 export interface CreateNotificationInput {
@@ -15,6 +15,7 @@ export interface CreateNotificationInput {
 
 /** Notification types that are also emailed (to users who haven't opted out); everything else stays in-app only. */
 const EMAILED_TYPES: ReadonlySet<NotificationType> = new Set<NotificationType>([
+  "BACKUP_STALE",
   "SCHEDULED_REPORT_READY",
   "MISSING_OUTCOMES_DIGEST",
   "FOLLOW_UP_OVERDUE",
@@ -34,7 +35,7 @@ const EMAILED_TYPES: ReadonlySet<NotificationType> = new Set<NotificationType>([
  */
 export async function createNotification(input: CreateNotificationInput) {
   const notification = await prisma.notification.create({ data: input });
-  if (EMAILED_TYPES.has(input.type) && isMailConfigured()) {
+  if (EMAILED_TYPES.has(input.type) && isMailPossible()) {
     void emailNotification(input).catch((err) => console.error("Notification email failed", err));
   }
   return notification;
@@ -46,6 +47,7 @@ async function emailNotification(input: CreateNotificationInput): Promise<void> 
     select: { institutionId: true, name: true, email: true, active: true, emailNotifications: true },
   });
   if (!user || !user.active || !user.emailNotifications) return;
+  if (!(await isMailConfiguredFor(user.institutionId))) return;
   await deliverEmail({
     institutionId: user.institutionId,
     purpose: "STAFF_NOTIFICATION",

@@ -136,6 +136,8 @@ enum NotificationType {
   // finished (or failed) in the background. referenceEntityType/Id point at
   // the ReportExportJob, same reasoning as SCHEDULED_REPORT_READY above.
   REPORT_EXPORT_READY
+  // Settings (docs/TODO.md): no successful database backup has checked in recently.
+  BACKUP_STALE
 }
 
 enum AuditAction {
@@ -1284,6 +1286,7 @@ model JobRun {
 }
 
 enum EmailPurpose {
+  TEST
   INVITATION
   PASSWORD_RESET
   GRADUATE_SURVEY
@@ -1317,4 +1320,48 @@ model EmailDelivery {
   @@index([institutionId, createdAt])
   @@index([relatedEntityType, relatedEntityId, createdAt], map: "email_deliveries_related_idx")
   @@map("email_deliveries")
+}
+
+enum BackupStatus {
+  SUCCESS
+  FAILED
+}
+
+/// Settings page (docs/TODO.md): per-institution operational settings that used
+/// to be server environment variables only. SMTP settings here override the
+/// server's own (lib/mailConfig.ts); a null retention value means "use the
+/// default". Deliberately not one of the audit extension's subjects — it would
+/// record the encrypted SMTP password. No relation FK, like JobRun.
+model InstitutionSettings {
+  id                        Int      @id @default(autoincrement())
+  institutionId             Int      @unique @map("institution_id")
+  smtpHost                  String?  @map("smtp_host")
+  smtpPort                  Int?     @map("smtp_port")
+  smtpSecure                Boolean  @default(false) @map("smtp_secure")
+  smtpUser                  String?  @map("smtp_user")
+  smtpPasswordEncrypted     String?  @map("smtp_password_encrypted") @db.Text
+  mailFrom                  String?  @map("mail_from")
+  retentionJobRunDays       Int?     @map("retention_job_run_days")
+  retentionEmailLogDays     Int?     @map("retention_email_log_days")
+  retentionNotificationDays Int?     @map("retention_notification_days")
+  retentionExportDays       Int?     @map("retention_export_days")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
+  updatedBy                 Int?     @map("updated_by")
+
+  @@map("institution_settings")
+}
+
+/// Settings page (docs/TODO.md): a backup job reports in here after each run,
+/// so the app can show "last backup" and warn when it goes stale. Global, not
+/// per institution — a backup covers the whole database. The app takes no
+/// backups itself.
+model BackupCheckin {
+  id        Int          @id @default(autoincrement())
+  status    BackupStatus
+  note      String?      @db.Text
+  sizeMb    Int?         @map("size_mb")
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("backup_checkins")
 }

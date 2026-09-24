@@ -42,8 +42,8 @@ npm run dev:server           # API on http://localhost:4000
 npm run dev:client           # web app on http://localhost:5173
 ```
 
-Sign in with `ada@mwtc.edu` / `password123` (System Administrator). The login page lists the other demo
-accounts in development. **The seed deletes everything in the database it points at**, so never run it against
+Sign in with `sam@mwtc.edu` / `password123` (System Administrator; `ada@mwtc.edu` is the Institutional
+Administrator). The login page lists the other demo accounts in development. **The seed deletes everything in the database it points at**, so never run it against
 data you want to keep.
 
 After you change something in `shared/`, run `npm run build:shared` again; if the running web app then misbehaves,
@@ -78,6 +78,7 @@ The server reads `server/.env`. The Docker setup takes the same values from the 
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` | Outgoing email. Email is on only when `SMTP_HOST` and `MAIL_FROM` are both set; otherwise invitations and surveys show a link to copy. |
 | `TRUST_PROXY` | Number of reverse proxies in front of the API (0 if none). Needed for correct per-address rate limiting behind a proxy. |
 | `ALLOW_REGISTRATION` | Whether anyone can create a new institution through the API. On in development, **off in production** unless set. |
+| `BACKUP_CHECKIN_TOKEN`, `BACKUP_STALE_HOURS` | Lets a backup job report its result to the app (see Backups below). Off when the token is unset. A backup with no success in `BACKUP_STALE_HOURS` (36) is flagged. |
 | `UPLOADS_DIR` | Where evidence, import files and generated reports are stored. Defaults to `./uploads`. |
 | `PORT` | API port (4000). |
 
@@ -109,8 +110,27 @@ Then open `http://localhost:8080` and sign in. Add the rest of the staff from **
   rate-limit counters are kept in its memory. Run a single instance; scaling out needs a shared store for the rate
   limits and a single scheduler.
 - **Migrations** are applied automatically each time the API container starts.
-- **Email** is optional: set the `SMTP_*` and `MAIL_FROM` values in `.env` and restart. Job History → Email log shows
-  what was sent.
+- **Email** is optional. A System Administrator can enter each institution's SMTP settings in **Settings → Email**
+  (with a test-send button); the `SMTP_*` and `MAIL_FROM` values in `.env` are the fallback for an institution that
+  hasn't set its own. Job History → Email log shows what was sent.
+- **Settings** (admin sidebar) also holds **Data retention** — how long job history, the email log, read notifications
+  and generated export files are kept before the nightly cleanup removes them — and **Backups**, described next.
+- **Backup status.** The app does not take backups. Run a scheduled `mysqldump` (plus a copy of the `uploads` volume) at
+  the server level, set `BACKUP_CHECKIN_TOKEN`, and have the backup job report to the app so Settings → Backups shows
+  the last successful backup and System Administrators are notified if it goes stale:
+
+  ```bash
+  report() {  # usage: report SUCCESS|FAILED "note"
+    curl -fsS -X POST https://YOUR-APP/api/system/backup-checkin \
+      -H "Authorization: Bearer $BACKUP_CHECKIN_TOKEN" -H 'Content-Type: application/json' \
+      -d "{\"status\":\"$1\",\"note\":\"$2\"}"
+  }
+  if docker compose exec -T db sh -c 'mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" outcomelink' > "backup-$(date +%F).sql"; then
+    report SUCCESS "nightly dump"
+  else
+    report FAILED "mysqldump failed"
+  fi
+  ```
 
 ## Where to look next
 

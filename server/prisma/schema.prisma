@@ -138,6 +138,8 @@ enum NotificationType {
   REPORT_EXPORT_READY
   // Settings (docs/TODO.md): no successful database backup has checked in recently.
   BACKUP_STALE
+  // Program dashboard (docs/TODO.md): a program can no longer reach a benchmark, or is at risk with the outcomes deadline near.
+  PROGRAM_AT_RISK
 }
 
 enum AuditAction {
@@ -1364,4 +1366,19 @@ model BackupCheckin {
 
   @@index([createdAt])
   @@map("backup_checkins")
+}
+
+/// Program dashboard (docs/TODO.md): one row per at-risk notification already
+/// sent, so the daily check alerts each (period, program, metric, kind) once.
+/// kind: OFF_TRACK | AT_RISK_30 | AT_RISK_7 (days before the outcomes deadline).
+model AtRiskAlert {
+  id                Int       @id @default(autoincrement())
+  reportingPeriodId Int       @map("reporting_period_id")
+  programId         Int       @map("program_id")
+  metric            CplMetric
+  kind              String
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  @@unique([reportingPeriodId, programId, metric, kind], map: "at_risk_alerts_key")
+  @@map("at_risk_alerts")
 }

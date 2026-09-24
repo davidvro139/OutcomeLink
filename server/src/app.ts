@@ -22,6 +22,7 @@ import { licensureRouter } from "./modules/licensure";
 import { notificationsRouter } from "./modules/notifications";
 import { outcomesRouter } from "./modules/outcomes";
 import { placementsRouter } from "./modules/placements";
+import { programDashboardRouter } from "./modules/programDashboard";
 import { programsRouter } from "./modules/programs";
 import { reportsRouter } from "./modules/reports";
 import { scheduledReportsRouter } from "./modules/scheduledReports";
@@ -88,6 +89,7 @@ export function createApp() {
   app.use("/api/job-runs", jobRunsRouter);
   app.use("/api/email-deliveries", emailDeliveriesRouter);
   app.use("/api/settings", settingsRouter);
+  app.use("/api/dashboard", programDashboardRouter);
   app.use("/api/system", systemRouter);
   // Further domain routers are mounted here as each module lands.
 

@@ -1,6 +1,7 @@
 import { Group, Loader, Paper, SimpleGrid, Stack, Tabs, Text, Title } from "@mantine/core";
 import {
   IconChecklist,
+  IconTargetArrow,
   IconFileSpreadsheet,
   IconReportAnalytics,
   type Icon,
@@ -66,6 +67,17 @@ export function DashboardPage() {
   return (
     <Stack p="xl" gap="md">
       <Title order={2}>Welcome, {user?.name}</Title>
+
+      {user?.role === "PROGRAM_ADMINISTRATOR" && (
+        <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
+          <QuickLinkCard
+            to="/my-programs"
+            label="My Programs"
+            description="Status against benchmarks, and what to do next"
+            icon={IconTargetArrow}
+          />
+        </SimpleGrid>
+      )}
 
       {isLoading && <Loader />}
 

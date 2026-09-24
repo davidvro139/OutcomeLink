@@ -28,6 +28,7 @@ import {
   IconUserCog,
   IconHistory,
   IconSettings,
+  IconTargetArrow,
   IconUsers,
 } from "@tabler/icons-react";
 import { ROLE_LABELS } from "@outcomelink/shared";
@@ -57,7 +58,10 @@ interface NavItem {
 const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
   {
     label: null,
-    items: [{ to: "/", label: "Dashboard", icon: IconLayoutDashboard }],
+    items: [
+      { to: "/", label: "Dashboard", icon: IconLayoutDashboard },
+      { to: "/my-programs", label: "My Programs", icon: IconTargetArrow },
+    ],
   },
   {
     label: "Students & Outcomes",

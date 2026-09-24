@@ -1,14 +1,5 @@
 import { CPL_METRICS } from "@outcomelink/shared";
-import {
-  Badge,
-  Group,
-  Loader,
-  Paper,
-  SimpleGrid,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Badge, Group, Loader, Paper, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 import { IconArrowDown, IconArrowUp, IconMinus } from "@tabler/icons-react";
 import { useMemo } from "react";
 import { useReadiness, useReportingPeriods, useTrends } from "../../api/accreditation";
@@ -77,7 +68,10 @@ export function ExecutiveDashboard() {
               (acc, r) => {
                 const m = r.metrics[metric];
                 if (!m) return acc;
-                return { numerator: acc.numerator + m.numerator, denominator: acc.denominator + m.denominator };
+                return {
+                  numerator: acc.numerator + m.numerator,
+                  denominator: acc.denominator + m.denominator,
+                };
               },
               { numerator: 0, denominator: 0 },
             );
@@ -119,7 +113,9 @@ export function ExecutiveDashboard() {
             Programs Ready
           </Text>
           <Title order={3}>
-            {readiness ? `${readiness.summary.readyPrograms} / ${readiness.summary.totalPrograms}` : "—"}
+            {readiness
+              ? `${readiness.summary.readyPrograms} / ${readiness.summary.totalPrograms}`
+              : "—"}
           </Title>
         </Paper>
         <Paper withBorder p="md" radius="md">

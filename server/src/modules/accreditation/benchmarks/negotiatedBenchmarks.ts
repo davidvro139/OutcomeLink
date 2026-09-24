@@ -77,16 +77,41 @@ export async function getEffectiveBenchmark(
   standardBenchmark: number,
   referenceDate: Date,
 ): Promise<{ value: number; negotiated: boolean }> {
-  const negotiated = await prisma.negotiatedBenchmark.findFirst({
-    where: {
-      programId,
-      metric,
-      effectiveStartDate: { lte: referenceDate },
-      OR: [{ effectiveEndDate: null }, { effectiveEndDate: { gte: referenceDate } }],
-    },
-    orderBy: { effectiveStartDate: "desc" },
-  });
+  const candidates = await prisma.negotiatedBenchmark.findMany({ where: { programId, metric } });
+  return pickEffectiveBenchmark(candidates, programId, metric, standardBenchmark, referenceDate);
+}
 
-  if (negotiated) return { value: Number(negotiated.approvedPercentage), negotiated: true };
+export interface NegotiatedRate {
+  programId: number;
+  metric: CplMetric;
+  approvedPercentage: { toString(): string } | number;
+  effectiveStartDate: Date;
+  effectiveEndDate: Date | null;
+}
+
+/**
+ * The pure rule behind getEffectiveBenchmark — the latest-starting negotiated
+ * rate whose window covers the reference date, else the standard benchmark —
+ * so a caller that already holds every program's negotiated rates (the program
+ * dashboard) can resolve them in memory instead of one query per program and
+ * metric.
+ */
+export function pickEffectiveBenchmark(
+  rates: NegotiatedRate[],
+  programId: number,
+  metric: CplMetric,
+  standardBenchmark: number,
+  referenceDate: Date,
+): { value: number; negotiated: boolean } {
+  const active = rates
+    .filter(
+      (r) =>
+        r.programId === programId &&
+        r.metric === metric &&
+        r.effectiveStartDate <= referenceDate &&
+        (r.effectiveEndDate === null || r.effectiveEndDate >= referenceDate),
+    )
+    .sort((a, b) => b.effectiveStartDate.getTime() - a.effectiveStartDate.getTime())[0];
+  if (active) return { value: Number(active.approvedPercentage), negotiated: true };
   return { value: standardBenchmark, negotiated: false };
 }

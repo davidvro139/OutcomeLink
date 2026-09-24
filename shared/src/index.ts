@@ -12,3 +12,4 @@ export * from "./scheduledReports";
 export * from "./jobs";
 export * from "./email";
 export * from "./settings";
+export * from "./programDashboard";

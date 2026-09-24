@@ -15,6 +15,7 @@ export interface CreateNotificationInput {
 
 /** Notification types that are also emailed (to users who haven't opted out); everything else stays in-app only. */
 const EMAILED_TYPES: ReadonlySet<NotificationType> = new Set<NotificationType>([
+  "PROGRAM_AT_RISK",
   "BACKUP_STALE",
   "SCHEDULED_REPORT_READY",
   "MISSING_OUTCOMES_DIGEST",

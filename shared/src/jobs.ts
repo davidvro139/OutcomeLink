@@ -7,6 +7,8 @@ export const JOB_TYPES = [
   "MISSING_OUTCOMES_DIGEST",
   "DATA_RETENTION",
   "BACKUP_CHECK",
+  "AT_RISK_CHECK",
+  "CPL_RECOMPUTE",
 ] as const;
 export type JobType = (typeof JOB_TYPES)[number];
 
@@ -18,6 +20,8 @@ export const JOB_TYPE_LABELS: Record<JobType, string> = {
   MISSING_OUTCOMES_DIGEST: "Missing-outcomes digest",
   DATA_RETENTION: "Data retention cleanup",
   BACKUP_CHECK: "Backup check",
+  AT_RISK_CHECK: "At-risk program check",
+  CPL_RECOMPUTE: "Recompute results",
 };
 
 export const JOB_RUN_STATUSES = ["RUNNING", "RETRY_PENDING", "SUCCESS", "FAILED"] as const;

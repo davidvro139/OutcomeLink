@@ -25,6 +25,7 @@ import { GraduateSurveyPage } from "./pages/surveys/GraduateSurveyPage";
 import { DataConnectionsPage } from "./pages/imports/DataConnectionsPage";
 import { JobHistoryPage } from "./pages/jobs/JobHistoryPage";
 import { SettingsPage } from "./pages/settings/SettingsPage";
+import { ProgramDashboardPage } from "./pages/dashboards/ProgramDashboardPage";
 import { UsersPage } from "./pages/users/UsersPage";
 
 function App() {
@@ -42,6 +43,7 @@ function App() {
         }
       >
         <Route path="/" element={<DashboardPage />} />
+        <Route path="/my-programs" element={<ProgramDashboardPage />} />
 
         <Route path="/programs" element={<ProgramsListPage />} />
         <Route path="/programs/:id" element={<ProgramDetailPage />} />

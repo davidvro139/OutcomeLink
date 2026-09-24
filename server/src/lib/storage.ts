@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { env } from "../config/env";
+
+/** Root of every stored file — a persistent volume in a container, ./uploads otherwise. */
+const UPLOADS_ROOT = env.UPLOADS_DIR ?? path.join(process.cwd(), "uploads");
 
 export interface StoredFile {
   buffer: Buffer;
@@ -37,7 +41,7 @@ export class LocalDiskStorageAdapter implements StorageAdapter {
 }
 
 export const storage: StorageAdapter = new LocalDiskStorageAdapter(
-  path.join(process.cwd(), "uploads", "evidence"),
+  path.join(UPLOADS_ROOT, "evidence"),
 );
 
 /**
@@ -46,15 +50,15 @@ export const storage: StorageAdapter = new LocalDiskStorageAdapter(
  * database — separate directory from evidence uploads, same adapter.
  */
 export const importStorage: StorageAdapter = new LocalDiskStorageAdapter(
-  path.join(process.cwd(), "uploads", "imports"),
+  path.join(UPLOADS_ROOT, "imports"),
 );
 
 /** Generated .xlsx workbooks from Scheduled Reports (Phase 3, docs/TODO.md) — one file per ScheduledReportRun. */
 export const scheduledReportStorage: StorageAdapter = new LocalDiskStorageAdapter(
-  path.join(process.cwd(), "uploads", "scheduled-reports"),
+  path.join(UPLOADS_ROOT, "scheduled-reports"),
 );
 
 /** Generated .xlsx workbooks from queued Custom Report Builder exports (docs/TODO.md's "Report pagination and bounded exports") — one file per ReportExportJob. */
 export const reportExportStorage: StorageAdapter = new LocalDiskStorageAdapter(
-  path.join(process.cwd(), "uploads", "report-exports"),
+  path.join(UPLOADS_ROOT, "report-exports"),
 );

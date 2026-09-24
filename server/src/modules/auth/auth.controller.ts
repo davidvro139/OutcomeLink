@@ -25,6 +25,13 @@ function sendTokens(res: Response, tokens: AuthTokens) {
 }
 
 export async function register(req: Request<unknown, unknown, RegisterInput>, res: Response) {
+  if (!env.ALLOW_REGISTRATION) {
+    throw new ApiError(
+      403,
+      "REGISTRATION_DISABLED",
+      "Self-service registration is turned off on this server. Ask an administrator to create your account.",
+    );
+  }
   const { user, tokens } = await registerUser(req.body);
   const accessToken = sendTokens(res, tokens);
   sendData(res, { user, accessToken }, 201);

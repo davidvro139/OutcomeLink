@@ -1,0 +1,67 @@
+# OutcomeLink on one machine: MySQL, the API, and nginx serving the web app.
+#
+#   cp .env.docker.example .env      # then fill in the secrets
+#   docker compose up -d --build
+#   docker compose exec api node dist/scripts/bootstrapAdmin.js \
+#     --institution "Your College" --name "Your Name" --email you@college.edu --password '<password>'
+#
+# The app is then at http://localhost:${WEB_PORT:-8080}. Put a TLS-terminating proxy in front for real use
+# (see README.md, "Deploying with Docker").
+
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: outcomelink
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/server.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD}@db:3306/outcomelink
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET in .env}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET in .env}
+      SECRETS_ENCRYPTION_KEY: ${SECRETS_ENCRYPTION_KEY:?Set SECRETS_ENCRYPTION_KEY in .env}
+      # Where users reach the app: used for CORS and for links in emails.
+      CLIENT_ORIGIN: ${PUBLIC_URL:-http://localhost:8080}
+      PUBLIC_APP_URL: ${PUBLIC_URL:-http://localhost:8080}
+      # nginx is one proxy hop in front of the API.
+      TRUST_PROXY: "1"
+      # Email is off unless both SMTP_HOST and MAIL_FROM are set.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+    volumes:
+      - uploads:/data/uploads
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/client.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+volumes:
+  db-data:
+  uploads:

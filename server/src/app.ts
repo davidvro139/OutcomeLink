@@ -5,6 +5,7 @@ import helmet from "helmet";
 import { pinoHttp } from "pino-http";
 import { env } from "./config/env";
 import { sendData } from "./lib/apiResponse";
+import { prisma } from "./lib/prisma";
 import { runWithRequestContext } from "./lib/requestContext";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { apiLimiter } from "./middleware/rateLimit";
@@ -47,8 +48,18 @@ export function createApp() {
   // audit-log extension (src/lib/prisma.ts) reads it from there.
   app.use((_req, _res, next) => runWithRequestContext({}, next));
 
+  // Liveness: the process is up. Readiness: it can also reach the database —
+  // what a load balancer or container orchestrator should gate traffic on.
   app.get("/health", (_req, res) => {
     sendData(res, { status: "ok" });
+  });
+  app.get("/health/ready", async (_req, res) => {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      sendData(res, { status: "ready" });
+    } catch {
+      res.status(503).json({ error: { code: "NOT_READY", message: "Database is not reachable" } });
+    }
   });
 
   app.use("/api", apiLimiter);

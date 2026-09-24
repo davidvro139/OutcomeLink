@@ -16,6 +16,15 @@ const envSchema = z.object({
   // reached directly (trusting X-Forwarded-For from anyone would let a caller
   // pick their own address and dodge the limits).
   TRUST_PROXY: z.coerce.number().int().min(0).default(0),
+  // Self-service registration (POST /api/auth/register) creates a brand-new
+  // institution with its own System Administrator, which is right for local
+  // development and wrong on a live deployment — anyone who can reach the API
+  // could create one. Defaults on except in production; production creates its
+  // first institution with the bootstrap script (npm run bootstrap).
+  ALLOW_REGISTRATION: z.enum(["true", "false"]).optional(),
+  // Where uploaded evidence, import files and generated reports are kept.
+  // Defaults to ./uploads; a container mounts a persistent volume here.
+  UPLOADS_DIR: z.string().optional(),
   // Encrypts DataSourceConnection.clientSecretEncrypted at rest (lib/secrets.ts)
   // — a real external credential (Dataverse/Azure AD app registration secret),
   // not something to leave in plaintext in the database.
@@ -38,4 +47,11 @@ const envSchema = z.object({
 });
 
 // Fail fast on missing/malformed config rather than at first use.
-export const env = envSchema.parse(process.env);
+const parsed = envSchema.parse(process.env);
+
+export const env = {
+  ...parsed,
+  ALLOW_REGISTRATION: parsed.ALLOW_REGISTRATION
+    ? parsed.ALLOW_REGISTRATION === "true"
+    : parsed.NODE_ENV !== "production",
+};

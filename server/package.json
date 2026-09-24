@@ -12,7 +12,8 @@
     "test:all": "jest --runInBand",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "tsx prisma/seed.ts",
+    "bootstrap": "tsx src/scripts/bootstrapAdmin.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

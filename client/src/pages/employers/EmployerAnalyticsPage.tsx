@@ -4,6 +4,7 @@ import {
   Badge,
   Group,
   Loader,
+  VisuallyHidden,
   Paper,
   Select,
   SimpleGrid,
@@ -18,7 +19,16 @@ import { useReportingPeriods } from "../../api/accreditation";
 import { useState } from "react";
 
 const RISK_COLORS: Record<string, string> = { LOW: "green", MODERATE: "yellow", HIGH: "red" };
-const PIE_COLORS = ["blue.6", "teal.6", "grape.6", "orange.6", "cyan.6", "pink.6", "lime.6", "indigo.6"];
+const PIE_COLORS = [
+  "blue.6",
+  "teal.6",
+  "grape.6",
+  "orange.6",
+  "cyan.6",
+  "pink.6",
+  "lime.6",
+  "indigo.6",
+];
 
 /** Phase 2 P5 (docs/TODO.md): top employers, concentration risk, and industry breakdown. */
 export function EmployerAnalyticsPage() {
@@ -112,16 +122,29 @@ export function EmployerAnalyticsPage() {
                 <Text fw={500} size="sm">
                   Placements by Industry
                 </Text>
-                <PieChart
-                  data={data.industryBreakdown.map((row, i) => ({
-                    name: row.industry,
-                    value: row.placementCount,
-                    color: PIE_COLORS[i % PIE_COLORS.length],
-                  }))}
-                  withLabels
-                  withTooltip
-                  size={220}
-                />
+                {/* The chart's slices are unlabelled graphics to assistive technology, so hide them and give
+                    the same numbers as a list. */}
+                <div aria-hidden="true" inert>
+                  <PieChart
+                    data={data.industryBreakdown.map((row, i) => ({
+                      name: row.industry,
+                      value: row.placementCount,
+                      color: PIE_COLORS[i % PIE_COLORS.length],
+                    }))}
+                    withLabels
+                    withTooltip
+                    size={220}
+                  />
+                </div>
+                <VisuallyHidden>
+                  <ul aria-label="Placements by industry">
+                    {data.industryBreakdown.map((row) => (
+                      <li key={row.industry}>
+                        {row.industry}: {row.placementCount}
+                      </li>
+                    ))}
+                  </ul>
+                </VisuallyHidden>
               </Stack>
             </Group>
           )}

@@ -10,7 +10,6 @@ import {
   Button,
   Group,
   Loader,
-  Pagination,
   Select,
   Stack,
   Table,
@@ -24,6 +23,7 @@ import { useState } from "react";
 import { type JobRun, useJobRuns, useRetryJobRun } from "../../api/jobRuns";
 import { usePermissions } from "../../auth/usePermissions";
 import { EmailLogPanel } from "./EmailLogPanel";
+import { Pager } from "../../components/Pager";
 
 const STATUS_COLORS: Record<JobRunStatus, string> = {
   RUNNING: "blue",
@@ -195,7 +195,7 @@ function JobRunsPanel() {
       )}
 
       {data && data.pagination.totalPages > 1 && (
-        <Pagination total={data.pagination.totalPages} value={page} onChange={setPage} />
+        <Pager total={data.pagination.totalPages} value={page} onChange={setPage} />
       )}
     </Stack>
   );

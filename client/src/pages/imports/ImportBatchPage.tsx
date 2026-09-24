@@ -15,7 +15,6 @@ import {
   Checkbox,
   Group,
   Loader,
-  Pagination,
   Select,
   Stack,
   Table,
@@ -33,6 +32,7 @@ import {
   useSetImportMapping,
   useValidateImportBatch,
 } from "../../api/imports";
+import { Pager } from "../../components/Pager";
 
 const STATUS_COLORS: Record<string, string> = {
   UPLOADED: "gray",
@@ -223,7 +223,7 @@ function PreviewSection({
         </Table>
       </Table.ScrollContainer>
       {Math.ceil(data.totalValidRows / data.pageSize) > 1 && (
-        <Pagination
+        <Pager
           total={Math.ceil(data.totalValidRows / data.pageSize)}
           value={page}
           onChange={setPage}

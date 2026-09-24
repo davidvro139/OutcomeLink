@@ -4,7 +4,6 @@ import {
   Group,
   Loader,
   Modal,
-  Pagination,
   Stack,
   Table,
   Text,
@@ -18,6 +17,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { type CreateEmployerInput, useCreateEmployer, useEmployers } from "../../api/employers";
 import { usePermissions } from "../../auth/usePermissions";
+import { Pager } from "../../components/Pager";
 
 export function EmployersListPage() {
   const { canManageEmployers } = usePermissions();
@@ -101,7 +101,7 @@ export function EmployersListPage() {
           </Table>
           {data.pagination.totalPages > 1 && (
             <Group justify="center">
-              <Pagination total={data.pagination.totalPages} value={page} onChange={setPage} />
+              <Pager total={data.pagination.totalPages} value={page} onChange={setPage} />
             </Group>
           )}
         </>

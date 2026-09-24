@@ -22,3 +22,21 @@ html[data-mantine-color-scheme="light"] {
 body {
   margin: 0;
 }
+
+/* First tab stop on every page: jumps past the header and navigation (WCAG 2.4.1). Visible only when focused. */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -48px;
+  z-index: 1000;
+  padding: 8px 14px;
+  border-radius: 4px;
+  background: #fff;
+  color: #000;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: 8px;
+}

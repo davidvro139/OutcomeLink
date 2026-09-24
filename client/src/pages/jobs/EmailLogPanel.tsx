@@ -11,7 +11,6 @@ import {
   Badge,
   Group,
   Loader,
-  Pagination,
   Select,
   Stack,
   Table,
@@ -21,6 +20,7 @@ import {
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useEmailDeliveries, useEmailStatus } from "../../api/emailDeliveries";
+import { Pager } from "../../components/Pager";
 
 const STATUS_LABELS: Record<EmailDeliveryStatus, string> = { SENT: "Sent", FAILED: "Failed" };
 
@@ -127,7 +127,7 @@ export function EmailLogPanel() {
       )}
 
       {data && data.pagination.totalPages > 1 && (
-        <Pagination total={data.pagination.totalPages} value={page} onChange={setPage} />
+        <Pager total={data.pagination.totalPages} value={page} onChange={setPage} />
       )}
     </Stack>
   );

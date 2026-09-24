@@ -1,7 +1,8 @@
-import { Anchor, Badge, Group, Loader, Pagination, Stack, Table, Text, Title } from "@mantine/core";
+import { Anchor, Badge, Group, Loader, Stack, Table, Text, Title } from "@mantine/core";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useLicensureQueue } from "../../api/licensure";
+import { Pager } from "../../components/Pager";
 
 const RESULT_COLORS: Record<string, string> = {
   WAITING: "yellow",
@@ -20,13 +21,14 @@ export function LicensureQueuePage() {
         <div>
           <Title order={2}>Licensure Queue</Title>
           <Text c="dimmed" size="sm">
-            Graduate completers of licensure-required programs still awaiting a passed/failed
-            exam result.
+            Graduate completers of licensure-required programs still awaiting a passed/failed exam
+            result.
           </Text>
         </div>
         {data && (
           <Text c="dimmed" size="sm">
-            {data.pagination.totalItems} awaiting result{data.pagination.totalItems === 1 ? "" : "s"}
+            {data.pagination.totalItems} awaiting result
+            {data.pagination.totalItems === 1 ? "" : "s"}
           </Text>
         )}
       </Group>
@@ -82,7 +84,7 @@ export function LicensureQueuePage() {
 
       {data && data.pagination.totalPages > 1 && (
         <Group justify="center">
-          <Pagination total={data.pagination.totalPages} value={page} onChange={setPage} />
+          <Pager total={data.pagination.totalPages} value={page} onChange={setPage} />
         </Group>
       )}
     </Stack>

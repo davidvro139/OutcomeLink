@@ -24,9 +24,11 @@ import { BulkFollowUpModal } from "./BulkFollowUpModal";
 
 function AssignedToCell({
   studentId,
+  studentName,
   assignedTo,
 }: {
   studentId: number;
+  studentName: string;
   assignedTo: { id: number; name: string } | null;
 }) {
   const { canWrite } = usePermissions();
@@ -52,6 +54,7 @@ function AssignedToCell({
 
   return (
     <Select
+      aria-label={`Assigned to, ${studentName}`}
       placeholder="Unassigned"
       data={staffOptions}
       value={assignedTo ? String(assignedTo.id) : null}
@@ -186,7 +189,11 @@ export function FollowUpQueuePage() {
                   {row.nextFollowUpDate ? new Date(row.nextFollowUpDate).toLocaleDateString() : "—"}
                 </Table.Td>
                 <Table.Td>
-                  <AssignedToCell studentId={row.student.id} assignedTo={row.assignedTo} />
+                  <AssignedToCell
+                    studentId={row.student.id}
+                    studentName={`${row.student.firstName} ${row.student.lastName}`}
+                    assignedTo={row.assignedTo}
+                  />
                 </Table.Td>
                 <Table.Td>
                   {row.daysOverdue > 0 ? (

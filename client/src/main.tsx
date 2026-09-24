@@ -12,7 +12,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { AuthProvider } from "./auth/AuthProvider";
 import { ApiRequestError } from "./lib/apiClient";
-import { theme } from "./theme";
+import { cssVariablesResolver, theme } from "./theme";
 import "./index.css";
 
 const queryClient = new QueryClient({
@@ -25,14 +25,19 @@ const queryClient = new QueryClient({
       // scoping (project review, 2026-09-18) making a real 404 a routine,
       // expected outcome instead of a rare cross-institution edge case.
       retry: (failureCount, error) =>
-        !(error instanceof ApiRequestError && [401, 403, 404].includes(error.status)) && failureCount < 3,
+        !(error instanceof ApiRequestError && [401, 403, 404].includes(error.status)) &&
+        failureCount < 3,
     },
   },
 });
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <MantineProvider theme={theme} defaultColorScheme="dark">
+    <MantineProvider
+      theme={theme}
+      cssVariablesResolver={cssVariablesResolver}
+      defaultColorScheme="dark"
+    >
       <Notifications />
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>

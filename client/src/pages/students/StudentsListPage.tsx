@@ -4,7 +4,6 @@ import {
   Group,
   Loader,
   Modal,
-  Pagination,
   Stack,
   Table,
   Text,
@@ -20,6 +19,7 @@ import { type CreateStudentInput, useCreateStudent, useStudents } from "../../ap
 import { downloadFile } from "../../lib/apiClient";
 import { stripEmptyStrings } from "../../lib/forms";
 import { usePermissions } from "../../auth/usePermissions";
+import { Pager } from "../../components/Pager";
 
 export function StudentsListPage() {
   const { canManageStudents } = usePermissions();
@@ -120,7 +120,7 @@ export function StudentsListPage() {
           </Table>
           {data.pagination.totalPages > 1 && (
             <Group justify="center">
-              <Pagination total={data.pagination.totalPages} value={page} onChange={setPage} />
+              <Pager total={data.pagination.totalPages} value={page} onChange={setPage} />
             </Group>
           )}
         </>

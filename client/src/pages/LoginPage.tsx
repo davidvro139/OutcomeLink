@@ -136,7 +136,7 @@ export function LoginPage() {
                   <Button
                     key={account.email}
                     variant="light"
-                    color="grape"
+                    color="dark"
                     fullWidth
                     loading={pendingEmail === account.email}
                     disabled={submitting && pendingEmail !== account.email}

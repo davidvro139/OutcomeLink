@@ -160,6 +160,7 @@ export function LicensureTab({ studentId }: { studentId: number }) {
                   <Select
                     size="xs"
                     w={140}
+                    aria-label={`Result for ${result.examName}, attempt ${result.attemptNumber}`}
                     data={LICENSURE_RESULT_STATUSES.map((s) => ({ value: s, label: s }))}
                     value={result.result}
                     onChange={(v) => handleResultChange(result.id, v)}

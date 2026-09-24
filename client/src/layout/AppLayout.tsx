@@ -4,6 +4,7 @@ import {
   Burger,
   Group,
   Menu,
+  Switch,
   NavLink,
   Stack,
   Text,
@@ -23,6 +24,7 @@ import {
   IconSchool,
   IconTrendingUp,
   IconUpload,
+  IconMail,
   IconUserCog,
   IconHistory,
   IconUsers,
@@ -31,6 +33,11 @@ import { ROLE_LABELS } from "@outcomelink/shared";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { GlobalSearch } from "../components/GlobalSearch";
+import {
+  useEmailNotificationPreference,
+  useEmailStatus,
+  useSetEmailNotificationPreference,
+} from "../api/emailDeliveries";
 import { type Permissions, usePermissions } from "../auth/usePermissions";
 import { NotificationBell } from "../components/NotificationBell";
 
@@ -83,6 +90,10 @@ const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
 export function AppLayout() {
   const { user, logout } = useAuth();
   const permissions = usePermissions();
+  // Only offered when the server can actually send email.
+  const { data: emailStatus } = useEmailStatus();
+  const { data: emailPreference } = useEmailNotificationPreference();
+  const setEmailPreference = useSetEmailNotificationPreference();
   const location = useLocation();
   const [navOpened, { toggle: toggleNav, close: closeNav }] = useDisclosure(false);
 
@@ -145,6 +156,23 @@ export function AppLayout() {
                 </UnstyledButton>
               </Menu.Target>
               <Menu.Dropdown>
+                {emailStatus?.configured && emailPreference && (
+                  <Menu.Item
+                    closeMenuOnClick={false}
+                    leftSection={<IconMail size={14} />}
+                    rightSection={
+                      <Switch
+                        size="xs"
+                        checked={emailPreference.emailNotifications}
+                        readOnly
+                        tabIndex={-1}
+                      />
+                    }
+                    onClick={() => setEmailPreference.mutate(!emailPreference.emailNotifications)}
+                  >
+                    Email notifications
+                  </Menu.Item>
+                )}
                 <Menu.Item leftSection={<IconLogout size={14} />} onClick={handleLogout}>
                   Sign out
                 </Menu.Item>

@@ -5,7 +5,7 @@ import { sendData } from "../../lib/apiResponse";
 import { parseDurationToMs } from "../../lib/duration";
 import { prisma } from "../../lib/prisma";
 import { loginUser, refreshSession, registerUser, type AuthTokens } from "./auth.service";
-import type { LoginInput, RegisterInput } from "./auth.schemas";
+import type { LoginInput, RegisterInput, UpdatePreferencesInput } from "./auth.schemas";
 
 const REFRESH_COOKIE_NAME = "refreshToken";
 
@@ -48,6 +48,25 @@ export async function refresh(req: Request, res: Response) {
 export function logout(_req: Request, res: Response) {
   res.clearCookie(REFRESH_COOKIE_NAME, { path: "/api/auth" });
   sendData(res, { loggedOut: true });
+}
+
+/** The signed-in user's own settings — currently just whether notifications are also emailed to them. */
+export async function getPreferences(req: Request, res: Response) {
+  const user = await prisma.user.findUnique({
+    where: { id: req.user!.sub },
+    select: { emailNotifications: true },
+  });
+  if (!user) throw ApiError.unauthorized();
+  sendData(res, { preferences: user });
+}
+
+export async function updatePreferences(req: Request<Record<string, never>, unknown, UpdatePreferencesInput>, res: Response) {
+  const user = await prisma.user.update({
+    where: { id: req.user!.sub },
+    data: { emailNotifications: req.body.emailNotifications },
+    select: { emailNotifications: true },
+  });
+  sendData(res, { preferences: user });
 }
 
 export async function me(req: Request, res: Response) {

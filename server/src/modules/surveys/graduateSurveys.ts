@@ -5,7 +5,9 @@ import { getAccessibleProgramIds, studentProgramScopeFilter } from "../../lib/ac
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { recordCommunicationEvent } from "../../lib/communicationEvents";
+import { emailResponseFields, studentEmailTarget, type EmailOutcome } from "../../lib/emailDelivery";
 import { prisma } from "../../lib/prisma";
+import { emailOutcomeNote, noteworthy, sendGraduateSurveyEmail } from "./surveyEmail";
 
 export const createGraduateSurveySchema = z.object({
   channel: z.string().trim().max(100).optional(),
@@ -45,6 +47,16 @@ export async function create(
   const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
   await findOwnedStudent(req.user!.institutionId, studentId, accessibleProgramIds);
 
+  // Only the EMAIL channel is actually delivered; the other channels (SMS,
+  // MAIL, PHONE) still just create a link for staff to pass along.
+  const viaEmail = req.body.channel?.toUpperCase() === "EMAIL";
+  if (viaEmail) {
+    const target = await studentEmailTarget(studentId);
+    if ("skipped" in target && target.skipped === "Flagged do-not-contact") {
+      throw ApiError.conflict("Student is flagged do-not-contact");
+    }
+  }
+
   const survey = await prisma.graduateSurvey.create({
     data: {
       studentId,
@@ -53,12 +65,16 @@ export async function create(
       responseToken: randomUUID(),
     },
   });
+  const outcome: EmailOutcome | null = viaEmail
+    ? await sendGraduateSurveyEmail(req.user!.institutionId, survey)
+    : null;
+  const noted = noteworthy(outcome);
   await recordCommunicationEvent({
     studentId,
     eventType: "GRADUATE_SURVEY_SENT",
     sourceId: survey.id,
     occurredAt: survey.sentAt,
-    summaryText: `Graduate survey sent${survey.channel ? ` via ${survey.channel}` : ""}`,
+    summaryText: `Graduate survey ${noted ? "created" : "sent"}${survey.channel ? ` via ${survey.channel}` : ""}${noted ? ` — ${emailOutcomeNote(noted)}` : ""}`,
   });
-  sendData(res, { survey }, 201);
+  sendData(res, { survey, ...(outcome ? emailResponseFields(outcome) : {}) }, 201);
 }

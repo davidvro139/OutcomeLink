@@ -339,6 +339,9 @@ model User {
   // overwrites any previous value, so a stale link is automatically superseded.
   passwordSetToken          String?   @unique @map("password_set_token")
   passwordSetTokenExpiresAt DateTime? @map("password_set_token_expires_at")
+  // Email delivery (docs/TODO.md): staff opt-out for emailed copies of in-app
+  // notifications (scheduled report ready, digest, overdue follow-up).
+  emailNotifications        Boolean   @default(true) @map("email_notifications")
 
   institution Institution @relation(fields: [institutionId], references: [id])
 
@@ -1278,4 +1281,40 @@ model JobRun {
   @@index([institutionId, createdAt])
   @@index([status, nextAttemptAt])
   @@map("job_runs")
+}
+
+enum EmailPurpose {
+  INVITATION
+  PASSWORD_RESET
+  GRADUATE_SURVEY
+  EMPLOYER_SURVEY
+  STAFF_NOTIFICATION
+}
+
+enum EmailDeliveryStatus {
+  SENT
+  FAILED
+}
+
+/// Email delivery (docs/TODO.md): one row per email actually attempted through
+/// the SMTP transport — nothing is written when email isn't configured, since
+/// nothing was attempted. The body is deliberately not stored (it can carry a
+/// single-use link); a failed survey email is re-sent by re-running the
+/// campaign, which finds the latest FAILED row for each survey. No foreign
+/// keys, like JobRun: a delivery record should outlive what it mentions.
+model EmailDelivery {
+  id                Int                 @id @default(autoincrement())
+  institutionId     Int                 @map("institution_id")
+  purpose           EmailPurpose
+  toAddress         String              @map("to_address")
+  subject           String
+  status            EmailDeliveryStatus
+  errorMessage      String?             @map("error_message") @db.Text
+  relatedEntityType String?             @map("related_entity_type")
+  relatedEntityId   Int?                @map("related_entity_id")
+  createdAt         DateTime            @default(now()) @map("created_at")
+
+  @@index([institutionId, createdAt])
+  @@index([relatedEntityType, relatedEntityId, createdAt], map: "email_deliveries_related_idx")
+  @@map("email_deliveries")
 }

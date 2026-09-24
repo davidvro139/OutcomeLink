@@ -13,6 +13,7 @@ import {
   useSendGraduateSurvey,
 } from "../../api/surveys";
 import { usePermissions } from "../../auth/usePermissions";
+import { surveyToast } from "../../lib/emailStatus";
 
 const CHANNEL_OPTIONS = ["EMAIL", "SMS", "MAIL", "PHONE"];
 
@@ -40,11 +41,8 @@ function GraduateSurveysSection({ studentId }: { studentId: number }) {
 
   async function handleSend() {
     try {
-      await sendSurvey.mutateAsync({ channel: channel ?? undefined });
-      notifications.show({
-        message: "Graduate survey created — copy the link below to send it",
-        color: "green",
-      });
+      const result = await sendSurvey.mutateAsync({ channel: channel ?? undefined });
+      notifications.show(surveyToast("Graduate", result));
       closeForm();
     } catch (err) {
       notifications.show({
@@ -76,6 +74,7 @@ function GraduateSurveysSection({ studentId }: { studentId: number }) {
           <Select
             label="Channel"
             data={CHANNEL_OPTIONS}
+            allowDeselect={false}
             value={channel}
             onChange={setChannel}
             w={160}
@@ -200,11 +199,8 @@ function EmployerSurveysSection({ studentId }: { studentId: number }) {
   async function handleSend() {
     if (!employerId) return;
     try {
-      await sendSurvey.mutateAsync({ employerId: Number(employerId) });
-      notifications.show({
-        message: "Employer survey created — copy the link below to send it",
-        color: "green",
-      });
+      const result = await sendSurvey.mutateAsync({ employerId: Number(employerId) });
+      notifications.show(surveyToast("Employer", result));
       closeForm();
     } catch (err) {
       notifications.show({

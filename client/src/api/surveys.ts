@@ -6,6 +6,7 @@ import type {
 } from "@outcomelink/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../lib/apiClient";
+import type { EmailResult } from "../lib/emailStatus";
 
 export interface GraduateSurveyResponse {
   id: number;
@@ -70,10 +71,13 @@ export function useSendGraduateSurvey(studentId: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: { channel?: string }) =>
-      apiRequest<{ survey: GraduateSurvey }>(`/api/students/${studentId}/graduate-surveys`, {
-        method: "POST",
-        body: JSON.stringify(input),
-      }),
+      apiRequest<{ survey: GraduateSurvey } & EmailResult>(
+        `/api/students/${studentId}/graduate-surveys`,
+        {
+          method: "POST",
+          body: JSON.stringify(input),
+        },
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students", studentId, "graduate-surveys"] });
       queryClient.invalidateQueries({
@@ -97,11 +101,14 @@ export function useEmployerSurveys(studentId: number | undefined) {
 export function useSendEmployerSurvey(studentId: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { employerId: number }) =>
-      apiRequest<{ survey: EmployerSurvey }>(`/api/students/${studentId}/employer-surveys`, {
-        method: "POST",
-        body: JSON.stringify(input),
-      }),
+    mutationFn: (input: { employerId: number; employerContactId?: number; sendEmail?: boolean }) =>
+      apiRequest<{ survey: EmployerSurvey } & EmailResult>(
+        `/api/students/${studentId}/employer-surveys`,
+        {
+          method: "POST",
+          body: JSON.stringify(input),
+        },
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students", studentId, "employer-surveys"] });
       queryClient.invalidateQueries({
@@ -188,6 +195,9 @@ export function useSubmitEmployerSurveyResponse(token: string) {
 export interface GraduateCampaignResult {
   targetedCount: number;
   sentCount: number;
+  emailedCount: number;
+  failedCount: number;
+  resentCount: number;
   skipped: { studentId: number; reason: string }[];
 }
 

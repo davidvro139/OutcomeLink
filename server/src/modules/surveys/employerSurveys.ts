@@ -5,10 +5,16 @@ import { getAccessibleProgramIds, studentProgramScopeFilter } from "../../lib/ac
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { recordCommunicationEvent } from "../../lib/communicationEvents";
+import { emailResponseFields } from "../../lib/emailDelivery";
 import { prisma } from "../../lib/prisma";
+import { emailOutcomeNote, noteworthy, sendEmployerSurveyEmail } from "./surveyEmail";
 
 export const createEmployerSurveySchema = z.object({
   employerId: z.coerce.number().int().positive(),
+  /** Which of the employer's contacts to email; omitted = a verification contact, else the primary contact, else any with an address. */
+  employerContactId: z.coerce.number().int().positive().optional(),
+  /** Set false to only create the link (to pass along yourself). */
+  sendEmail: z.boolean().default(true),
 });
 type CreateEmployerSurveyInput = z.infer<typeof createEmployerSurveySchema>;
 
@@ -66,12 +72,23 @@ export async function create(
       responseToken: randomUUID(),
     },
   });
+  const student = await prisma.student.findUniqueOrThrow({ where: { id: studentId }, select: { firstName: true, lastName: true } });
+  const outcome = req.body.sendEmail
+    ? await sendEmployerSurveyEmail(
+        institutionId,
+        survey,
+        employer.id,
+        `${student.firstName} ${student.lastName}`,
+        req.body.employerContactId,
+      )
+    : null;
+  const noted = noteworthy(outcome);
   await recordCommunicationEvent({
     studentId,
     eventType: "EMPLOYER_SURVEY_SENT",
     sourceId: survey.id,
     occurredAt: survey.sentAt,
-    summaryText: `Employer survey sent to ${employer.name}`,
+    summaryText: `Employer survey ${noted ? (noted.status === "SENT" ? "sent" : "created") : "sent"} ${noted ? "for" : "to"} ${employer.name}${noted ? ` — ${emailOutcomeNote(noted)}` : ""}`,
   });
-  sendData(res, { survey }, 201);
+  sendData(res, { survey, ...(outcome ? emailResponseFields(outcome) : {}) }, 201);
 }

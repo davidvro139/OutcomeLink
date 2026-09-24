@@ -1,5 +1,18 @@
 import { ROLES, ROLE_LABELS, type Role } from "@outcomelink/shared";
-import { Badge, Button, Group, Loader, Modal, MultiSelect, Select, Stack, Table, Text, TextInput, Title } from "@mantine/core";
+import {
+  Badge,
+  Button,
+  Group,
+  Loader,
+  Modal,
+  MultiSelect,
+  Select,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+  Title,
+} from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
@@ -16,6 +29,7 @@ import {
   useUsers,
 } from "../../api/users";
 import { useAuth } from "../../auth/AuthContext";
+import type { EmailResult } from "../../lib/emailStatus";
 
 const CAN_MANAGE_USERS = ["SYSTEM_ADMINISTRATOR", "INSTITUTIONAL_ADMINISTRATOR"];
 
@@ -23,6 +37,29 @@ const CAN_MANAGE_USERS = ["SYSTEM_ADMINISTRATOR", "INSTITUTIONAL_ADMINISTRATOR"]
 // two roles getAccessibleProgramIds() ever actually consults, so program/
 // campus assignment is only meaningful (and only shown) for these.
 const PROGRAM_SCOPED_ROLES: Role[] = ["PROGRAM_ADMINISTRATOR", "READ_ONLY_AUDITOR"];
+
+/**
+ * The server emails the set-password link itself when it can, and returns
+ * the raw token only when it couldn't (email not configured, or the send
+ * failed) — then fall back to a copyable link, saying why if it was a failure.
+ */
+async function deliverSetPasswordLink(
+  result: { token?: string } & EmailResult,
+  label: string,
+  email: string,
+) {
+  if (result.emailStatus === "SENT") {
+    notifications.show({ message: `${label} emailed to ${email}`, color: "green" });
+    return;
+  }
+  if (result.emailStatus === "FAILED") {
+    notifications.show({
+      message: `The email to ${email} failed (${result.emailReason}) — copying the link instead.`,
+      color: "yellow",
+    });
+  }
+  if (result.token) await copySetPasswordLink(result.token, label);
+}
 
 async function copySetPasswordLink(token: string, label: string) {
   const url = `${window.location.origin}/set-password/${token}`;
@@ -42,7 +79,13 @@ interface UserFormValues {
   campusIds: string[];
 }
 
-const EMPTY_FORM: UserFormValues = { name: "", email: "", role: "INSTRUCTOR_STAFF", programIds: [], campusIds: [] };
+const EMPTY_FORM: UserFormValues = {
+  name: "",
+  email: "",
+  role: "INSTRUCTOR_STAFF",
+  programIds: [],
+  campusIds: [],
+};
 
 function UserFormModal({
   opened,
@@ -95,7 +138,7 @@ function UserFormModal({
       } else {
         const input: InviteUserInput = { name: form.name, email: form.email, role: form.role };
         const result = await inviteUser.mutateAsync(input);
-        await copySetPasswordLink(result.token, "Invite");
+        await deliverSetPasswordLink(result, "Invitation", form.email);
       }
       onClose();
     } catch (err) {
@@ -110,7 +153,12 @@ function UserFormModal({
   const isPending = inviteUser.isPending || updateUser.isPending || setAccess.isPending;
 
   return (
-    <Modal opened={opened} onClose={onClose} title={editingUser ? "Edit User" : "Invite User"} size="lg">
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title={editingUser ? "Edit User" : "Invite User"}
+      size="lg"
+    >
       <Stack gap="md">
         <TextInput
           label="Name"
@@ -135,8 +183,8 @@ function UserFormModal({
         {editingUser && PROGRAM_SCOPED_ROLES.includes(form.role) && (
           <>
             <Text size="sm" c="dimmed">
-              This role only sees data for its assigned programs/campuses — leave both empty and they'll
-              see nothing until assigned.
+              This role only sees data for its assigned programs/campuses — leave both empty and
+              they'll see nothing until assigned.
             </Text>
             <MultiSelect
               label="Accessible programs"
@@ -239,7 +287,10 @@ function UserRow({ user, onEdit }: { user: StaffUser; onEdit: () => void }) {
   async function handleToggleActive() {
     try {
       await setActive.mutateAsync(!user.active);
-      notifications.show({ message: user.active ? "User deactivated" : "User reactivated", color: "green" });
+      notifications.show({
+        message: user.active ? "User deactivated" : "User reactivated",
+        color: "green",
+      });
     } catch (err) {
       notifications.show({
         message: err instanceof Error ? err.message : "Failed to update user",
@@ -251,7 +302,7 @@ function UserRow({ user, onEdit }: { user: StaffUser; onEdit: () => void }) {
   async function handleResetPassword() {
     try {
       const result = await resetPassword.mutateAsync();
-      await copySetPasswordLink(result.token, "Password reset");
+      await deliverSetPasswordLink(result, "Password reset", user.email ?? "the user");
     } catch (err) {
       notifications.show({
         message: err instanceof Error ? err.message : "Failed to reset password",
@@ -273,7 +324,12 @@ function UserRow({ user, onEdit }: { user: StaffUser; onEdit: () => void }) {
           <Button size="xs" variant="subtle" onClick={onEdit}>
             Edit
           </Button>
-          <Button size="xs" variant="subtle" onClick={handleResetPassword} loading={resetPassword.isPending}>
+          <Button
+            size="xs"
+            variant="subtle"
+            onClick={handleResetPassword}
+            loading={resetPassword.isPending}
+          >
             Reset Password
           </Button>
           <Button

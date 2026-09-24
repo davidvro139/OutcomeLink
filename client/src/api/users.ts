@@ -1,6 +1,7 @@
 import type { Role } from "@outcomelink/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../lib/apiClient";
+import type { EmailResult } from "../lib/emailStatus";
 
 export interface StaffUser {
   id: number;
@@ -30,7 +31,7 @@ export function useInviteUser() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: InviteUserInput) =>
-      apiRequest<{ user: StaffUser; token: string }>("/api/users/invite", {
+      apiRequest<{ user: StaffUser; token?: string } & EmailResult>("/api/users/invite", {
         method: "POST",
         body: JSON.stringify(input),
       }),
@@ -48,7 +49,10 @@ export function useUpdateUser(id: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: UpdateUserInput) =>
-      apiRequest<{ user: StaffUser }>(`/api/users/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
+      apiRequest<{ user: StaffUser }>(`/api/users/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] }),
   });
 }
@@ -67,7 +71,10 @@ export function useSetUserActive(id: number) {
 
 export function useResetUserPassword(id: number) {
   return useMutation({
-    mutationFn: () => apiRequest<{ token: string }>(`/api/users/${id}/reset-password`, { method: "POST" }),
+    mutationFn: () =>
+      apiRequest<{ token?: string } & EmailResult>(`/api/users/${id}/reset-password`, {
+        method: "POST",
+      }),
   });
 }
 
@@ -80,7 +87,10 @@ export function useSetUserAccess(id: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: SetUserAccessInput) =>
-      apiRequest<SetUserAccessInput>(`/api/users/${id}/access`, { method: "PUT", body: JSON.stringify(input) }),
+      apiRequest<SetUserAccessInput>(`/api/users/${id}/access`, {
+        method: "PUT",
+        body: JSON.stringify(input),
+      }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] }),
   });
 }

@@ -4,9 +4,12 @@ import { z } from "zod";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { recordCommunicationEvent } from "../../lib/communicationEvents";
+import { studentEmailTarget, type EmailOutcome } from "../../lib/emailDelivery";
 import { DEFAULT_BACKOFF_MS, registerJob, runJob } from "../../lib/jobRunner";
+import { isMailConfigured } from "../../lib/mailer";
 import { prisma } from "../../lib/prisma";
 import { getUnresolvedOutcomeStudentIds } from "../reports/reports";
+import { emailOutcomeNote, noteworthy, sendGraduateSurveyEmail } from "./surveyEmail";
 
 export const startGraduateCampaignSchema = z.object({
   reportingPeriodId: z.coerce.number().int().positive(),
@@ -54,42 +57,101 @@ export async function startCampaign(
   sendData(res, run.result, 201);
 }
 
+/**
+ * Sends by email when email is configured and the campaign's channel is EMAIL
+ * (or unspecified); otherwise it only creates the survey links, as before.
+ * Do-not-contact students are always left out, and when emailing so are
+ * students with no address on file — both are listed in `skipped` with the
+ * reason rather than getting a survey nobody can receive.
+ *
+ * Re-running is safe and is how failed emails are retried: a student whose
+ * pending survey's latest email FAILED gets that same survey re-sent (no
+ * duplicate survey row), while one whose survey went out fine is skipped.
+ */
 async function runCampaign(institutionId: number, reportingPeriodId: number, channel: string | undefined) {
   const targetStudentIds = await getUnresolvedOutcomeStudentIds(institutionId, reportingPeriodId);
+  const emailing = isMailConfigured() && (!channel || channel.toUpperCase() === "EMAIL");
+  const surveyChannel = channel ?? (emailing ? "EMAIL" : undefined);
 
   // Don't re-send to someone who already has a survey out that hasn't been
   // answered yet — that's a duplicate outreach, not a fresh one.
   const pendingSurveys = await prisma.graduateSurvey.findMany({
     where: { studentId: { in: targetStudentIds }, response: null },
-    select: { studentId: true },
+    select: { id: true, studentId: true, responseToken: true },
   });
-  const alreadyPending = new Set(pendingSurveys.map((s) => s.studentId));
+  const pendingByStudent = new Map(pendingSurveys.map((s) => [s.studentId, s]));
 
-  const eligibleIds = targetStudentIds.filter((id) => !alreadyPending.has(id));
-  const skipped = targetStudentIds
-    .filter((id) => alreadyPending.has(id))
-    .map((studentId) => ({ studentId, reason: "Already has a pending graduate survey" }));
+  const failedSurveyIds = new Set<number>();
+  if (emailing && pendingSurveys.length > 0) {
+    const deliveries = await prisma.emailDelivery.findMany({
+      where: { relatedEntityType: "GraduateSurvey", relatedEntityId: { in: pendingSurveys.map((s) => s.id) } },
+      orderBy: { id: "asc" },
+      select: { relatedEntityId: true, status: true },
+    });
+    const latest = new Map<number, string>();
+    for (const d of deliveries) latest.set(d.relatedEntityId!, d.status); // ascending, so the last write is the latest
+    for (const [surveyId, status] of latest) if (status === "FAILED") failedSurveyIds.add(surveyId);
+  }
+
+  const skipped: { studentId: number; reason: string }[] = [];
+  const resend: { id: number; studentId: number; responseToken: string }[] = [];
+  const eligibleIds: number[] = [];
+  for (const studentId of targetStudentIds) {
+    const pending = pendingByStudent.get(studentId);
+    if (pending) {
+      if (failedSurveyIds.has(pending.id)) resend.push(pending);
+      else skipped.push({ studentId, reason: "Already has a pending graduate survey" });
+      continue;
+    }
+    const target = await studentEmailTarget(studentId);
+    if ("skipped" in target && (target.skipped === "Flagged do-not-contact" || emailing)) {
+      skipped.push({ studentId, reason: target.skipped });
+      continue;
+    }
+    eligibleIds.push(studentId);
+  }
 
   const createdSurveys = await Promise.all(
     eligibleIds.map((studentId) =>
       prisma.graduateSurvey.create({
-        data: { studentId, sentAt: new Date(), channel, responseToken: randomUUID() },
-      }),
-    ),
-  );
-  await Promise.all(
-    createdSurveys.map((survey) =>
-      recordCommunicationEvent({
-        studentId: survey.studentId,
-        eventType: "GRADUATE_SURVEY_SENT",
-        sourceId: survey.id,
-        occurredAt: survey.sentAt,
-        summaryText: `Graduate survey sent${survey.channel ? ` via ${survey.channel}` : ""} (quarterly outreach campaign)`,
+        data: { studentId, sentAt: new Date(), channel: surveyChannel, responseToken: randomUUID() },
       }),
     ),
   );
 
-  return { targetedCount: targetStudentIds.length, sentCount: createdSurveys.length, skipped };
+  let emailedCount = 0;
+  let failedCount = 0;
+  const outcomes = new Map<number, EmailOutcome>();
+  if (emailing) {
+    for (const survey of [...createdSurveys, ...resend]) {
+      const outcome = await sendGraduateSurveyEmail(institutionId, survey);
+      outcomes.set(survey.id, outcome);
+      if (outcome.status === "SENT") emailedCount++;
+      else failedCount++;
+    }
+  }
+
+  await Promise.all(
+    createdSurveys.map((survey) => {
+      const outcome = noteworthy(outcomes.get(survey.id) ?? null);
+      return recordCommunicationEvent({
+        studentId: survey.studentId,
+        eventType: "GRADUATE_SURVEY_SENT",
+        sourceId: survey.id,
+        occurredAt: survey.sentAt,
+        summaryText: `Graduate survey ${outcome ? "created" : "sent"}${survey.channel ? ` via ${survey.channel}` : ""}${outcome ? ` — ${emailOutcomeNote(outcome)}` : ""} (quarterly outreach campaign)`,
+      });
+    }),
+  );
+
+  return {
+    targetedCount: targetStudentIds.length,
+    sentCount: createdSurveys.length,
+    emailedCount,
+    failedCount,
+    resentCount: resend.length,
+    skipped,
+  };
 }
 
 registerJob({

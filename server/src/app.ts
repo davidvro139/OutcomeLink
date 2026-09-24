@@ -9,6 +9,7 @@ import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { accreditationRouter } from "./modules/accreditation";
 import { auditRouter } from "./modules/audit";
 import { authRouter } from "./modules/auth";
+import { emailDeliveriesRouter } from "./modules/emailDeliveries";
 import { employersRouter } from "./modules/employers";
 import { evidenceRouter } from "./modules/evidence";
 import { followupsRouter } from "./modules/followups";
@@ -64,6 +65,7 @@ export function createApp() {
   app.use("/api/notifications", notificationsRouter);
   app.use("/api/scheduled-reports", scheduledReportsRouter);
   app.use("/api/job-runs", jobRunsRouter);
+  app.use("/api/email-deliveries", emailDeliveriesRouter);
   // Further domain routers are mounted here as each module lands.
 
   app.use(notFoundHandler);

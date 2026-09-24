@@ -14,6 +14,7 @@ import {
   Select,
   Stack,
   Table,
+  Tabs,
   Text,
   Title,
   Tooltip,
@@ -22,6 +23,7 @@ import { notifications } from "@mantine/notifications";
 import { useState } from "react";
 import { type JobRun, useJobRuns, useRetryJobRun } from "../../api/jobRuns";
 import { usePermissions } from "../../auth/usePermissions";
+import { EmailLogPanel } from "./EmailLogPanel";
 
 const STATUS_COLORS: Record<JobRunStatus, string> = {
   RUNNING: "blue",
@@ -52,7 +54,7 @@ function summarize(run: JobRun): string {
 }
 
 /** Job History (docs/TODO.md's reusable scheduled-job infrastructure): every scheduled or manual background run, its attempts, and a retry for failures. */
-export function JobHistoryPage() {
+function JobRunsPanel() {
   const { canAdminister } = usePermissions();
   const [jobType, setJobType] = useState<JobType | null>(null);
   const [status, setStatus] = useState<JobRunStatus | null>(null);
@@ -90,8 +92,7 @@ export function JobHistoryPage() {
   }
 
   return (
-    <Stack p="xl" gap="md">
-      <Title order={2}>Job History</Title>
+    <Stack gap="md">
       <Text c="dimmed" size="sm">
         Scheduled and manually-run background jobs. A scheduled job that fails is retried
         automatically with a growing delay; a manual run that fails can be retried here.
@@ -196,6 +197,35 @@ export function JobHistoryPage() {
       {data && data.pagination.totalPages > 1 && (
         <Pagination total={data.pagination.totalPages} value={page} onChange={setPage} />
       )}
+    </Stack>
+  );
+}
+
+/** Job History and the email log — the delivery history for everything the app does in the background or sends out. */
+export function JobHistoryPage() {
+  const { canAdminister } = usePermissions();
+  if (!canAdminister) {
+    return (
+      <Text c="dimmed" ta="center" py="xl">
+        You don't have access to this page.
+      </Text>
+    );
+  }
+  return (
+    <Stack p="xl" gap="md">
+      <Title order={2}>Job History</Title>
+      <Tabs defaultValue="jobs" keepMounted={false}>
+        <Tabs.List>
+          <Tabs.Tab value="jobs">Jobs</Tabs.Tab>
+          <Tabs.Tab value="email">Email log</Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value="jobs" pt="md">
+          <JobRunsPanel />
+        </Tabs.Panel>
+        <Tabs.Panel value="email" pt="md">
+          <EmailLogPanel />
+        </Tabs.Panel>
+      </Tabs>
     </Stack>
   );
 }

@@ -22,6 +22,12 @@ const envSchema = z.object({
   // could create one. Defaults on except in production; production creates its
   // first institution with the bootstrap script (npm run bootstrap).
   ALLOW_REGISTRATION: z.enum(["true", "false"]).optional(),
+  // Turn off request rate limiting (middleware/rateLimit.ts) — for the end-to-end test run, whose browser
+  // signs in and refreshes far more often than a person would. Leave on everywhere else.
+  RATE_LIMIT_ENABLED: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((v) => v === "true"),
   // Where uploaded evidence, import files and generated reports are kept.
   // Defaults to ./uploads; a container mounts a persistent volume here.
   UPLOADS_DIR: z.string().optional(),

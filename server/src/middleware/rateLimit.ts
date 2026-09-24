@@ -15,7 +15,7 @@ import { ApiError } from "../lib/apiError";
  * Off under NODE_ENV=test — the integration suites make hundreds of requests
  * from one address — unless a test switches it on for the limiter under test.
  */
-let enabled = env.NODE_ENV !== "test";
+let enabled = env.NODE_ENV !== "test" && env.RATE_LIMIT_ENABLED;
 const stores: MemoryStore[] = [];
 
 export function setRateLimitingForTests(on: boolean): void {

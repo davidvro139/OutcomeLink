@@ -57,11 +57,18 @@ npm run typecheck                          # all workspaces
 npm test --workspace client                # web app tests
 npm test --workspace server                # server unit tests
 npm run test:integration --workspace server  # integration tests; resets the outcomelink_test database
-npm run e2e --workspace client             # Cypress smoke test; needs both dev servers running
+npm run e2e --workspace client             # Cypress end-to-end specs; needs both dev servers running and the demo data
 ```
 
 The same lint, typecheck and test steps run on every push and pull request (`.github/workflows/ci.yml`), along
-with a build-and-smoke-test of the Docker deployment below.
+with the Cypress end-to-end specs (against a freshly seeded database) and a build-and-smoke-test of the Docker
+deployment below.
+
+The Cypress specs (`client/cypress/e2e`) sign in as the seeded accounts and check what each role sees, the report
+builder, the import wizard's first step and the reporting-period close-out checklist. They never finalize a period or
+commit an import, so they can be re-run against the same data. Start the API with `RATE_LIMIT_ENABLED=false` when
+running them locally — the browser signs in far more often than a person would, and would otherwise hit the login
+and refresh limits.
 
 ## Configuration
 
@@ -77,6 +84,7 @@ The server reads `server/.env`. The Docker setup takes the same values from the 
 | `PUBLIC_APP_URL` | Base address used in emailed links. Defaults to `CLIENT_ORIGIN`. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` | Outgoing email. Email is on only when `SMTP_HOST` and `MAIL_FROM` are both set; otherwise invitations and surveys show a link to copy. |
 | `TRUST_PROXY` | Number of reverse proxies in front of the API (0 if none). Needed for correct per-address rate limiting behind a proxy. |
+| `RATE_LIMIT_ENABLED` | Set to `false` to turn off request rate limiting — only for the end-to-end test run. On by default. |
 | `ALLOW_REGISTRATION` | Whether anyone can create a new institution through the API. On in development, **off in production** unless set. |
 | `BACKUP_CHECKIN_TOKEN`, `BACKUP_STALE_HOURS` | Lets a backup job report its result to the app (see Backups below). Off when the token is unset. A backup with no success in `BACKUP_STALE_HOURS` (36) is flagged. |
 | `UPLOADS_DIR` | Where evidence, import files and generated reports are stored. Defaults to `./uploads`. |

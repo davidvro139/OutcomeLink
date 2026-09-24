@@ -10,6 +10,12 @@ const envSchema = z.object({
   JWT_ACCESS_TTL: z.string().default("15m"),
   JWT_REFRESH_TTL: z.string().default("7d"),
   CLIENT_ORIGIN: z.string().default("http://localhost:5173"),
+  // How many reverse proxies / load balancers sit in front of the API. Rate
+  // limiting keys on the client address, which behind a proxy is only correct
+  // if Express is told how many hops to trust; leave at 0 when the API is
+  // reached directly (trusting X-Forwarded-For from anyone would let a caller
+  // pick their own address and dodge the limits).
+  TRUST_PROXY: z.coerce.number().int().min(0).default(0),
   // Encrypts DataSourceConnection.clientSecretEncrypted at rest (lib/secrets.ts)
   // — a real external credential (Dataverse/Azure AD app registration secret),
   // not something to leave in plaintext in the database.

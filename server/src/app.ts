@@ -1,11 +1,13 @@
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
+import helmet from "helmet";
 import { pinoHttp } from "pino-http";
 import { env } from "./config/env";
 import { sendData } from "./lib/apiResponse";
 import { runWithRequestContext } from "./lib/requestContext";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
+import { apiLimiter } from "./middleware/rateLimit";
 import { accreditationRouter } from "./modules/accreditation";
 import { auditRouter } from "./modules/audit";
 import { authRouter } from "./modules/auth";
@@ -29,8 +31,13 @@ import { publicUsersRouter, usersRouter } from "./modules/users";
 
 export function createApp() {
   const app = express();
+  app.set("trust proxy", env.TRUST_PROXY);
 
   app.use(pinoHttp({ level: env.NODE_ENV === "test" ? "silent" : "info" }));
+  // Standard security headers. The API serves JSON and file downloads to a
+  // client on another origin, so cross-origin resource loading stays allowed
+  // (CORS above decides who may actually read a response).
+  app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
   app.use(cors({ origin: env.CLIENT_ORIGIN, credentials: true }));
   app.use(express.json());
   app.use(cookieParser());
@@ -44,6 +51,7 @@ export function createApp() {
     sendData(res, { status: "ok" });
   });
 
+  app.use("/api", apiLimiter);
   app.use("/api/auth", authRouter);
   app.use("/api", programsRouter);
   app.use("/api/students", studentsRouter);

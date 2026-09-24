@@ -2,6 +2,7 @@ import { ADMIN_ROLES } from "@outcomelink/shared";
 import { Router } from "express";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { requireAuth, requireRole } from "../../middleware/auth";
+import { createPublicTokenLimiter } from "../../middleware/rateLimit";
 import { validate } from "../../middleware/validate";
 import * as publicSetPassword from "./publicSetPassword";
 import * as users from "./users";
@@ -47,6 +48,7 @@ usersRouter.put(
 );
 
 export const publicUsersRouter = Router();
+publicUsersRouter.use(createPublicTokenLimiter());
 
 publicUsersRouter.get("/:token", asyncHandler(publicSetPassword.getSetPasswordInfo));
 publicUsersRouter.post(

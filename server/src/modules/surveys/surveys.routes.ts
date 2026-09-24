@@ -2,6 +2,7 @@ import { Router } from "express";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { OPERATIONAL_ROLES } from "../../lib/roles";
 import { requireAuth, requireRole } from "../../middleware/auth";
+import { createPublicTokenLimiter } from "../../middleware/rateLimit";
 import { validate } from "../../middleware/validate";
 import * as employerSurveys from "./employerSurveys";
 import * as graduateCampaign from "./graduateCampaign";
@@ -37,6 +38,7 @@ surveysRouter.post(
 );
 
 export const publicSurveysRouter = Router();
+publicSurveysRouter.use(createPublicTokenLimiter());
 
 publicSurveysRouter.get("/graduate/:token", asyncHandler(publicSurveys.getGraduateSurvey));
 publicSurveysRouter.post(

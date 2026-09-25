@@ -6,6 +6,7 @@ describe("equityBreakdown", () => {
   let institutionId: number;
   let programId: number;
   let reportingPeriodId: number;
+  let campusId: number;
 
   beforeEach(async () => {
     // Create test institution
@@ -14,21 +15,23 @@ describe("equityBreakdown", () => {
     });
     institutionId = institution.id;
 
+    // Create test campus first
+    const campus = await prisma.campus.create({
+      data: { institutionId, name: "Main" },
+    });
+    campusId = campus.id;
+
     // Create test program
     const program = await prisma.program.create({
       data: {
         institutionId,
+        campusId,
         name: "Test Program",
         code: "TEST",
         credentialType: "Certificate",
       },
     });
     programId = program.id;
-
-    // Create test campus
-    const campus = await prisma.campus.create({
-      data: { institutionId, name: "Main", code: "M" },
-    });
 
     // Create reporting period
     const reportingPeriod = await prisma.reportingPeriod.create({
@@ -69,21 +72,14 @@ describe("equityBreakdown", () => {
         data: {
           studentId: student.id,
           programId,
-          campusId: 1, // dummy
+          campusId,
           enrollmentStatus: "GRADUATE_COMPLETER",
           startDate: new Date("2023-01-01"),
           actualCompletionDate: new Date("2024-06-01"),
         },
       });
 
-      // Create classification (50% in numerator)
-      const explanation = await prisma.cplCalculationExplanation.create({
-        data: {
-          countsInDenominator: true,
-          countsInNumerator: i < 10,
-        },
-      });
-
+      // Create classification with explanation (50% in numerator)
       await prisma.studentClassification.create({
         data: {
           studentEnrollmentId: enrollment.id,
@@ -91,7 +87,13 @@ describe("equityBreakdown", () => {
           metric: "COMPLETION",
           classificationCode: "CODE",
           determinedByRuleSetId: 1,
-          explanationId: explanation.id,
+          explanation: {
+            create: {
+              countsInDenominator: true,
+              countsInNumerator: i < 10,
+              reasonText: "Test classification",
+            },
+          },
         },
       });
     }

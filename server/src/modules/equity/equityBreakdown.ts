@@ -215,9 +215,9 @@ export async function buildEquityBreakdown(
         where: {
           reportingPeriodId: period.id,
           metric: params.metric,
-          ...(programIds.length > 0 ? { enrollment: { programId: { in: programIds } } } : {}),
+          ...(programIds.length > 0 ? { studentEnrollment: { programId: { in: programIds } } } : {}),
         },
-        include: { explanation: true, enrollment: { select: { startDate: true, studentId: true } } },
+        include: { explanation: true, studentEnrollment: { select: { startDate: true, studentId: true } } },
       });
 
       let numerator = 0;
@@ -229,9 +229,9 @@ export async function buildEquityBreakdown(
 
         let matches = false;
         if (params.dimension === "entryYear") {
-          matches = String(c.enrollment.startDate.getUTCFullYear()) === groupValue;
+          matches = String(c.studentEnrollment.startDate.getUTCFullYear()) === groupValue;
         } else {
-          studentIds.add(c.enrollment.studentId);
+          studentIds.add(c.studentEnrollment.studentId);
           matches = true;
         }
 
@@ -254,7 +254,7 @@ export async function buildEquityBreakdown(
         for (const c of periodsClassifications) {
           if (!c.explanation) continue;
 
-          const demo = demographicsMap.get(c.enrollment.studentId);
+          const demo = demographicsMap.get(c.studentEnrollment.studentId);
           const fieldValue = demo?.[params.dimension as keyof typeof demo];
           const matches = fieldValue ? String(fieldValue) === groupValue : groupValue === "NOT_ON_FILE";
 

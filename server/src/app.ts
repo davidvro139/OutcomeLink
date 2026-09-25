@@ -10,6 +10,7 @@ import { accreditationRouter } from "./modules/accreditation";
 import { auditRouter } from "./modules/audit";
 import { authRouter } from "./modules/auth";
 import { employersRouter } from "./modules/employers";
+import { equityRouter } from "./modules/equity";
 import { evidenceRouter } from "./modules/evidence";
 import { followupsRouter } from "./modules/followups";
 import { importsRouter } from "./modules/imports";
@@ -52,6 +53,7 @@ export function createApp() {
   app.use("/api/followups", followupsRouter);
   app.use("/api/evidence", evidenceRouter);
   app.use("/api/accreditation", accreditationRouter);
+  app.use("/api/equity", equityRouter);
   app.use("/api/search", searchRouter);
   app.use("/api/audit", auditRouter);
   app.use("/api/users", usersRouter);

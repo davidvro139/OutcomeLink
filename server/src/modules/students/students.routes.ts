@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
 import * as communicationPreference from "./communicationPreference";
 import * as communicationTimeline from "./communicationTimeline";
+import * as demographics from "./demographics";
 import * as enrollments from "./enrollments";
 import * as merge from "./merge";
 import * as students from "./students";
@@ -62,6 +63,19 @@ studentsRouter.get(
   "/:studentId/communication-timeline",
   requireAuth,
   asyncHandler(communicationTimeline.list),
+);
+
+studentsRouter.get(
+  "/:studentId/demographics",
+  requireAuth,
+  asyncHandler(demographics.show),
+);
+studentsRouter.put(
+  "/:studentId/demographics",
+  requireAuth,
+  requireRole(...CAN_MANAGE_STUDENTS),
+  validate(demographics.upsertStudentDemographicsSchema),
+  asyncHandler(demographics.upsert),
 );
 
 studentsRouter.get("/:studentId/enrollments", requireAuth, asyncHandler(enrollments.list));

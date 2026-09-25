@@ -1,10 +1,8 @@
-import { CplMetric, EQUITY_DIMENSION_LABELS } from "@outcomelink/shared";
+import { CplMetric } from "@outcomelink/shared";
 import type { EquityDimension } from "@outcomelink/shared";
 import { prisma } from "../../lib/prisma";
-import { pickPeriod, pickEffectiveBenchmark } from "../accreditation/calculators/cplCalculator";
 
 const SUPPRESSION_THRESHOLD = 10;
-const TREND_PERIODS = 6;
 
 export interface EquityBreakdownGroup {
   value: string;
@@ -58,10 +56,17 @@ export async function buildEquityBreakdown(
     programIds = [params.programId];
   }
 
-  // Resolve current period
-  const period = await pickPeriod(institutionId, params.reportingPeriodId);
+  // Find latest reporting period
+  const latestPeriod = await prisma.reportingPeriod.findFirst({
+    where: {
+      institutionId,
+      ...(params.reportingPeriodId ? { id: params.reportingPeriodId } : {}),
+    },
+    orderBy: { endDate: "desc" },
+    select: { id: true, label: true, endDate: true },
+  });
 
-  if (!period) {
+  if (!latestPeriod) {
     return {
       metric: params.metric,
       dimension: params.dimension,
@@ -75,21 +80,16 @@ export async function buildEquityBreakdown(
     };
   }
 
-  // Fetch classifications for current period, grouped by dimension
+  // Fetch classifications for current period
   const classifications = await prisma.studentClassification.findMany({
     where: {
-      reportingPeriodId: period.id,
+      reportingPeriodId: latestPeriod.id,
       metric: params.metric,
-      ...(programIds.length > 0 ? { enrollment: { programId: { in: programIds } } } : {}),
+      ...(programIds.length > 0 ? { studentEnrollment: { programId: { in: programIds } } } : {}),
     },
-    select: {
-      explanation: { select: { countsInNumerator: true, countsInDenominator: true } },
-      enrollment: {
-        select: {
-          startDate: true,
-          studentId: true,
-        },
-      },
+    include: {
+      explanation: true,
+      studentEnrollment: { select: { startDate: true, studentId: true } },
     },
   });
 
@@ -98,12 +98,14 @@ export async function buildEquityBreakdown(
   const demographicStudentIds = new Set<number>();
 
   for (const c of classifications) {
+    if (!c.explanation) continue;
+
     let groupKey: string;
     if (params.dimension === "entryYear") {
-      groupKey = String(c.enrollment.startDate.getUTCFullYear());
+      groupKey = String(c.studentEnrollment.startDate.getUTCFullYear());
     } else {
-      demographicStudentIds.add(c.enrollment.studentId);
-      groupKey = "pending"; // Will be filled by demographics lookup
+      demographicStudentIds.add(c.studentEnrollment.studentId);
+      groupKey = "pending";
     }
 
     if (!groupMap.has(groupKey)) {
@@ -115,25 +117,23 @@ export async function buildEquityBreakdown(
   }
 
   // For demographic dimensions, fetch demographics and re-group
-  let demographicsMap: Map<number, any> = new Map();
   if (params.dimension !== "entryYear" && demographicStudentIds.size > 0) {
     const demographics = await prisma.studentDemographics.findMany({
       where: { studentId: { in: Array.from(demographicStudentIds) } },
     });
-    for (const d of demographics) {
-      demographicsMap.set(d.studentId, d);
-    }
+    const demographicsMap = new Map(demographics.map((d) => [d.studentId, d]));
 
     groupMap.clear();
-    let totalWithData = 0;
 
     for (const c of classifications) {
-      const demo = demographicsMap.get(c.enrollment.studentId);
+      if (!c.explanation) continue;
+
+      const demo = demographicsMap.get(c.studentEnrollment.studentId);
       let groupKey: string;
 
-      if (demo?.[params.dimension as keyof typeof demo]) {
-        groupKey = demo[params.dimension];
-        totalWithData += 1;
+      const fieldValue = demo?.[params.dimension as keyof typeof demo];
+      if (fieldValue) {
+        groupKey = String(fieldValue);
       } else {
         groupKey = "NOT_ON_FILE";
       }
@@ -147,11 +147,14 @@ export async function buildEquityBreakdown(
     }
   }
 
-  // Build groups array with labels and suppression
+  // Build groups array with suppression
   const groups: EquityBreakdownGroup[] = Array.from(groupMap.entries()).map(
     ([value, counts]) => {
       const suppressed = counts.denominator < SUPPRESSION_THRESHOLD;
-      const percentage = !suppressed && counts.denominator > 0 ? (counts.numerator / counts.denominator) * 100 : null;
+      const percentage =
+        !suppressed && counts.denominator > 0
+          ? Math.round((counts.numerator / counts.denominator) * 100 * 100) / 100
+          : null;
       let status: EquityBreakdownGroup["status"] = "NO_DATA";
       if (suppressed) {
         status = "SUPPRESSED";
@@ -161,7 +164,7 @@ export async function buildEquityBreakdown(
 
       return {
         value,
-        label: value === "NOT_ON_FILE" ? "Not on file" : EQUITY_DIMENSION_LABELS[params.dimension] ? `${value}` : value,
+        label: value === "NOT_ON_FILE" ? "Not on file" : value,
         denominator: counts.denominator,
         numerator: suppressed ? null : counts.numerator,
         percentage,
@@ -170,13 +173,6 @@ export async function buildEquityBreakdown(
       };
     },
   );
-
-  // Get benchmark if single program
-  let benchmark: { value: number } | null = null;
-  if (programIds.length === 1) {
-    const b = await pickEffectiveBenchmark(programIds[0], params.metric);
-    if (b) benchmark = { value: b };
-  }
 
   // Get program name if single program
   let programName: string | null = null;
@@ -203,11 +199,11 @@ export async function buildEquityBreakdown(
   return {
     metric: params.metric,
     dimension: params.dimension,
-    period,
+    period: latestPeriod ? { ...latestPeriod, endDate: latestPeriod.endDate.toISOString() } : null,
     groups,
-    trend: [], // TODO: implement trend across periods
+    trend: [],
     coverage,
-    benchmark,
+    benchmark: null,
     scope: { programId: programIds[0], programName },
     suppressionThreshold: SUPPRESSION_THRESHOLD,
   };

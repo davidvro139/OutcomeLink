@@ -25,6 +25,7 @@ import {
   IconUpload,
   IconUserCog,
   IconUsers,
+  IconChartPie,
 } from "@tabler/icons-react";
 import { ROLE_LABELS } from "@outcomelink/shared";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -62,6 +63,7 @@ const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
     items: [
       { to: "/accreditation/reporting-periods", label: "Accreditation", icon: IconChartBar },
       { to: "/accreditation/trends", label: "Trends", icon: IconTrendingUp },
+      { to: "/equity", label: "Cohort & Equity", icon: IconChartPie },
       { to: "/report-builder", label: "Report Builder", icon: IconReportAnalytics },
     ],
   },

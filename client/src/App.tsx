@@ -23,6 +23,7 @@ import { StudentsListPage } from "./pages/students/StudentsListPage";
 import { EmployerSurveyPage } from "./pages/surveys/EmployerSurveyPage";
 import { GraduateSurveyPage } from "./pages/surveys/GraduateSurveyPage";
 import { DataConnectionsPage } from "./pages/imports/DataConnectionsPage";
+import { EquityBreakdownPage } from "./pages/equity/EquityBreakdownPage";
 import { UsersPage } from "./pages/users/UsersPage";
 
 function App() {
@@ -63,6 +64,7 @@ function App() {
 
         <Route path="/accreditation/reporting-periods" element={<ReportingPeriodsPage />} />
         <Route path="/accreditation/trends" element={<TrendsPage />} />
+        <Route path="/equity" element={<EquityBreakdownPage />} />
         <Route
           path="/accreditation/reporting-periods/:id"
           element={<ReportingPeriodDetailPage />}

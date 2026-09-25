@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import { useStudent, useUpsertCommunicationPreference } from "../../api/students";
 import { AuditHistory } from "../../components/AuditHistory";
 import { CommunicationTimelineTab } from "./CommunicationTimelineTab";
+import { DemographicsTab } from "./DemographicsTab";
 import { EmploymentTab } from "./EmploymentTab";
 import { EnrollmentsTab } from "./EnrollmentsTab";
 import { FollowUpsTab } from "./FollowUpsTab";
@@ -71,6 +72,7 @@ export function StudentDetailPage() {
           <Tabs.Tab value="followups">Follow-ups</Tabs.Tab>
           <Tabs.Tab value="surveys">Surveys</Tabs.Tab>
           <Tabs.Tab value="timeline">Timeline</Tabs.Tab>
+          <Tabs.Tab value="demographics">Demographics</Tabs.Tab>
           <Tabs.Tab value="audit">Audit History</Tabs.Tab>
         </Tabs.List>
 
@@ -91,6 +93,9 @@ export function StudentDetailPage() {
         </Tabs.Panel>
         <Tabs.Panel value="timeline" pt="md">
           <CommunicationTimelineTab studentId={studentId} />
+        </Tabs.Panel>
+        <Tabs.Panel value="demographics" pt="md">
+          <DemographicsTab studentId={studentId} />
         </Tabs.Panel>
         <Tabs.Panel value="audit" pt="md">
           <AuditHistory entityType="Student" entityId={studentId} />

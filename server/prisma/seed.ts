@@ -550,6 +550,32 @@ async function main() {
           });
         }
 
+        // ~85% have demographics on file, ~15% have no demographic data
+        if (chance(0.85)) {
+          const genders = ["MALE", "FEMALE", "NONBINARY", "PREFER_NOT_TO_SAY"];
+          const races = [
+            "AMERICAN_INDIAN_ALASKA_NATIVE",
+            "ASIAN",
+            "BLACK_AFRICAN_AMERICAN",
+            "HISPANIC_LATINO",
+            "NATIVE_HAWAIIAN_PACIFIC_ISLANDER",
+            "WHITE",
+            "TWO_OR_MORE_RACES",
+            "NONRESIDENT_ALIEN",
+            "UNKNOWN_OR_NOT_REPORTED",
+          ];
+          await prisma.studentDemographics.create({
+            data: {
+              studentId: student.id,
+              gender: chance(0.9) ? faker.helpers.arrayElement(genders) : null,
+              raceEthnicity: chance(0.9) ? faker.helpers.arrayElement(races) : null,
+              economicallyDisadvantaged: chance(0.9) ? chance(0.4) : null,
+              firstGenerationStudent: chance(0.9) ? chance(0.35) : null,
+              disabilityStatus: chance(0.9) ? chance(0.15) : null,
+            },
+          });
+        }
+
         // Decide enrollment status. Closed periods: everyone has concluded.
         // The current open period also carries a share of still-enrolled students.
         let enrollmentStatus: EnrollmentStatus;
@@ -973,6 +999,7 @@ async function wipeDatabase() {
   await prisma.ruleSet.deleteMany();
   await prisma.accreditationFramework.deleteMany();
   await prisma.studentEnrollment.deleteMany();
+  await prisma.studentDemographics.deleteMany();
   await prisma.studentCommunicationPreference.deleteMany();
   await prisma.followUpAttempt.deleteMany();
   await prisma.student.deleteMany();

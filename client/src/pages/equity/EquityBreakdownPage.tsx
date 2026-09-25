@@ -177,7 +177,7 @@ export function EquityBreakdownPage() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="period" />
                 <YAxis label={{ value: "Success Rate (%)", angle: -90, position: "insideLeft" }} />
-                <Tooltip formatter={(value) => (value !== null ? `${value.toFixed(1)}%` : "N/A")} />
+                <Tooltip formatter={(value) => (typeof value === "number" ? `${value.toFixed(1)}%` : "N/A")} />
                 <Legend />
                 {breakdown.trend.map((series, idx) => (
                   <Line

@@ -2,6 +2,10 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
+<<<<<<< HEAD
+=======
+import { DEFAULT_BACKOFF_MS, registerJob, runJob } from "../../lib/jobRunner";
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 import { createNotification } from "../../lib/notifications";
 import { prisma } from "../../lib/prisma";
 import { OPERATIONAL_ROLES } from "../../lib/roles";
@@ -37,11 +41,32 @@ export async function generateMissingOutcomesDigest(
   });
   if (!period) throw ApiError.notFound("Reporting period not found");
 
+<<<<<<< HEAD
   const unresolvedIds = await getUnresolvedOutcomeStudentIds(institutionId, reportingPeriodId);
   if (unresolvedIds.length === 0) {
     sendData(res, { recipientCount: 0, unresolvedCount: 0 });
     return;
   }
+=======
+  // Tracked in job history like the other background jobs; a failed send can be retried from there.
+  const run = await runJob("MISSING_OUTCOMES_DIGEST", {
+    institutionId,
+    params: { reportingPeriodId },
+    trigger: "MANUAL",
+    requestedBy: req.user!.sub,
+    rethrow: true,
+  });
+  const result = run.result as { recipientCount: number; unresolvedCount: number };
+  sendData(res, result, result.unresolvedCount === 0 ? 200 : 201);
+}
+
+async function runDigest(institutionId: number, reportingPeriodId: number) {
+  const period = await prisma.reportingPeriod.findFirstOrThrow({
+    where: { id: reportingPeriodId, institutionId },
+  });
+  const unresolvedIds = await getUnresolvedOutcomeStudentIds(institutionId, reportingPeriodId);
+  if (unresolvedIds.length === 0) return { recipientCount: 0, unresolvedCount: 0 };
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
   const recipients = await prisma.user.findMany({
     where: { institutionId, role: { in: [...OPERATIONAL_ROLES] } },
@@ -62,5 +87,17 @@ export async function generateMissingOutcomesDigest(
     ),
   );
 
+<<<<<<< HEAD
   sendData(res, { recipientCount: recipients.length, unresolvedCount: unresolvedIds.length }, 201);
 }
+=======
+  return { recipientCount: recipients.length, unresolvedCount: unresolvedIds.length };
+}
+
+registerJob({
+  type: "MISSING_OUTCOMES_DIGEST",
+  maxAttempts: 1,
+  backoffMs: DEFAULT_BACKOFF_MS,
+  handler: ({ institutionId, params }) => runDigest(institutionId!, Number(params.reportingPeriodId)),
+});
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a

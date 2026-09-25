@@ -152,6 +152,18 @@ export interface ReportDefinition {
 /** Server response row cap for on-screen preview — export has no cap. */
 export const REPORT_BUILDER_PREVIEW_LIMIT = 500;
 
+<<<<<<< HEAD
+=======
+/**
+ * Report pagination and bounded exports (docs/TODO.md): above this many
+ * rows, "Export to Excel" queues a background export job instead of
+ * generating and downloading synchronously in the original request — a
+ * report this size risks tying up a request thread and hitting a client/
+ * proxy timeout. Below it, export behaves exactly as before.
+ */
+export const REPORT_BUILDER_SYNC_EXPORT_THRESHOLD = 5000;
+
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 /** Max number of reporting periods that can be compared in one report. */
 export const REPORT_BUILDER_MAX_PERIODS = 10;
 

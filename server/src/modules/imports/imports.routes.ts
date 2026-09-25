@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+import { ADMIN_ROLES, STUDENT_MANAGER_ROLES } from "@outcomelink/shared";
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 import { Router } from "express";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { requireAuth, requireRole } from "../../middleware/auth";
@@ -6,16 +10,24 @@ import * as batches from "./importBatches";
 import * as connections from "./dataConnections";
 import * as mappingProfiles from "./mappingProfiles";
 
+<<<<<<< HEAD
 const CAN_IMPORT = [
   "SYSTEM_ADMINISTRATOR",
   "INSTITUTIONAL_ADMINISTRATOR",
   "PROGRAM_ADMINISTRATOR",
 ] as const;
+=======
+const CAN_IMPORT = STUDENT_MANAGER_ROLES;
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
 // Configuring a connection means handing this app a live external
 // credential (a Dataverse/Azure AD app registration secret) — a higher bar
 // than uploading a file, so this is narrower than CAN_IMPORT.
+<<<<<<< HEAD
 const CAN_MANAGE_CONNECTIONS = ["SYSTEM_ADMINISTRATOR", "INSTITUTIONAL_ADMINISTRATOR"] as const;
+=======
+const CAN_MANAGE_CONNECTIONS = ADMIN_ROLES;
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
 export const importsRouter = Router();
 

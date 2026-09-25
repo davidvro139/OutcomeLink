@@ -1,11 +1,23 @@
+<<<<<<< HEAD
 import { Router } from "express";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { requireAuth, requireRole } from "../../middleware/auth";
+=======
+import { ADMIN_ROLES } from "@outcomelink/shared";
+import { Router } from "express";
+import { asyncHandler } from "../../lib/asyncHandler";
+import { requireAuth, requireRole } from "../../middleware/auth";
+import { createPublicTokenLimiter } from "../../middleware/rateLimit";
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 import { validate } from "../../middleware/validate";
 import * as publicSetPassword from "./publicSetPassword";
 import * as users from "./users";
 
+<<<<<<< HEAD
 const CAN_MANAGE_USERS = ["SYSTEM_ADMINISTRATOR", "INSTITUTIONAL_ADMINISTRATOR"] as const;
+=======
+const CAN_MANAGE_USERS = ADMIN_ROLES;
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
 export const usersRouter = Router();
 
@@ -46,6 +58,10 @@ usersRouter.put(
 );
 
 export const publicUsersRouter = Router();
+<<<<<<< HEAD
+=======
+publicUsersRouter.use(createPublicTokenLimiter());
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
 publicUsersRouter.get("/:token", asyncHandler(publicSetPassword.getSetPasswordInfo));
 publicUsersRouter.post(

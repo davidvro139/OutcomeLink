@@ -1,3 +1,4 @@
+import { usePermissions } from "../auth/usePermissions";
 import { EVIDENCE_TYPES } from "@outcomelink/shared";
 import { Alert, Button, FileInput, Group, Paper, Select, Table, Text } from "@mantine/core";
 import { useForm } from "@mantine/form";
@@ -16,6 +17,7 @@ interface UploadFormValues {
 
 /** Evidence upload/list for whichever record it's attached to — spec §14. */
 export function EvidencePanel({ target }: { target: EvidenceTarget }) {
+  const { canWrite } = usePermissions();
   const { data: evidence, isLoading } = useEvidenceList(target);
   const upload = useUploadEvidence(target);
 
@@ -55,26 +57,28 @@ export function EvidencePanel({ target }: { target: EvidenceTarget }) {
         Evidence
       </Text>
 
-      <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Group align="flex-end">
-          <Select
-            label="Type"
-            data={EVIDENCE_TYPES.map((t) => ({ value: t, label: t }))}
-            {...form.getInputProps("evidenceType")}
-            w={220}
-          />
-          <FileInput
-            label="File"
-            placeholder="Choose a file"
-            value={form.values.file}
-            onChange={(file) => form.setFieldValue("file", file)}
-            w={220}
-          />
-          <Button type="submit" loading={upload.isPending}>
-            Upload
-          </Button>
-        </Group>
-      </form>
+      {canWrite && (
+        <form onSubmit={form.onSubmit(handleSubmit)}>
+          <Group align="flex-end">
+            <Select
+              label="Type"
+              data={EVIDENCE_TYPES.map((t) => ({ value: t, label: t }))}
+              {...form.getInputProps("evidenceType")}
+              w={220}
+            />
+            <FileInput
+              label="File"
+              placeholder="Choose a file"
+              value={form.values.file}
+              onChange={(file) => form.setFieldValue("file", file)}
+              w={220}
+            />
+            <Button type="submit" loading={upload.isPending}>
+              Upload
+            </Button>
+          </Group>
+        </form>
+      )}
 
       {isLoading && <Text size="sm">Loading...</Text>}
 

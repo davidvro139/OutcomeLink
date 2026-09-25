@@ -1,5 +1,22 @@
 import { ROLES, ROLE_LABELS, type Role } from "@outcomelink/shared";
+<<<<<<< HEAD
 import { Badge, Button, Group, Loader, Modal, MultiSelect, Select, Stack, Table, Text, TextInput, Title } from "@mantine/core";
+=======
+import {
+  Badge,
+  Button,
+  Group,
+  Loader,
+  Modal,
+  MultiSelect,
+  Select,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+  Title,
+} from "@mantine/core";
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
@@ -16,6 +33,10 @@ import {
   useUsers,
 } from "../../api/users";
 import { useAuth } from "../../auth/AuthContext";
+<<<<<<< HEAD
+=======
+import type { EmailResult } from "../../lib/emailStatus";
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
 const CAN_MANAGE_USERS = ["SYSTEM_ADMINISTRATOR", "INSTITUTIONAL_ADMINISTRATOR"];
 
@@ -24,6 +45,32 @@ const CAN_MANAGE_USERS = ["SYSTEM_ADMINISTRATOR", "INSTITUTIONAL_ADMINISTRATOR"]
 // campus assignment is only meaningful (and only shown) for these.
 const PROGRAM_SCOPED_ROLES: Role[] = ["PROGRAM_ADMINISTRATOR", "READ_ONLY_AUDITOR"];
 
+<<<<<<< HEAD
+=======
+/**
+ * The server emails the set-password link itself when it can, and returns
+ * the raw token only when it couldn't (email not configured, or the send
+ * failed) — then fall back to a copyable link, saying why if it was a failure.
+ */
+async function deliverSetPasswordLink(
+  result: { token?: string } & EmailResult,
+  label: string,
+  email: string,
+) {
+  if (result.emailStatus === "SENT") {
+    notifications.show({ message: `${label} emailed to ${email}`, color: "green" });
+    return;
+  }
+  if (result.emailStatus === "FAILED") {
+    notifications.show({
+      message: `The email to ${email} failed (${result.emailReason}) — copying the link instead.`,
+      color: "yellow",
+    });
+  }
+  if (result.token) await copySetPasswordLink(result.token, label);
+}
+
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 async function copySetPasswordLink(token: string, label: string) {
   const url = `${window.location.origin}/set-password/${token}`;
   try {
@@ -42,7 +89,17 @@ interface UserFormValues {
   campusIds: string[];
 }
 
+<<<<<<< HEAD
 const EMPTY_FORM: UserFormValues = { name: "", email: "", role: "INSTRUCTOR_STAFF", programIds: [], campusIds: [] };
+=======
+const EMPTY_FORM: UserFormValues = {
+  name: "",
+  email: "",
+  role: "INSTRUCTOR_STAFF",
+  programIds: [],
+  campusIds: [],
+};
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
 function UserFormModal({
   opened,
@@ -95,7 +152,11 @@ function UserFormModal({
       } else {
         const input: InviteUserInput = { name: form.name, email: form.email, role: form.role };
         const result = await inviteUser.mutateAsync(input);
+<<<<<<< HEAD
         await copySetPasswordLink(result.token, "Invite");
+=======
+        await deliverSetPasswordLink(result, "Invitation", form.email);
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
       }
       onClose();
     } catch (err) {
@@ -110,7 +171,16 @@ function UserFormModal({
   const isPending = inviteUser.isPending || updateUser.isPending || setAccess.isPending;
 
   return (
+<<<<<<< HEAD
     <Modal opened={opened} onClose={onClose} title={editingUser ? "Edit User" : "Invite User"} size="lg">
+=======
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title={editingUser ? "Edit User" : "Invite User"}
+      size="lg"
+    >
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
       <Stack gap="md">
         <TextInput
           label="Name"
@@ -135,8 +205,13 @@ function UserFormModal({
         {editingUser && PROGRAM_SCOPED_ROLES.includes(form.role) && (
           <>
             <Text size="sm" c="dimmed">
+<<<<<<< HEAD
               This role only sees data for its assigned programs/campuses — leave both empty and they'll
               see nothing until assigned.
+=======
+              This role only sees data for its assigned programs/campuses — leave both empty and
+              they'll see nothing until assigned.
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
             </Text>
             <MultiSelect
               label="Accessible programs"
@@ -239,7 +314,14 @@ function UserRow({ user, onEdit }: { user: StaffUser; onEdit: () => void }) {
   async function handleToggleActive() {
     try {
       await setActive.mutateAsync(!user.active);
+<<<<<<< HEAD
       notifications.show({ message: user.active ? "User deactivated" : "User reactivated", color: "green" });
+=======
+      notifications.show({
+        message: user.active ? "User deactivated" : "User reactivated",
+        color: "green",
+      });
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
     } catch (err) {
       notifications.show({
         message: err instanceof Error ? err.message : "Failed to update user",
@@ -251,7 +333,11 @@ function UserRow({ user, onEdit }: { user: StaffUser; onEdit: () => void }) {
   async function handleResetPassword() {
     try {
       const result = await resetPassword.mutateAsync();
+<<<<<<< HEAD
       await copySetPasswordLink(result.token, "Password reset");
+=======
+      await deliverSetPasswordLink(result, "Password reset", user.email ?? "the user");
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
     } catch (err) {
       notifications.show({
         message: err instanceof Error ? err.message : "Failed to reset password",
@@ -273,7 +359,16 @@ function UserRow({ user, onEdit }: { user: StaffUser; onEdit: () => void }) {
           <Button size="xs" variant="subtle" onClick={onEdit}>
             Edit
           </Button>
+<<<<<<< HEAD
           <Button size="xs" variant="subtle" onClick={handleResetPassword} loading={resetPassword.isPending}>
+=======
+          <Button
+            size="xs"
+            variant="subtle"
+            onClick={handleResetPassword}
+            loading={resetPassword.isPending}
+          >
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
             Reset Password
           </Button>
           <Button

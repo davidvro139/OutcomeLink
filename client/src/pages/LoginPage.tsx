@@ -1,5 +1,6 @@
 import {
   Alert,
+  Anchor,
   Button,
   Center,
   Divider,
@@ -14,7 +15,7 @@ import {
 import { useForm } from "@mantine/form";
 import { ROLE_LABELS, type Role } from "@outcomelink/shared";
 import { useState } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { ApiRequestError } from "../lib/apiClient";
 
@@ -46,7 +47,6 @@ interface LoginLocationState {
 
 export function LoginPage() {
   const { status, login } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
   const locationState = location.state as LoginLocationState | undefined;
   const [error, setError] = useState<string | null>(null);
@@ -75,8 +75,10 @@ export function LoginPage() {
     setSubmitting(true);
     setPendingEmail(email);
     try {
+      // No imperative navigate here: the declarative <Navigate> above fires once
+      // status flips to authenticated. Having both raced, and whichever ran
+      // last decided the destination.
       await login(email, password);
-      navigate("/", { replace: true });
     } catch (err) {
       setError(
         err instanceof ApiRequestError ? err.message : "Unable to log in. Please try again.",
@@ -127,6 +129,10 @@ export function LoginPage() {
             </Stack>
           </form>
 
+          <Anchor component={Link} to="/about" size="sm" ta="center">
+            About OutcomeLink and how your data is protected
+          </Anchor>
+
           {import.meta.env.DEV && (
             <>
               <Divider label="Development only — demo accounts" labelPosition="center" />
@@ -135,7 +141,11 @@ export function LoginPage() {
                   <Button
                     key={account.email}
                     variant="light"
+<<<<<<< HEAD
                     color="grape"
+=======
+                    color="dark"
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
                     fullWidth
                     loading={pendingEmail === account.email}
                     disabled={submitting && pendingEmail !== account.email}

@@ -2,6 +2,12 @@ import { randomUUID } from "node:crypto";
 import type { Request, Response } from "express";
 import { ROLES } from "@outcomelink/shared";
 import { z } from "zod";
+<<<<<<< HEAD
+=======
+import { publicUrl } from "../../lib/appUrls";
+import { deliverEmail, emailResponseFields } from "../../lib/emailDelivery";
+import { invitationEmail, passwordResetEmail } from "../../lib/emailTemplates";
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { hashPassword } from "../../lib/password";
@@ -69,12 +75,22 @@ export const inviteUserSchema = z.object({
 type InviteUserInput = z.infer<typeof inviteUserSchema>;
 
 /**
+<<<<<<< HEAD
  * No email/SMS infrastructure exists anywhere in this app — same honest
  * constraint the Graduate/Employer Survey system's responseToken already
  * works within. An invited user gets an unguessable placeholder password
  * (never communicated to anyone, including the inviting admin) and a
  * one-time token; the caller builds a copyable "set your password" link
  * from it, the same "Copy Link" pattern SurveysTab already uses.
+=======
+ * An invited user gets an unguessable placeholder password (never
+ * communicated to anyone, including the inviting admin) and a one-time
+ * token, which is emailed to them as a "set your password" link. The raw
+ * token is returned to the admin only when the email could not be sent
+ * (email not configured, or the send failed) — then the client falls back to
+ * a copyable link, the same pattern SurveysTab uses. When it *was* emailed,
+ * the credential travels to the invitee alone.
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
  */
 export async function invite(
   req: Request<Record<string, never>, unknown, InviteUserInput>,
@@ -96,7 +112,23 @@ export async function invite(
     },
     select: { id: true, name: true, email: true, role: true, active: true, passwordSetToken: true },
   });
+<<<<<<< HEAD
   sendData(res, { user, token: passwordSetToken }, 201);
+=======
+  const outcome = await deliverEmail({
+    institutionId,
+    purpose: "INVITATION",
+    to: user.email,
+    content: invitationEmail({ name: user.name, url: publicUrl(`/set-password/${passwordSetToken}`) }),
+    relatedEntityType: "User",
+    relatedEntityId: user.id,
+  });
+  sendData(
+    res,
+    { user, ...emailResponseFields(outcome), ...(outcome.status === "SENT" ? {} : { token: passwordSetToken }) },
+    201,
+  );
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 }
 
 export const updateUserSchema = z.object({
@@ -159,9 +191,26 @@ export async function resetPassword(req: Request<{ id: string }>, res: Response)
   const user = await prisma.user.update({
     where: { id: userId },
     data: newPasswordSetToken(),
+<<<<<<< HEAD
     select: { passwordSetToken: true },
   });
   sendData(res, { token: user.passwordSetToken });
+=======
+    select: { id: true, name: true, email: true, passwordSetToken: true },
+  });
+  const outcome = await deliverEmail({
+    institutionId,
+    purpose: "PASSWORD_RESET",
+    to: user.email,
+    content: passwordResetEmail({ name: user.name, url: publicUrl(`/set-password/${user.passwordSetToken}`) }),
+    relatedEntityType: "User",
+    relatedEntityId: user.id,
+  });
+  sendData(res, {
+    ...emailResponseFields(outcome),
+    ...(outcome.status === "SENT" ? {} : { token: user.passwordSetToken }),
+  });
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 }
 
 export const setUserAccessSchema = z.object({

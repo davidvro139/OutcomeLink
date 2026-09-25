@@ -550,6 +550,7 @@ async function main() {
           });
         }
 
+<<<<<<< HEAD
         // ~85% have demographics on file, ~15% have no demographic data
         if (chance(0.85)) {
           const genders = ["MALE", "FEMALE", "NONBINARY", "PREFER_NOT_TO_SAY"];
@@ -576,6 +577,8 @@ async function main() {
           });
         }
 
+=======
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
         // Decide enrollment status. Closed periods: everyone has concluded.
         // The current open period also carries a share of still-enrolled students.
         let enrollmentStatus: EnrollmentStatus;
@@ -999,7 +1002,10 @@ async function wipeDatabase() {
   await prisma.ruleSet.deleteMany();
   await prisma.accreditationFramework.deleteMany();
   await prisma.studentEnrollment.deleteMany();
+<<<<<<< HEAD
   await prisma.studentDemographics.deleteMany();
+=======
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
   await prisma.studentCommunicationPreference.deleteMany();
   await prisma.followUpAttempt.deleteMany();
   await prisma.student.deleteMany();

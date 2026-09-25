@@ -15,6 +15,11 @@ export const registerSchema = z.object({
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
 
+export const updatePreferencesSchema = z.object({
+  emailNotifications: z.boolean(),
+});
+export type UpdatePreferencesInput = z.infer<typeof updatePreferencesSchema>;
+
 export const loginSchema = z.object({
   email: z.string().trim().email(),
   password: z.string().min(1),

@@ -1,11 +1,33 @@
 import { IMPORT_ACCEPTED_FILE_EXTENSIONS } from "@outcomelink/shared";
+<<<<<<< HEAD
 import { Anchor, Badge, Button, FileInput, Group, Loader, Modal, Stack, Table, Text, TextInput, Title } from "@mantine/core";
+=======
+import {
+  Anchor,
+  Badge,
+  Button,
+  FileInput,
+  Group,
+  Loader,
+  Modal,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+  Title,
+} from "@mantine/core";
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { type ImportBatch, useImportBatches, useUploadImportBatch } from "../../api/imports";
+<<<<<<< HEAD
+=======
+import { usePermissions } from "../../auth/usePermissions";
+import { HelpLink } from "../../help/HelpLink";
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
 // Matches imports.routes.ts's CAN_MANAGE_CONNECTIONS.
 const CAN_MANAGE_CONNECTIONS = ["SYSTEM_ADMINISTRATOR", "INSTITUTIONAL_ADMINISTRATOR"];
@@ -24,6 +46,10 @@ const STATUS_COLORS: Record<string, string> = {
  * and entry point into the upload wizard. Accepts CSV or Excel (spec §51).
  */
 export function ImportsPage() {
+<<<<<<< HEAD
+=======
+  const { canManageStudents } = usePermissions();
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
   const { user } = useAuth();
   const canManageConnections = !!user && CAN_MANAGE_CONNECTIONS.includes(user.role);
   const { data: batches, isLoading } = useImportBatches();
@@ -37,7 +63,14 @@ export function ImportsPage() {
     if (!file || !sourceSystem.trim()) return;
     try {
       const result = await upload.mutateAsync({ file, sourceSystem: sourceSystem.trim() });
+<<<<<<< HEAD
       notifications.show({ message: "File uploaded — set up the column mapping next", color: "green" });
+=======
+      notifications.show({
+        message: "File uploaded — set up the column mapping next",
+        color: "green",
+      });
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
       close();
       setSourceSystem("");
       setFile(null);
@@ -53,14 +86,25 @@ export function ImportsPage() {
   return (
     <Stack p="xl" gap="md">
       <Group justify="space-between">
+<<<<<<< HEAD
         <Title order={2}>Bulk Import</Title>
+=======
+        <Group gap="md" align="baseline">
+          <Title order={2}>Bulk Import</Title>
+          <HelpLink slug="importing" />
+        </Group>
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
         <Group gap="xs">
           {canManageConnections && (
             <Button variant="light" component={Link} to="/imports/connections">
               Data Source Connections
             </Button>
           )}
+<<<<<<< HEAD
           <Button onClick={open}>New Import</Button>
+=======
+          {canManageStudents && <Button onClick={open}>New Import</Button>}
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
         </Group>
       </Group>
 
@@ -125,7 +169,15 @@ export function ImportsPage() {
             value={file}
             onChange={setFile}
           />
+<<<<<<< HEAD
           <Button onClick={handleUpload} loading={upload.isPending} disabled={!file || !sourceSystem.trim()}>
+=======
+          <Button
+            onClick={handleUpload}
+            loading={upload.isPending}
+            disabled={!file || !sourceSystem.trim()}
+          >
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
             Upload
           </Button>
         </Stack>

@@ -1,3 +1,4 @@
+import { EMPLOYER_MANAGER_ROLES } from "@outcomelink/shared";
 import { Router } from "express";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { requireAuth, requireRole } from "../../middleware/auth";
@@ -6,11 +7,7 @@ import * as analytics from "./analytics";
 import * as contacts from "./employerContacts";
 import * as employers from "./employers";
 
-const CAN_MANAGE_EMPLOYERS = [
-  "SYSTEM_ADMINISTRATOR",
-  "INSTITUTIONAL_ADMINISTRATOR",
-  "CAREER_SERVICES_STAFF",
-] as const;
+const CAN_MANAGE_EMPLOYERS = EMPLOYER_MANAGER_ROLES;
 
 export const employersRouter = Router();
 

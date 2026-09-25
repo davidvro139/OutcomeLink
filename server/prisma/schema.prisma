@@ -131,6 +131,18 @@ enum NotificationType {
   // ScheduledReportRun, not the subscription, so the client can resolve
   // straight to a download without a second lookup.
   SCHEDULED_REPORT_READY
+<<<<<<< HEAD
+=======
+  // Report pagination and bounded exports (docs/TODO.md) — an on-demand
+  // Custom Report Builder export too large to generate synchronously
+  // finished (or failed) in the background. referenceEntityType/Id point at
+  // the ReportExportJob, same reasoning as SCHEDULED_REPORT_READY above.
+  REPORT_EXPORT_READY
+  // Settings (docs/TODO.md): no successful database backup has checked in recently.
+  BACKUP_STALE
+  // Program dashboard (docs/TODO.md): a program can no longer reach a benchmark, or is at risk with the outcomes deadline near.
+  PROGRAM_AT_RISK
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 }
 
 enum AuditAction {
@@ -188,6 +200,10 @@ model Institution {
   dataSourceConnections DataSourceConnection[]
   scheduledReportSubscriptions ScheduledReportSubscription[]
   programFollowUpOwners ProgramFollowUpOwner[]
+<<<<<<< HEAD
+=======
+  reportExportJobs      ReportExportJob[]
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
   @@map("institutions")
 }
@@ -333,6 +349,12 @@ model User {
   // overwrites any previous value, so a stale link is automatically superseded.
   passwordSetToken          String?   @unique @map("password_set_token")
   passwordSetTokenExpiresAt DateTime? @map("password_set_token_expires_at")
+<<<<<<< HEAD
+=======
+  // Email delivery (docs/TODO.md): staff opt-out for emailed copies of in-app
+  // notifications (scheduled report ready, digest, overdue follow-up).
+  emailNotifications        Boolean   @default(true) @map("email_notifications")
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
   institution Institution @relation(fields: [institutionId], references: [id])
 
@@ -347,6 +369,10 @@ model User {
   scheduledReportSubscriptions ScheduledReportSubscription[]
   programFollowUpOwnerOf       ProgramFollowUpOwner[]
   assignedFollowUpStudents     Student[]                      @relation("StudentFollowUpAssignment")
+<<<<<<< HEAD
+=======
+  reportExportJobs             ReportExportJob[]
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
   @@map("users")
 }
@@ -538,6 +564,18 @@ model ReportingPeriod {
   reopenedAt             DateTime?             @map("reopened_at")
   reopenedBy             String?               @map("reopened_by")
   reopenReason           String?               @map("reopen_reason") @db.Text
+  // Close-out checklist (docs/TODO.md): when validation last ran (stamped without an
+  // audit entry — it changes on every run), and the reviewer's sign-off, which
+  // vouches for one particular computed-at and goes stale if results or data
+  // change afterwards. finalizeOverrideReason is why finalize went ahead with
+  // blockers outstanding. Sign-off, override and reopen are audited as period
+  // field changes like the rest of the lifecycle.
+  validatedAt            DateTime?             @map("validated_at")
+  signedOffAt            DateTime?             @map("signed_off_at")
+  signedOffBy            String?               @map("signed_off_by")
+  signedOffNote          String?               @map("signed_off_note") @db.Text
+  signedOffResultsAt     DateTime?             @map("signed_off_results_at")
+  finalizeOverrideReason String?               @map("finalize_override_reason") @db.Text
 
   institution Institution @relation(fields: [institutionId], references: [id])
   ruleSet     RuleSet     @relation(fields: [ruleSetId], references: [id])
@@ -1211,3 +1249,178 @@ model ScheduledReportRun {
 
   @@map("scheduled_report_runs")
 }
+<<<<<<< HEAD
+=======
+
+enum ReportExportJobStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+/// Report pagination and bounded exports (docs/TODO.md): an on-demand Custom
+/// Report Builder export whose totalCount crossed the synchronous-export
+/// threshold. Generated fire-and-forget outside the request that created it
+/// (this app's first genuinely async, non-cron background unit of work —
+/// Scheduled Reports' "Run Now" is still a synchronous await, just outside
+/// the subscription's *original* creating request). No message queue exists
+/// here, so a job stuck PENDING across a server restart stays PENDING
+/// forever — an accepted, documented limitation at this app's scale, the
+/// same honesty every other "no job-scheduler infrastructure" note in this
+/// schema already carries.
+model ReportExportJob {
+  id            Int                   @id @default(autoincrement())
+  institutionId Int                   @map("institution_id")
+  requestedBy   Int                   @map("requested_by")
+  definition    Json
+  status        ReportExportJobStatus @default(PENDING)
+  fileReference String?               @map("file_reference")
+  rowCount      Int?                  @map("row_count")
+  errorMessage  String?               @map("error_message") @db.Text
+  createdAt     DateTime              @default(now()) @map("created_at")
+  completedAt   DateTime?             @map("completed_at")
+
+  institution Institution @relation(fields: [institutionId], references: [id])
+  requester   User        @relation(fields: [requestedBy], references: [id])
+
+  @@map("report_export_jobs")
+}
+
+enum JobRunStatus {
+  RUNNING
+  RETRY_PENDING
+  SUCCESS
+  FAILED
+}
+
+enum JobTrigger {
+  SCHEDULE
+  MANUAL
+}
+
+/// Reusable scheduled-job infrastructure (docs/TODO.md): one row per logical
+/// job execution — a cron tick, a manual "run now", or a scheduled report
+/// subscription firing — updated in place across its retry attempts, so it
+/// doubles as the delivery history. `params` is what the handler needs to run
+/// (and is narrowed on a partial failure so a retry redoes only the failed
+/// part); `institutionId` is null for a system-wide job. Deliberately no
+/// foreign keys: a history row should outlive (and never block deleting) the
+/// institution or user it mentions.
+model JobRun {
+  id            Int          @id @default(autoincrement())
+  institutionId Int?         @map("institution_id")
+  jobType       String       @map("job_type")
+  trigger       JobTrigger
+  requestedBy   Int?         @map("requested_by")
+  status        JobRunStatus
+  attempt       Int          @default(1)
+  maxAttempts   Int          @default(1) @map("max_attempts")
+  params        Json?
+  result        Json?
+  errorMessage  String?      @map("error_message") @db.Text
+  createdAt     DateTime     @default(now()) @map("created_at")
+  startedAt     DateTime?    @map("started_at")
+  finishedAt    DateTime?    @map("finished_at")
+  nextAttemptAt DateTime?    @map("next_attempt_at")
+
+  @@index([institutionId, createdAt])
+  @@index([status, nextAttemptAt])
+  @@map("job_runs")
+}
+
+enum EmailPurpose {
+  TEST
+  INVITATION
+  PASSWORD_RESET
+  GRADUATE_SURVEY
+  EMPLOYER_SURVEY
+  STAFF_NOTIFICATION
+}
+
+enum EmailDeliveryStatus {
+  SENT
+  FAILED
+}
+
+/// Email delivery (docs/TODO.md): one row per email actually attempted through
+/// the SMTP transport — nothing is written when email isn't configured, since
+/// nothing was attempted. The body is deliberately not stored (it can carry a
+/// single-use link); a failed survey email is re-sent by re-running the
+/// campaign, which finds the latest FAILED row for each survey. No foreign
+/// keys, like JobRun: a delivery record should outlive what it mentions.
+model EmailDelivery {
+  id                Int                 @id @default(autoincrement())
+  institutionId     Int                 @map("institution_id")
+  purpose           EmailPurpose
+  toAddress         String              @map("to_address")
+  subject           String
+  status            EmailDeliveryStatus
+  errorMessage      String?             @map("error_message") @db.Text
+  relatedEntityType String?             @map("related_entity_type")
+  relatedEntityId   Int?                @map("related_entity_id")
+  createdAt         DateTime            @default(now()) @map("created_at")
+
+  @@index([institutionId, createdAt])
+  @@index([relatedEntityType, relatedEntityId, createdAt], map: "email_deliveries_related_idx")
+  @@map("email_deliveries")
+}
+
+enum BackupStatus {
+  SUCCESS
+  FAILED
+}
+
+/// Settings page (docs/TODO.md): per-institution operational settings that used
+/// to be server environment variables only. SMTP settings here override the
+/// server's own (lib/mailConfig.ts); a null retention value means "use the
+/// default". Deliberately not one of the audit extension's subjects — it would
+/// record the encrypted SMTP password. No relation FK, like JobRun.
+model InstitutionSettings {
+  id                        Int      @id @default(autoincrement())
+  institutionId             Int      @unique @map("institution_id")
+  smtpHost                  String?  @map("smtp_host")
+  smtpPort                  Int?     @map("smtp_port")
+  smtpSecure                Boolean  @default(false) @map("smtp_secure")
+  smtpUser                  String?  @map("smtp_user")
+  smtpPasswordEncrypted     String?  @map("smtp_password_encrypted") @db.Text
+  mailFrom                  String?  @map("mail_from")
+  retentionJobRunDays       Int?     @map("retention_job_run_days")
+  retentionEmailLogDays     Int?     @map("retention_email_log_days")
+  retentionNotificationDays Int?     @map("retention_notification_days")
+  retentionExportDays       Int?     @map("retention_export_days")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
+  updatedBy                 Int?     @map("updated_by")
+
+  @@map("institution_settings")
+}
+
+/// Settings page (docs/TODO.md): a backup job reports in here after each run,
+/// so the app can show "last backup" and warn when it goes stale. Global, not
+/// per institution — a backup covers the whole database. The app takes no
+/// backups itself.
+model BackupCheckin {
+  id        Int          @id @default(autoincrement())
+  status    BackupStatus
+  note      String?      @db.Text
+  sizeMb    Int?         @map("size_mb")
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("backup_checkins")
+}
+
+/// Program dashboard (docs/TODO.md): one row per at-risk notification already
+/// sent, so the daily check alerts each (period, program, metric, kind) once.
+/// kind: OFF_TRACK | AT_RISK_30 | AT_RISK_7 (days before the outcomes deadline).
+model AtRiskAlert {
+  id                Int       @id @default(autoincrement())
+  reportingPeriodId Int       @map("reporting_period_id")
+  programId         Int       @map("program_id")
+  metric            CplMetric
+  kind              String
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  @@unique([reportingPeriodId, programId, metric, kind], map: "at_risk_alerts_key")
+  @@map("at_risk_alerts")
+}
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a

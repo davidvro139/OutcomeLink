@@ -261,10 +261,17 @@ describe("program/campus access scoping (integration)", () => {
   describe("Licensure", () => {
     it("scopes the queue to accessible programs", async () => {
       const patRes = await request(app).get("/api/licensure/queue").set("Authorization", `Bearer ${patToken}`);
+<<<<<<< HEAD
       expect(patRes.body.data.queue.map((r: { student: { id: number } }) => r.student.id)).toEqual([studentAId]);
 
       const sysAdminRes = await request(app).get("/api/licensure/queue").set("Authorization", `Bearer ${sysAdminToken}`);
       expect(sysAdminRes.body.data.queue.map((r: { student: { id: number } }) => r.student.id).sort()).toEqual(
+=======
+      expect(patRes.body.data.map((r: { student: { id: number } }) => r.student.id)).toEqual([studentAId]);
+
+      const sysAdminRes = await request(app).get("/api/licensure/queue").set("Authorization", `Bearer ${sysAdminToken}`);
+      expect(sysAdminRes.body.data.map((r: { student: { id: number } }) => r.student.id).sort()).toEqual(
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
         [studentAId, studentBId].sort(),
       );
     });

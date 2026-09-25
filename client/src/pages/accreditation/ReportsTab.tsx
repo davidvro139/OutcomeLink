@@ -1,5 +1,24 @@
 import { BarChart, PieChart } from "@mantine/charts";
+<<<<<<< HEAD
 import { Anchor, Badge, Box, Button, Group, Loader, Modal, Paper, SimpleGrid, Stack, Table, Tabs, Text, Title } from "@mantine/core";
+=======
+import {
+  Anchor,
+  Badge,
+  Box,
+  Button,
+  Group,
+  Loader,
+  Modal,
+  Paper,
+  SimpleGrid,
+  Stack,
+  Table,
+  Tabs,
+  Text,
+  Title,
+} from "@mantine/core";
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { Fragment, useState } from "react";
@@ -25,7 +44,19 @@ const CAN_START_CAMPAIGN = [
   "INSTRUCTOR_STAFF",
 ];
 
+<<<<<<< HEAD
 function StatCard({ label, value, color }: { label: string; value: string | number; color?: string }) {
+=======
+function StatCard({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string | number;
+  color?: string;
+}) {
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
   return (
     <Paper withBorder p="md" radius="md">
       <Text size="xs" c="dimmed" tt="uppercase">
@@ -46,7 +77,12 @@ function TimeToEmploymentPanel({ reportingPeriodId }: { reportingPeriodId: numbe
   if (data.overall.count === 0) {
     return (
       <Text c="dimmed" ta="center" py="xl">
+<<<<<<< HEAD
         No completers this period have both a completion date and a recorded employment start date yet.
+=======
+        No completers this period have both a completion date and a recorded employment start date
+        yet.
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
       </Text>
     );
   }
@@ -113,9 +149,15 @@ function PlacementQualityPanel({ reportingPeriodId }: { reportingPeriodId: numbe
   return (
     <Stack gap="md">
       <Text size="sm" c="dimmed">
+<<<<<<< HEAD
         Institution-wide — employment records don't carry a program of their own, so this view can't be
         broken down by program (the Data Validation tab flags this same limit for a couple of other
         checks).
+=======
+        Institution-wide — employment records don't carry a program of their own, so this view can't
+        be broken down by program (the Data Validation tab flags this same limit for a couple of
+        other checks).
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
       </Text>
       <SimpleGrid cols={{ base: 1, sm: 3 }}>
         <StatCard label="Placements" value={data.totalPlacements} />
@@ -124,12 +166,27 @@ function PlacementQualityPanel({ reportingPeriodId }: { reportingPeriodId: numbe
       </SimpleGrid>
       <SimpleGrid cols={{ base: 1, sm: 3 }}>
         <StatCard label="Verified rate" value={`${data.verifiedRate}%`} />
+<<<<<<< HEAD
         <StatCard label="Average wage" value={data.averageWage !== null ? `$${data.averageWage.toLocaleString()}` : "—"} />
         <StatCard label="Median wage" value={data.medianWage !== null ? `$${data.medianWage.toLocaleString()}` : "—"} />
       </SimpleGrid>
       <Text size="xs" c="dimmed">
         Wage figures are based on {data.wageRecordCount} of {data.totalPlacements} placements with a wage
         on file.
+=======
+        <StatCard
+          label="Average wage"
+          value={data.averageWage !== null ? `$${data.averageWage.toLocaleString()}` : "—"}
+        />
+        <StatCard
+          label="Median wage"
+          value={data.medianWage !== null ? `$${data.medianWage.toLocaleString()}` : "—"}
+        />
+      </SimpleGrid>
+      <Text size="xs" c="dimmed">
+        Wage figures are based on {data.wageRecordCount} of {data.totalPlacements} placements with a
+        wage on file.
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
       </Text>
     </Stack>
   );
@@ -184,12 +241,30 @@ function GraduateCampaignButton({ reportingPeriodId }: { reportingPeriodId: numb
   async function handleStart() {
     try {
       const result = await startCampaign.mutateAsync({ reportingPeriodId });
+<<<<<<< HEAD
       notifications.show({
         message:
           result.skipped.length > 0
             ? `Sent ${result.sentCount} of ${result.targetedCount} targeted students; ${result.skipped.length} already had a pending survey.`
             : `Sent graduate surveys to all ${result.sentCount} targeted students.`,
         color: "green",
+=======
+      const emailed = result.emailedCount > 0 || result.failedCount > 0;
+      const parts = [
+        emailed
+          ? `Emailed ${result.emailedCount} survey${result.emailedCount === 1 ? "" : "s"} (${result.targetedCount} students targeted).`
+          : `Created ${result.sentCount} of ${result.targetedCount} targeted students' surveys.`,
+        result.failedCount > 0
+          ? `${result.failedCount} email${result.failedCount === 1 ? "" : "s"} failed — run the campaign again to retry them.`
+          : null,
+        result.skipped.length > 0
+          ? `${result.skipped.length} skipped: ${[...new Set(result.skipped.map((s) => s.reason))].join("; ")}.`
+          : null,
+      ].filter(Boolean);
+      notifications.show({
+        message: parts.join(" "),
+        color: result.failedCount > 0 ? "yellow" : "green",
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
         autoClose: false,
       });
       close();
@@ -268,6 +343,15 @@ function UnknownOutcomesPanel({ reportingPeriodId }: { reportingPeriodId: number
       </Table>
 
       <Title order={5}>Students seeking or with unknown status</Title>
+<<<<<<< HEAD
+=======
+      {data.studentsTruncated && (
+        <Text size="sm" c="dimmed">
+          Showing the first {data.students.length} of {data.totalSeekingOrUnknown} students — the
+          totals above cover everyone.
+        </Text>
+      )}
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
       <Table striped highlightOnHover>
         <Table.Thead>
           <Table.Tr>
@@ -308,16 +392,36 @@ function FollowUpEffectivenessPanel() {
   const pieData = data.byOutcome.map((o, i) => ({
     name: o.outcome.replaceAll("_", " "),
     value: o.count,
+<<<<<<< HEAD
     color: ["blue.6", "teal.6", "grape.6", "orange.6", "red.6", "cyan.6", "yellow.6", "pink.6", "lime.6", "gray.6"][
       i % 10
     ],
+=======
+    color: [
+      "blue.6",
+      "teal.6",
+      "grape.6",
+      "orange.6",
+      "red.6",
+      "cyan.6",
+      "yellow.6",
+      "pink.6",
+      "lime.6",
+      "gray.6",
+    ][i % 10],
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
   }));
 
   return (
     <Stack gap="md">
       <Text size="sm" c="dimmed">
+<<<<<<< HEAD
         Not scoped to a reporting period — follow-up campaigns for one period's completers commonly run
         into the next, and staff effectiveness is a cross-period question anyway.
+=======
+        Not scoped to a reporting period — follow-up campaigns for one period's completers commonly
+        run into the next, and staff effectiveness is a cross-period question anyway.
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
       </Text>
       <SimpleGrid cols={{ base: 1, sm: 2 }}>
         <StatCard label="Total attempts" value={data.totalAttempts} />
@@ -326,7 +430,18 @@ function FollowUpEffectivenessPanel() {
 
       <Group align="flex-start" wrap="wrap">
         <Stack gap="xs" align="center">
+<<<<<<< HEAD
           <PieChart size={220} data={pieData} withLabelsLine withLabels labelsType="percent" withTooltip />
+=======
+          <PieChart
+            size={220}
+            data={pieData}
+            withLabelsLine
+            withLabels
+            labelsType="percent"
+            withTooltip
+          />
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
           <Stack gap={4}>
             {pieData.map((slice) => (
               <Group key={slice.name} gap="xs" wrap="nowrap">
@@ -352,7 +467,13 @@ function FollowUpEffectivenessPanel() {
                 <Table.Td>{row.staffUser.name}</Table.Td>
                 <Table.Td>{row.attempts}</Table.Td>
                 <Table.Td>
+<<<<<<< HEAD
                   <Badge color={row.resolvingRate >= 50 ? "teal" : "gray"}>{row.resolvingRate}%</Badge>
+=======
+                  <Badge color={row.resolvingRate >= 50 ? "teal" : "gray"}>
+                    {row.resolvingRate}%
+                  </Badge>
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
                 </Table.Td>
               </Table.Tr>
             ))}

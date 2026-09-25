@@ -4,7 +4,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const { status } = useAuth();
+  const { status, sessionEndReason } = useAuth();
   const location = useLocation();
 
   if (status === "loading") {
@@ -16,7 +16,11 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   }
 
   if (status === "unauthenticated") {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    // Remember where the user was only when the session ran out from under
+    // them; after an explicit sign-out the next login (possibly a different
+    // person) should start at the dashboard, not resume the old route.
+    const state = sessionEndReason === "logout" ? undefined : { from: location };
+    return <Navigate to="/login" state={state} replace />;
   }
 
   return children;

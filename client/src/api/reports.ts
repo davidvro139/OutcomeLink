@@ -86,6 +86,10 @@ export function useOutcomeFunnelReport(reportingPeriodId: number | undefined) {
 export interface UnknownOutcomesReport {
   totalSeekingOrUnknown: number;
   totalMissingRecord: number;
+<<<<<<< HEAD
+=======
+  studentsTruncated: boolean;
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
   students: {
     student: { id: number; firstName: string; lastName: string };
     program: { id: number; name: string } | null;

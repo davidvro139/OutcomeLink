@@ -6,6 +6,10 @@ import { validate } from "../../middleware/validate";
 import { exportCustomReport, runCustomReport, runReportSchema } from "./customReportBuilder";
 import * as reports from "./reports";
 import { geographicPlacements } from "./geographicPlacements";
+<<<<<<< HEAD
+=======
+import * as reportExportJobs from "./reportExportJobs";
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 import * as savedReports from "./savedReports";
 
 export const reportsRouter = Router();
@@ -29,6 +33,22 @@ reportsRouter.post(
   validate(runReportSchema),
   asyncHandler(exportCustomReport),
 );
+<<<<<<< HEAD
+=======
+reportsRouter.post(
+  "/custom/export-jobs",
+  requireAuth,
+  validate(runReportSchema),
+  asyncHandler(reportExportJobs.queueExport),
+);
+reportsRouter.get("/custom/export-jobs", requireAuth, asyncHandler(reportExportJobs.list));
+reportsRouter.get(
+  "/custom/export-jobs/:id/download",
+  requireAuth,
+  asyncHandler(reportExportJobs.downloadJob),
+);
+
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 reportsRouter.get("/custom/saved", requireAuth, asyncHandler(savedReports.list));
 reportsRouter.post(
   "/custom/saved",

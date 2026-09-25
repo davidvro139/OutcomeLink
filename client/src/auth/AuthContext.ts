@@ -9,11 +9,15 @@ export interface AuthUser {
   role: Role;
 }
 
+/** Why the last session ended — an expiry should return you to where you were; an explicit sign-out should not. */
+export type SessionEndReason = "logout" | "expired" | null;
+
 export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
 export interface AuthContextValue {
   user: AuthUser | null;
   status: AuthStatus;
+  sessionEndReason: SessionEndReason;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }

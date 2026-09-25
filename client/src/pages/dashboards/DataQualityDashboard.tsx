@@ -1,12 +1,36 @@
 import { BarChart } from "@mantine/charts";
+<<<<<<< HEAD
 import { Badge, Button, Group, Loader, Paper, Select, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
+=======
+import {
+  Badge,
+  Button,
+  Group,
+  Loader,
+  Paper,
+  Select,
+  SimpleGrid,
+  Stack,
+  Table,
+  Text,
+  Title,
+} from "@mantine/core";
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 import { notifications } from "@mantine/notifications";
 import { useMemo, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { useReportingPeriods, useValidationIssues } from "../../api/accreditation";
 import { useGenerateMissingOutcomesDigest } from "../../api/notifications";
 
+<<<<<<< HEAD
 const SEVERITY_COLORS: Record<string, string> = { ERROR: "red", WARNING: "yellow", INFORMATION: "blue" };
+=======
+const SEVERITY_COLORS: Record<string, string> = {
+  ERROR: "red",
+  WARNING: "yellow",
+  INFORMATION: "blue",
+};
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
 // Matches DashboardPage.tsx's DATA_QUALITY_ROLES exactly — that gate on the
 // tab itself is a deliberate, already-verified P6 decision (this dashboard is
@@ -62,7 +86,16 @@ export function DataQualityDashboard() {
     for (const issue of open) {
       const existing = counts.get(issue.issueType);
       if (existing) existing.count += 1;
+<<<<<<< HEAD
       else counts.set(issue.issueType, { issueType: issue.issueType, severity: issue.severity, count: 1 });
+=======
+      else
+        counts.set(issue.issueType, {
+          issueType: issue.issueType,
+          severity: issue.severity,
+          count: 1,
+        });
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
     }
     return [...counts.values()].sort((a, b) => b.count - a.count);
   }, [open]);

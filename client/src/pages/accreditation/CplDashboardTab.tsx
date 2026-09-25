@@ -1,3 +1,4 @@
+import { usePermissions } from "../../auth/usePermissions";
 import type { CplMetric } from "@outcomelink/shared";
 import {
   Badge,
@@ -36,7 +37,15 @@ const METRICS: CplMetric[] = ["COMPLETION", "PLACEMENT", "LICENSURE"];
 // actually met could still show as "Below benchmark" here while the
 // Readiness tab correctly showed it as ready. Two views of the same fact
 // must never disagree.
+<<<<<<< HEAD
 const STANDARD_BENCHMARKS: Record<CplMetric, number> = { COMPLETION: 60, PLACEMENT: 70, LICENSURE: 70 };
+=======
+const STANDARD_BENCHMARKS: Record<CplMetric, number> = {
+  COMPLETION: 60,
+  PLACEMENT: 70,
+  LICENSURE: 70,
+};
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
 interface DrillDownState {
   metric: CplMetric;
@@ -59,6 +68,7 @@ interface CreatePlanState {
  * spec §20's "no unexplained number" principle.
  */
 export function CplDashboardTab({ reportingPeriodId }: { reportingPeriodId: number }) {
+  const { canWrite } = usePermissions();
   const { data: results, isLoading } = useCplResults(reportingPeriodId);
   const { data: readinessData } = useReadiness(reportingPeriodId);
   const { data: period } = useReportingPeriod(reportingPeriodId);
@@ -131,7 +141,16 @@ export function CplDashboardTab({ reportingPeriodId }: { reportingPeriodId: numb
           color={belowBenchmark ? "red" : "green"}
           size="compact-sm"
           onClick={() =>
+<<<<<<< HEAD
             setDrillDown({ metric, programId: programId ?? undefined, bucket: "denominator", label })
+=======
+            setDrillDown({
+              metric,
+              programId: programId ?? undefined,
+              bucket: "denominator",
+              label,
+            })
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
           }
         >
           {percentage}%{" "}
@@ -146,7 +165,11 @@ export function CplDashboardTab({ reportingPeriodId }: { reportingPeriodId: numb
             </Badge>
           )}
         </Button>
+<<<<<<< HEAD
         {belowBenchmark && programId !== null && (
+=======
+        {canWrite && belowBenchmark && programId !== null && (
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
           <Tooltip label="Create improvement plan">
             <Button
               variant="subtle"
@@ -226,7 +249,15 @@ export function CplDashboardTab({ reportingPeriodId }: { reportingPeriodId: numb
       <Modal
         opened={createPlanState !== null}
         onClose={() => setCreatePlanState(null)}
+<<<<<<< HEAD
         title={createPlanState ? `Improvement Plan — ${createPlanState.programName} (${createPlanState.metric})` : ""}
+=======
+        title={
+          createPlanState
+            ? `Improvement Plan — ${createPlanState.programName} (${createPlanState.metric})`
+            : ""
+        }
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
         size="lg"
       >
         {createPlanState && (
@@ -319,7 +350,15 @@ function QuickCreatePlanForm({
           <Text size="sm" fw={500} mb={4}>
             Due date
           </Text>
+<<<<<<< HEAD
           <input type="date" {...form.getInputProps("dueDate")} style={{ padding: 8, width: "100%" }} />
+=======
+          <input
+            type="date"
+            {...form.getInputProps("dueDate")}
+            style={{ padding: 8, width: "100%" }}
+          />
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
         </div>
         <Text size="xs" c="dimmed">
           See the "Improvement Plans" tab for the full plan, including status and progress updates.

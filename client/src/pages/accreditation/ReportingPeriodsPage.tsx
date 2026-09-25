@@ -25,6 +25,8 @@ import {
   useReportingPeriods,
   useRuleSets,
 } from "../../api/accreditation";
+import { usePermissions } from "../../auth/usePermissions";
+import { formatDateOnly } from "../../lib/dates";
 
 const STATUS_COLORS: Record<string, string> = {
   OPEN: "blue",
@@ -35,6 +37,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function ReportingPeriodsPage() {
+  const { canAdminister } = usePermissions();
   const { data: frameworks } = useFrameworks();
   const coeFramework = frameworks?.find((f) => f.name === "COE");
   const { data: ruleSets } = useRuleSets(coeFramework?.id);
@@ -125,12 +128,16 @@ export function ReportingPeriodsPage() {
       <Group justify="space-between">
         <Title order={2}>Reporting Periods</Title>
         <Group>
-          <Button variant="light" onClick={openRuleSetModal}>
-            New COE Rule Set
-          </Button>
-          <Button onClick={openPeriodModal} disabled={!ruleSets?.length}>
-            New Reporting Period
-          </Button>
+          {canAdminister && (
+            <Button variant="light" onClick={openRuleSetModal}>
+              New COE Rule Set
+            </Button>
+          )}
+          {canAdminister && (
+            <Button onClick={openPeriodModal} disabled={!ruleSets?.length}>
+              New Reporting Period
+            </Button>
+          )}
         </Group>
       </Group>
 
@@ -160,8 +167,8 @@ export function ReportingPeriodsPage() {
                     {period.label}
                   </Anchor>
                 </Table.Td>
-                <Table.Td>{new Date(period.startDate).toLocaleDateString()}</Table.Td>
-                <Table.Td>{new Date(period.endDate).toLocaleDateString()}</Table.Td>
+                <Table.Td>{formatDateOnly(period.startDate)}</Table.Td>
+                <Table.Td>{formatDateOnly(period.endDate)}</Table.Td>
                 <Table.Td>
                   <Badge color={STATUS_COLORS[period.status] ?? "gray"}>{period.status}</Badge>
                 </Table.Td>

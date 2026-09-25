@@ -1,10 +1,4 @@
-import type { Role } from "@outcomelink/shared";
+import { OPERATIONAL_ROLES } from "@outcomelink/shared";
 
-/** Every role except Read-Only/Auditor (spec §4: "Cannot modify data"). */
-export const OPERATIONAL_ROLES: readonly Role[] = [
-  "SYSTEM_ADMINISTRATOR",
-  "INSTITUTIONAL_ADMINISTRATOR",
-  "PROGRAM_ADMINISTRATOR",
-  "CAREER_SERVICES_STAFF",
-  "INSTRUCTOR_STAFF",
-];
+// Defined in shared so the client's permission checks use the identical set.
+export { OPERATIONAL_ROLES };

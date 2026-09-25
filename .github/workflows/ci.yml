@@ -1,0 +1,199 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# A newer push to the same branch/PR makes an in-flight run obsolete.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Husky's `prepare` script would try to install git hooks inside CI.
+  HUSKY: "0"
+
+jobs:
+  static:
+    name: Lint and typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # server and client typecheck against the built shared package and the generated Prisma client.
+      - run: npm run build:shared
+      - run: npx prisma generate
+        working-directory: server
+      - run: npm run lint
+      - run: npm run typecheck
+
+  client:
+    name: Client tests and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build:shared
+      - run: npm test --workspace client
+      - run: npm run build --workspace client
+
+  server:
+    name: Server unit and integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      # The integration suite runs against a real, disposable MySQL database
+      # (jest.globalSetup.cjs resets `outcomelink_test` with `prisma migrate
+      # reset` on every run), so this one is created fresh for each CI run.
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-root-password
+          MYSQL_DATABASE: outcomelink_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci-root-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build:shared
+      - run: npx prisma generate
+        working-directory: server
+      - name: Create test environment file
+        working-directory: server
+        run: |
+          cp .env.test.example .env.test
+          sed -i 's#^DATABASE_URL=.*#DATABASE_URL="mysql://root:ci-root-password@127.0.0.1:3306/outcomelink_test"#' .env.test
+      - name: Unit tests
+        run: npm test
+        working-directory: server
+      - name: Integration tests
+        run: npm run test:integration
+        working-directory: server
+
+  docker:
+    name: Docker build and smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create a throwaway environment file
+        run: |
+          cat > .env <<'EOF'
+          MYSQL_ROOT_PASSWORD=ci-root-password
+          JWT_ACCESS_SECRET=ci-access-secret
+          JWT_REFRESH_SECRET=ci-refresh-secret
+          SECRETS_ENCRYPTION_KEY=ci-encryption-key
+          WEB_PORT=8080
+          EOF
+      - name: Build and start the stack
+        run: docker compose up -d --build --wait --wait-timeout 300
+      - name: The API is ready and the web app serves the client
+        run: |
+          curl --fail --silent http://localhost:8080/health/ready
+          curl --fail --silent http://localhost:8080/ | grep -qi "<div id=\"root\">"
+      - name: Create the first administrator and sign in through nginx
+        run: |
+          docker compose exec -T api node dist/scripts/bootstrapAdmin.js \
+            --institution "CI College" --name "CI Admin" --email ci@example.edu --password ci-password-123
+          curl --fail --silent -X POST http://localhost:8080/api/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"email":"ci@example.edu","password":"ci-password-123"}' | grep -q accessToken
+      - name: Self-service registration is off in production
+        run: |
+          test "$(curl --silent -o /dev/null -w '%{http_code}' -X POST http://localhost:8080/api/auth/register \
+            -H 'Content-Type: application/json' \
+            -d '{"institutionName":"X","name":"Y","email":"z@example.edu","password":"password123"}')" = "403"
+      - name: Container logs
+        if: failure()
+        run: docker compose logs --no-color
+
+  e2e:
+    name: End-to-end (Cypress)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-root-password
+          MYSQL_DATABASE: outcomelink
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci-root-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Cache the Cypress binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/Cypress
+          key: cypress-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npm ci
+      - run: npm run build:shared
+      - name: Prepare the server, database and demo data
+        working-directory: server
+        run: |
+          cat > .env <<'EOF'
+          NODE_ENV=development
+          PORT=4000
+          DATABASE_URL="mysql://root:ci-root-password@127.0.0.1:3306/outcomelink"
+          JWT_ACCESS_SECRET=ci-access-secret
+          JWT_REFRESH_SECRET=ci-refresh-secret
+          SECRETS_ENCRYPTION_KEY=ci-encryption-key
+          CLIENT_ORIGIN=http://localhost:5173
+          RATE_LIMIT_ENABLED=false
+          EOF
+          npx prisma generate
+          npx prisma migrate deploy
+          npm run prisma:seed
+      - name: Start the API and the web app
+        run: |
+          npm run dev --workspace server > api.log 2>&1 &
+          npm run dev --workspace client > web.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -fsS http://localhost:4000/health/ready > /dev/null 2>&1 && curl -fsS http://localhost:5173/ > /dev/null 2>&1 && exit 0
+            sleep 2
+          done
+          echo "The servers did not come up"; tail -n 40 api.log web.log; exit 1
+      - name: Run the Cypress specs
+        run: npm run e2e --workspace client
+      - name: Screenshots and server logs from a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failure
+          path: |
+            client/cypress/screenshots
+            api.log
+            web.log
+          if-no-files-found: ignore

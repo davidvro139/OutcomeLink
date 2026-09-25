@@ -12,6 +12,11 @@ import {
   useSendEmployerSurvey,
   useSendGraduateSurvey,
 } from "../../api/surveys";
+<<<<<<< HEAD
+=======
+import { usePermissions } from "../../auth/usePermissions";
+import { surveyToast } from "../../lib/emailStatus";
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
 const CHANNEL_OPTIONS = ["EMAIL", "SMS", "MAIL", "PHONE"];
 
@@ -30,6 +35,10 @@ async function copyLink(kind: "graduate" | "employer", token: string) {
 }
 
 function GraduateSurveysSection({ studentId }: { studentId: number }) {
+<<<<<<< HEAD
+=======
+  const { canWrite } = usePermissions();
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
   const { data: surveys, isLoading } = useGraduateSurveys(studentId);
   const sendSurvey = useSendGraduateSurvey(studentId);
   const [formOpened, { toggle: toggleForm, close: closeForm }] = useDisclosure(false);
@@ -38,8 +47,13 @@ function GraduateSurveysSection({ studentId }: { studentId: number }) {
 
   async function handleSend() {
     try {
+<<<<<<< HEAD
       await sendSurvey.mutateAsync({ channel: channel ?? undefined });
       notifications.show({ message: "Graduate survey created — copy the link below to send it", color: "green" });
+=======
+      const result = await sendSurvey.mutateAsync({ channel: channel ?? undefined });
+      notifications.show(surveyToast("Graduate", result));
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
       closeForm();
     } catch (err) {
       notifications.show({
@@ -53,6 +67,7 @@ function GraduateSurveysSection({ studentId }: { studentId: number }) {
     <Stack gap="md">
       <Group justify="space-between">
         <Text fw={500}>Graduate surveys</Text>
+<<<<<<< HEAD
         <Button size="xs" variant="light" onClick={toggleForm}>
           {formOpened ? "Cancel" : "Send Graduate Survey"}
         </Button>
@@ -61,6 +76,31 @@ function GraduateSurveysSection({ studentId }: { studentId: number }) {
       {formOpened && (
         <Group align="flex-end" gap="sm" p="md" bg="var(--mantine-color-default)" style={{ borderRadius: 8 }}>
           <Select label="Channel" data={CHANNEL_OPTIONS} value={channel} onChange={setChannel} w={160} />
+=======
+        {canWrite && (
+          <Button size="xs" variant="light" onClick={toggleForm}>
+            {formOpened ? "Cancel" : "Send Graduate Survey"}
+          </Button>
+        )}
+      </Group>
+
+      {formOpened && (
+        <Group
+          align="flex-end"
+          gap="sm"
+          p="md"
+          bg="var(--mantine-color-default)"
+          style={{ borderRadius: 8 }}
+        >
+          <Select
+            label="Channel"
+            data={CHANNEL_OPTIONS}
+            allowDeselect={false}
+            value={channel}
+            onChange={setChannel}
+            w={160}
+          />
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
           <Button onClick={handleSend} loading={sendSurvey.isPending} size="sm">
             Create Survey Link
           </Button>
@@ -83,7 +123,13 @@ function GraduateSurveysSection({ studentId }: { studentId: number }) {
             <Fragment key={survey.id}>
               <Table.Tr
                 key={survey.id}
+<<<<<<< HEAD
                 onClick={() => survey.response && setExpandedId(expandedId === survey.id ? null : survey.id)}
+=======
+                onClick={() =>
+                  survey.response && setExpandedId(expandedId === survey.id ? null : survey.id)
+                }
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
                 style={{ cursor: survey.response ? "pointer" : undefined }}
               >
                 <Table.Td>{new Date(survey.sentAt).toLocaleDateString()}</Table.Td>
@@ -95,7 +141,15 @@ function GraduateSurveysSection({ studentId }: { studentId: number }) {
                 </Table.Td>
                 <Table.Td>
                   {!survey.response && (
+<<<<<<< HEAD
                     <Button size="xs" variant="subtle" onClick={() => copyLink("graduate", survey.responseToken)}>
+=======
+                    <Button
+                      size="xs"
+                      variant="subtle"
+                      onClick={() => copyLink("graduate", survey.responseToken)}
+                    >
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
                       Copy Link
                     </Button>
                   )}
@@ -115,7 +169,12 @@ function GraduateSurveysSection({ studentId }: { studentId: number }) {
                         <b>Job title:</b> {survey.response.jobTitle ?? "—"}
                       </Text>
                       <Text size="sm">
+<<<<<<< HEAD
                         <b>Related to training:</b> {survey.response.relatedToTrainingResponse ?? "—"}
+=======
+                        <b>Related to training:</b>{" "}
+                        {survey.response.relatedToTrainingResponse ?? "—"}
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
                       </Text>
                       <Text size="sm">
                         <b>Continuing education:</b> {survey.response.continuingEducation ?? "—"}
@@ -157,6 +216,10 @@ function GraduateSurveysSection({ studentId }: { studentId: number }) {
 }
 
 function EmployerSurveysSection({ studentId }: { studentId: number }) {
+<<<<<<< HEAD
+=======
+  const { canWrite } = usePermissions();
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
   const { data: surveys, isLoading } = useEmployerSurveys(studentId);
   const { data: employmentRecords } = useEmploymentRecords(studentId);
   const sendSurvey = useSendEmployerSurvey(studentId);
@@ -173,8 +236,13 @@ function EmployerSurveysSection({ studentId }: { studentId: number }) {
   async function handleSend() {
     if (!employerId) return;
     try {
+<<<<<<< HEAD
       await sendSurvey.mutateAsync({ employerId: Number(employerId) });
       notifications.show({ message: "Employer survey created — copy the link below to send it", color: "green" });
+=======
+      const result = await sendSurvey.mutateAsync({ employerId: Number(employerId) });
+      notifications.show(surveyToast("Employer", result));
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
       closeForm();
     } catch (err) {
       notifications.show({
@@ -188,6 +256,7 @@ function EmployerSurveysSection({ studentId }: { studentId: number }) {
     <Stack gap="md">
       <Group justify="space-between">
         <Text fw={500}>Employer surveys</Text>
+<<<<<<< HEAD
         <Button size="xs" variant="light" onClick={toggleForm}>
           {formOpened ? "Cancel" : "Send Employer Survey"}
         </Button>
@@ -195,6 +264,23 @@ function EmployerSurveysSection({ studentId }: { studentId: number }) {
 
       {formOpened && (
         <Group align="flex-end" gap="sm" p="md" bg="var(--mantine-color-default)" style={{ borderRadius: 8 }}>
+=======
+        {canWrite && (
+          <Button size="xs" variant="light" onClick={toggleForm}>
+            {formOpened ? "Cancel" : "Send Employer Survey"}
+          </Button>
+        )}
+      </Group>
+
+      {formOpened && (
+        <Group
+          align="flex-end"
+          gap="sm"
+          p="md"
+          bg="var(--mantine-color-default)"
+          style={{ borderRadius: 8 }}
+        >
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
           <Select
             label="Employer"
             description="Only employers with an employment record on file for this student"
@@ -204,7 +290,16 @@ function EmployerSurveysSection({ studentId }: { studentId: number }) {
             w={280}
             searchable
           />
+<<<<<<< HEAD
           <Button onClick={handleSend} loading={sendSurvey.isPending} disabled={!employerId} size="sm">
+=======
+          <Button
+            onClick={handleSend}
+            loading={sendSurvey.isPending}
+            disabled={!employerId}
+            size="sm"
+          >
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
             Create Survey Link
           </Button>
         </Group>
@@ -226,7 +321,13 @@ function EmployerSurveysSection({ studentId }: { studentId: number }) {
             <Fragment key={survey.id}>
               <Table.Tr
                 key={survey.id}
+<<<<<<< HEAD
                 onClick={() => survey.response && setExpandedId(expandedId === survey.id ? null : survey.id)}
+=======
+                onClick={() =>
+                  survey.response && setExpandedId(expandedId === survey.id ? null : survey.id)
+                }
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
                 style={{ cursor: survey.response ? "pointer" : undefined }}
               >
                 <Table.Td>{survey.employer.name}</Table.Td>
@@ -238,7 +339,15 @@ function EmployerSurveysSection({ studentId }: { studentId: number }) {
                 </Table.Td>
                 <Table.Td>
                   {!survey.response && (
+<<<<<<< HEAD
                     <Button size="xs" variant="subtle" onClick={() => copyLink("employer", survey.responseToken)}>
+=======
+                    <Button
+                      size="xs"
+                      variant="subtle"
+                      onClick={() => copyLink("employer", survey.responseToken)}
+                    >
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
                       Copy Link
                     </Button>
                   )}
@@ -249,14 +358,26 @@ function EmployerSurveysSection({ studentId }: { studentId: number }) {
                   <Table.Td colSpan={4}>
                     <Stack gap={4} p="sm">
                       <Text size="sm">
+<<<<<<< HEAD
                         <b>Employment verification:</b> {survey.response.employmentVerification ?? "—"}
+=======
+                        <b>Employment verification:</b>{" "}
+                        {survey.response.employmentVerification ?? "—"}
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
                       </Text>
                       <Group gap="xl" wrap="wrap">
                         <Group gap={6}>
                           <Text size="sm" fw={500}>
                             Technical preparedness:
                           </Text>
+<<<<<<< HEAD
                           <Rating value={survey.response.technicalPreparednessRating ?? 0} readOnly />
+=======
+                          <Rating
+                            value={survey.response.technicalPreparednessRating ?? 0}
+                            readOnly
+                          />
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
                         </Group>
                         <Group gap={6}>
                           <Text size="sm" fw={500}>
@@ -286,7 +407,14 @@ function EmployerSurveysSection({ studentId }: { studentId: number }) {
                           <Text size="sm" fw={500}>
                             Would hire again:
                           </Text>
+<<<<<<< HEAD
                           <Rating value={survey.response.likelihoodToHireAgainRating ?? 0} readOnly />
+=======
+                          <Rating
+                            value={survey.response.likelihoodToHireAgainRating ?? 0}
+                            readOnly
+                          />
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
                         </Group>
                       </Group>
                       {survey.response.skillsGapNotes && (

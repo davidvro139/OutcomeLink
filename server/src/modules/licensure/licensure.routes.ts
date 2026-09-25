@@ -4,7 +4,11 @@ import { OPERATIONAL_ROLES } from "../../lib/roles";
 import { requireAuth, requireRole } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
 import * as licensureResults from "./licensureResults";
+<<<<<<< HEAD
 import * as queue from "./queue";
+=======
+import * as queueModule from "./queue";
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
 export const licensureRouter = Router();
 
@@ -26,4 +30,13 @@ licensureRouter.patch(
   asyncHandler(licensureResults.update),
 );
 
+<<<<<<< HEAD
 licensureRouter.get("/licensure/queue", requireAuth, asyncHandler(queue.queue));
+=======
+licensureRouter.get(
+  "/licensure/queue",
+  requireAuth,
+  validate(queueModule.licensureQueueQuerySchema, "query"),
+  asyncHandler(queueModule.queue),
+);
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a

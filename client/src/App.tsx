@@ -23,7 +23,15 @@ import { StudentsListPage } from "./pages/students/StudentsListPage";
 import { EmployerSurveyPage } from "./pages/surveys/EmployerSurveyPage";
 import { GraduateSurveyPage } from "./pages/surveys/GraduateSurveyPage";
 import { DataConnectionsPage } from "./pages/imports/DataConnectionsPage";
+<<<<<<< HEAD
 import { EquityBreakdownPage } from "./pages/equity/EquityBreakdownPage";
+=======
+import { JobHistoryPage } from "./pages/jobs/JobHistoryPage";
+import { SettingsPage } from "./pages/settings/SettingsPage";
+import { ProgramDashboardPage } from "./pages/dashboards/ProgramDashboardPage";
+import { AboutPage } from "./pages/help/AboutPage";
+import { HelpPage } from "./pages/help/HelpPage";
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 import { UsersPage } from "./pages/users/UsersPage";
 
 function App() {
@@ -33,6 +41,11 @@ function App() {
       <Route path="/survey/graduate/:token" element={<GraduateSurveyPage />} />
       <Route path="/survey/employer/:token" element={<EmployerSurveyPage />} />
       <Route path="/set-password/:token" element={<SetPasswordPage />} />
+<<<<<<< HEAD
+=======
+      {/* Readable before signing in: what the tool is for and how data is protected. */}
+      <Route path="/about" element={<AboutPage />} />
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
       <Route
         element={
           <RequireAuth>
@@ -41,6 +54,7 @@ function App() {
         }
       >
         <Route path="/" element={<DashboardPage />} />
+        <Route path="/my-programs" element={<ProgramDashboardPage />} />
 
         <Route path="/programs" element={<ProgramsListPage />} />
         <Route path="/programs/:id" element={<ProgramDetailPage />} />
@@ -64,13 +78,24 @@ function App() {
 
         <Route path="/accreditation/reporting-periods" element={<ReportingPeriodsPage />} />
         <Route path="/accreditation/trends" element={<TrendsPage />} />
+<<<<<<< HEAD
         <Route path="/equity" element={<EquityBreakdownPage />} />
+=======
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
         <Route
           path="/accreditation/reporting-periods/:id"
           element={<ReportingPeriodDetailPage />}
         />
 
         <Route path="/users" element={<UsersPage />} />
+<<<<<<< HEAD
+=======
+        <Route path="/jobs" element={<JobHistoryPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+
+        <Route path="/help" element={<HelpPage />} />
+        <Route path="/help/:slug" element={<HelpPage />} />
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
       </Route>
     </Routes>
   );

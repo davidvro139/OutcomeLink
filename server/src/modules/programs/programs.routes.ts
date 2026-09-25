@@ -1,3 +1,4 @@
+import { ADMIN_ROLES } from "@outcomelink/shared";
 import { Router } from "express";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { requireAuth, requireRole } from "../../middleware/auth";
@@ -11,7 +12,11 @@ import * as institution from "./institution";
 import * as programs from "./programs";
 
 const SYSTEM_ADMIN = "SYSTEM_ADMINISTRATOR" as const;
+<<<<<<< HEAD
 const CAN_MANAGE_FOLLOW_UP_OWNERS = [SYSTEM_ADMIN, "INSTITUTIONAL_ADMINISTRATOR"] as const;
+=======
+const CAN_MANAGE_FOLLOW_UP_OWNERS = ADMIN_ROLES;
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
 export const programsRouter = Router();
 

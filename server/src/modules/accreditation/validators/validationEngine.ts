@@ -244,4 +244,7 @@ export async function runValidation(reportingPeriodId: number): Promise<void> {
       data: issues.map((issue) => ({ ...issue, reportingPeriodId })),
     });
   }
+  // Stamped with raw SQL on purpose (UTC_TIMESTAMP because Prisma stores DATETIME as UTC): an ordinary update would write an audit entry for the period on every
+  // run (including the nightly one), burying its real history. The close-out checklist reads this.
+  await prisma.$executeRaw`UPDATE reporting_periods SET validated_at = UTC_TIMESTAMP(3) WHERE id = ${reportingPeriodId}`;
 }

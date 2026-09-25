@@ -1,7 +1,15 @@
 import type { Request, Response } from "express";
 import {
+<<<<<<< HEAD
   REPORT_BUILDER_MAX_PERIODS,
   REPORT_BUILDER_PREVIEW_LIMIT,
+=======
+  ENROLLMENT_STATUSES,
+  EMPLOYMENT_STATUSES,
+  REPORT_BUILDER_MAX_PERIODS,
+  REPORT_BUILDER_PREVIEW_LIMIT,
+  REPORT_BUILDER_SYNC_EXPORT_THRESHOLD,
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
   REPORT_ENTITY_TYPES,
   REPORT_FIELDS_BY_ENTITY,
   REPORT_FILTERS_BY_ENTITY,
@@ -15,6 +23,16 @@ import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import type { AccessTokenPayload } from "../../lib/jwt";
 import { prisma } from "../../lib/prisma";
+<<<<<<< HEAD
+=======
+import {
+  buildProvenanceSheet,
+  describeGeneratedBy,
+  describePeriods,
+  formatTimestamp,
+  type ProvenanceEntry,
+} from "../../lib/provenance";
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 import { sendXlsx, type XlsxSheet } from "../../lib/xlsx";
 
 /**
@@ -102,6 +120,80 @@ function validateDefinition(input: RunReportInput) {
   }
 }
 
+<<<<<<< HEAD
+=======
+/** Filter fields whose values must come from a fixed vocabulary, not free text. */
+const FILTER_ENUM_VALUES: Record<string, readonly string[]> = {
+  enrollmentStatus: ENROLLMENT_STATUSES,
+  employmentStatus: EMPLOYMENT_STATUSES,
+};
+
+/** Filter fields holding database ids, and how to check each belongs to the caller's institution. */
+const FILTER_ID_CHECKS: Record<string, (institutionId: number, ids: number[]) => Promise<number>> = {
+  programId: (institutionId, ids) => prisma.program.count({ where: { id: { in: ids }, institutionId } }),
+  campusId: (institutionId, ids) => prisma.campus.count({ where: { id: { in: ids }, institutionId } }),
+};
+
+/**
+ * Value-level validation of each filter against its own definition
+ * (docs/TODO.md's "validate report filters against their field definitions"):
+ * runReportSchema only guarantees a value is *some* string[]/number[]/boolean,
+ * so a mismatched type, an unknown enum value, or a foreign id used to either
+ * blow up inside Prisma as a 500 or be silently dropped (an empty array was
+ * skipped entirely, and a duplicate field let the last one win). Each is now
+ * a clear 400. A same-institution id outside a scoped caller's access is
+ * deliberately NOT rejected here — that still returns zero rows, per
+ * effectiveProgramIdFilter — only ids that don't exist in the institution at all.
+ */
+async function validateFilterValues(institutionId: number, input: RunReportInput) {
+  const defs = new Map(REPORT_FILTERS_BY_ENTITY[input.entityType].map((f) => [f.key, f]));
+  const seen = new Set<string>();
+
+  for (const filter of input.filters) {
+    if (seen.has(filter.field)) throw ApiError.badRequest(`Filter "${filter.field}" was specified more than once`);
+    seen.add(filter.field);
+
+    const def = defs.get(filter.field)!; // existence already checked by validateDefinition
+    const { value } = filter;
+    const label = `Filter "${filter.field}"`;
+
+    if (def.operator === "eq") {
+      if (Array.isArray(value)) throw ApiError.badRequest(`${label} takes a single value, not a list`);
+      if (typeof value !== def.valueType) throw ApiError.badRequest(`${label} must be a ${def.valueType}`);
+      continue;
+    }
+
+    if (!Array.isArray(value)) throw ApiError.badRequest(`${label} must be a list of ${def.valueType}s`);
+    if (value.length === 0) throw ApiError.badRequest(`${label} must include at least one value (omit the filter to not filter)`);
+    if (value.length > 100) throw ApiError.badRequest(`${label} has too many values (max 100)`);
+    if (!(value as unknown[]).every((v) => typeof v === def.valueType)) {
+      throw ApiError.badRequest(`${label} values must all be ${def.valueType}s`);
+    }
+
+    if (def.valueType === "number") {
+      const ids = value as number[];
+      if (!ids.every((v) => Number.isInteger(v) && v > 0)) throw ApiError.badRequest(`${label} values must be positive integers`);
+      const check = FILTER_ID_CHECKS[filter.field];
+      if (check && (await check(institutionId, [...new Set(ids)])) !== new Set(ids).size) {
+        throw ApiError.badRequest(`${label} references an unknown id`);
+      }
+    }
+
+    if (def.valueType === "string") {
+      const strings = value as string[];
+      if (strings.some((v) => v.trim().length === 0 || v.length > 200)) {
+        throw ApiError.badRequest(`${label} values must be non-empty strings up to 200 characters`);
+      }
+      const allowed = FILTER_ENUM_VALUES[filter.field];
+      const invalid = allowed && strings.filter((v) => !allowed.includes(v));
+      if (invalid && invalid.length > 0) {
+        throw ApiError.badRequest(`${label} has unknown value(s): ${invalid.join(", ")}`);
+      }
+    }
+  }
+}
+
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 async function resolvePeriods(institutionId: number, input: RunReportInput): Promise<ResolvedPeriod[]> {
   const ids = input.reportingPeriodIds ?? [];
   if (ids.length === 0) return [];
@@ -138,12 +230,29 @@ function effectiveProgramIdFilter(
   return requested.filter((id) => accessibleProgramIds.includes(id));
 }
 
+<<<<<<< HEAD
+=======
+interface FetchResult {
+  rows: Row[];
+  totalCount: number;
+}
+
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 async function fetchStudentRows(
   institutionId: number,
   input: RunReportInput,
   periods: ResolvedPeriod[],
   accessibleProgramIds: number[] | null,
+<<<<<<< HEAD
 ): Promise<Row[]> {
+=======
+  // Ignored — STUDENT keeps its full-fetch-then-JS-filter behavior (see the
+  // file-header comment on employmentStatus); only EMPLOYER/PROGRAM, which
+  // have no such constraint, get real DB-level pagination. A deliberate,
+  // documented exception, not an oversight.
+  _limit?: number,
+): Promise<FetchResult> {
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
   const programIds = effectiveProgramIdFilter(filterValue<number[]>(input, "programId"), accessibleProgramIds);
   const campusIds = filterValue<number[]>(input, "campusId");
   const enrollmentStatuses = filterValue<string[]>(input, "enrollmentStatus");
@@ -215,7 +324,11 @@ async function fetchStudentRows(
     rows.push(...periodRows);
   }
 
+<<<<<<< HEAD
   return rows;
+=======
+  return { rows, totalCount: rows.length };
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 }
 
 async function fetchEmployerRows(
@@ -223,7 +336,12 @@ async function fetchEmployerRows(
   input: RunReportInput,
   periods: ResolvedPeriod[],
   _accessibleProgramIds: number[] | null,
+<<<<<<< HEAD
 ): Promise<Row[]> {
+=======
+  limit?: number,
+): Promise<FetchResult> {
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
   // Employers aren't program-scoped (see search.ts's identical reasoning):
   // an employer can hire from several programs, so there's no single
   // program to check a scoped caller's access against.
@@ -231,6 +349,7 @@ async function fetchEmployerRows(
   const states = filterValue<string[]>(input, "state");
   const activeFilter = filterValue<boolean>(input, "active");
 
+<<<<<<< HEAD
   const employers = await prisma.employer.findMany({
     where: {
       institutionId,
@@ -240,6 +359,24 @@ async function fetchEmployerRows(
     },
     orderBy: { name: "asc" },
   });
+=======
+  const where = {
+    institutionId,
+    ...(industries && industries.length > 0 ? { industry: { in: industries } } : {}),
+    ...(states && states.length > 0 ? { state: { in: states } } : {}),
+    ...(activeFilter !== undefined ? { active: activeFilter } : {}),
+  };
+
+  // A `limit` (preview mode only — export always fetches everything, per
+  // this file's own header comment on why full materialization was chosen
+  // originally) caps the base entity fetch instead of fetching every
+  // matching employer just to throw most of them away, with an exact
+  // count() alongside so totalCount never has to guess.
+  const [employers, matchingCount] = await Promise.all([
+    prisma.employer.findMany({ where, orderBy: { name: "asc" }, ...(limit !== undefined ? { take: limit } : {}) }),
+    limit !== undefined ? prisma.employer.count({ where }) : Promise.resolve(undefined),
+  ]);
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
   const employerIds = employers.map((e) => e.id);
 
   const contexts: (ResolvedPeriod | null)[] = periods.length > 0 ? periods : [null];
@@ -286,7 +423,14 @@ async function fetchEmployerRows(
     }
   }
 
+<<<<<<< HEAD
   return rows;
+=======
+  // Each matching employer produces one row per period, so the exact total
+  // scales the same way the actual row set does — never an approximation.
+  const totalCount = matchingCount !== undefined ? matchingCount * Math.max(contexts.length, 1) : rows.length;
+  return { rows, totalCount };
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 }
 
 async function fetchProgramRows(
@@ -294,11 +438,17 @@ async function fetchProgramRows(
   input: RunReportInput,
   periods: ResolvedPeriod[],
   accessibleProgramIds: number[] | null,
+<<<<<<< HEAD
 ): Promise<Row[]> {
+=======
+  limit?: number,
+): Promise<FetchResult> {
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
   const campusIds = filterValue<number[]>(input, "campusId");
   const credentialTypes = filterValue<string[]>(input, "credentialType");
   const licensureRequiredFilter = filterValue<boolean>(input, "licensureRequired");
 
+<<<<<<< HEAD
   const programs = await prisma.program.findMany({
     where: {
       institutionId,
@@ -310,6 +460,26 @@ async function fetchProgramRows(
     include: { campus: { select: { name: true } } },
     orderBy: { name: "asc" },
   });
+=======
+  const where = {
+    institutionId,
+    ...(campusIds && campusIds.length > 0 ? { campusId: { in: campusIds } } : {}),
+    ...(credentialTypes && credentialTypes.length > 0 ? { credentialType: { in: credentialTypes } } : {}),
+    ...(licensureRequiredFilter !== undefined ? { licensureRequired: licensureRequiredFilter } : {}),
+    ...(accessibleProgramIds && { id: { in: accessibleProgramIds } }),
+  };
+
+  // Same preview-mode capping as fetchEmployerRows above.
+  const [programs, matchingCount] = await Promise.all([
+    prisma.program.findMany({
+      where,
+      include: { campus: { select: { name: true } } },
+      orderBy: { name: "asc" },
+      ...(limit !== undefined ? { take: limit } : {}),
+    }),
+    limit !== undefined ? prisma.program.count({ where }) : Promise.resolve(undefined),
+  ]);
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
   const contexts: (ResolvedPeriod | null)[] = periods.length > 0 ? periods : [null];
   const labelRows = periods.length > 1;
@@ -347,7 +517,12 @@ async function fetchProgramRows(
     }
   }
 
+<<<<<<< HEAD
   return rows;
+=======
+  const totalCount = matchingCount !== undefined ? matchingCount * Math.max(contexts.length, 1) : rows.length;
+  return { rows, totalCount };
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 }
 
 const FETCHERS: Record<
@@ -357,7 +532,12 @@ const FETCHERS: Record<
     input: RunReportInput,
     periods: ResolvedPeriod[],
     accessibleProgramIds: number[] | null,
+<<<<<<< HEAD
   ) => Promise<Row[]>
+=======
+    limit?: number,
+  ) => Promise<FetchResult>
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 > = {
   STUDENT: fetchStudentRows,
   EMPLOYER: fetchEmployerRows,
@@ -371,25 +551,60 @@ function pickFields(row: Row, fields: string[], includePeriodLabel: boolean): Ro
   return picked;
 }
 
+<<<<<<< HEAD
 async function runQuery(
   user: AccessTokenPayload,
   input: RunReportInput,
 ): Promise<{ rows: Row[]; comparingPeriods: boolean }> {
   validateDefinition(input);
   const institutionId = user.institutionId;
+=======
+/**
+ * `limit` is preview-only (EMPLOYER/PROGRAM only — see fetchStudentRows'
+ * comment): when set, the fetcher caps its base entity query at the DB layer
+ * and returns an exact `totalCount` via count() instead of fetching every
+ * matching row just to slice most of them away. Omitted entirely for export,
+ * which still needs (and gets) the full set.
+ */
+async function runQuery(
+  user: AccessTokenPayload,
+  input: RunReportInput,
+  limit?: number,
+): Promise<{ rows: Row[]; totalCount: number; comparingPeriods: boolean; periods: ResolvedPeriod[] }> {
+  validateDefinition(input);
+  const institutionId = user.institutionId;
+  await validateFilterValues(institutionId, input);
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
   const [periods, accessibleProgramIds] = await Promise.all([
     resolvePeriods(institutionId, input),
     getAccessibleProgramIds(user),
   ]);
   const comparingPeriods = periods.length > 1;
+<<<<<<< HEAD
   const allRows = await FETCHERS[input.entityType](institutionId, input, periods, accessibleProgramIds);
   return { rows: allRows.map((row) => pickFields(row, input.fields, comparingPeriods)), comparingPeriods };
+=======
+  const { rows: allRows, totalCount } = await FETCHERS[input.entityType](
+    institutionId,
+    input,
+    periods,
+    accessibleProgramIds,
+    limit,
+  );
+  return {
+    rows: allRows.map((row) => pickFields(row, input.fields, comparingPeriods)),
+    totalCount,
+    comparingPeriods,
+    periods,
+  };
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 }
 
 export async function runCustomReport(
   req: Request<Record<string, never>, unknown, RunReportInput>,
   res: Response,
 ) {
+<<<<<<< HEAD
   const { rows } = await runQuery(req.user!, req.body);
   sendData(res, {
     rows: rows.slice(0, REPORT_BUILDER_PREVIEW_LIMIT),
@@ -412,6 +627,22 @@ export async function buildCustomReportSheet(
   const fieldDefs = REPORT_FIELDS_BY_ENTITY[input.entityType];
 
   const columns = [
+=======
+  const { rows, totalCount } = await runQuery(req.user!, req.body, REPORT_BUILDER_PREVIEW_LIMIT);
+  sendData(res, {
+    // A no-op slice for EMPLOYER/PROGRAM (already capped at the DB layer);
+    // still does the real work for STUDENT, which ignores `limit` and
+    // returns its full filtered set here, same as before this change.
+    rows: rows.slice(0, REPORT_BUILDER_PREVIEW_LIMIT),
+    totalCount,
+    truncated: totalCount > REPORT_BUILDER_PREVIEW_LIMIT,
+  });
+}
+
+function buildReportColumns(input: RunReportInput, comparingPeriods: boolean) {
+  const fieldDefs = REPORT_FIELDS_BY_ENTITY[input.entityType];
+  return [
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
     ...(comparingPeriods
       ? [{ header: REPORT_PERIOD_LABEL_HEADER, key: REPORT_PERIOD_LABEL_FIELD_KEY, width: 20 }]
       : []),
@@ -421,15 +652,139 @@ export async function buildCustomReportSheet(
       width: 22,
     })),
   ];
+<<<<<<< HEAD
 
   return { name: "Report", columns, rows };
 }
 
+=======
+}
+
+/**
+ * Runs a saved-or-ad-hoc report definition and shapes the result as an
+ * `XlsxSheet` — shared by, without any `req`/`res` in sight, both the
+ * Scheduled Reports subscription runner (Phase 3, docs/TODO.md) and the
+ * Report Export Jobs background generator (docs/TODO.md's "Report
+ * pagination and bounded exports"). Deliberately uncapped (no `limit`
+ * passed to `runQuery`) — both of those callers exist specifically to
+ * produce a report's full set outside a synchronous request/response cycle,
+ * so there's nothing to bound here.
+ */
+export async function buildCustomReportSheet(
+  user: AccessTokenPayload,
+  input: RunReportInput,
+  reportName?: string,
+): Promise<{ sheets: XlsxSheet[]; rowCount: number }> {
+  const { rows, comparingPeriods, periods } = await runQuery(user, input);
+  const sheet: XlsxSheet = { name: "Report", columns: buildReportColumns(input, comparingPeriods), rows };
+  const provenance = await describeCustomReport(user, input, periods, rows.length, reportName);
+  return { sheets: [sheet, buildProvenanceSheet(provenance)], rowCount: rows.length };
+}
+
+async function describeFilters(institutionId: number, input: RunReportInput): Promise<string[]> {
+  const defs = new Map(REPORT_FILTERS_BY_ENTITY[input.entityType].map((f) => [f.key, f]));
+  const lines: string[] = [];
+  for (const filter of input.filters) {
+    const label = defs.get(filter.field)?.label ?? filter.field;
+    const values = Array.isArray(filter.value) ? filter.value : [filter.value];
+    let shown = values.map(String);
+    if (filter.field === "programId") {
+      const rows = await prisma.program.findMany({ where: { id: { in: values as number[] }, institutionId }, select: { id: true, name: true } });
+      shown = values.map((v) => rows.find((r) => r.id === v)?.name ?? String(v));
+    } else if (filter.field === "campusId") {
+      const rows = await prisma.campus.findMany({ where: { id: { in: values as number[] }, institutionId }, select: { id: true, name: true } });
+      shown = values.map((v) => rows.find((r) => r.id === v)?.name ?? String(v));
+    }
+    lines.push(`${label}: ${shown.join(", ")}`);
+  }
+  return lines;
+}
+
+/**
+ * The "Report Info" sheet for a custom report (docs/TODO.md "Report
+ * provenance"). The current-vs-historical split matters most in
+ * multi-period reports: a field with no reporting-period requirement (a
+ * student's program, campus, enrollment status, contact info) is read from
+ * the live record as of generation time — the same value on every period's
+ * row — while a period-bound field (outcomes, CPL results) is what was
+ * recorded/computed for that specific period. Listing them separately stops
+ * a reader mistaking a current attribute for a historical fact.
+ */
+async function describeCustomReport(
+  user: AccessTokenPayload,
+  input: RunReportInput,
+  periods: ResolvedPeriod[],
+  rowCount: number,
+  reportName?: string,
+): Promise<ProvenanceEntry[]> {
+  const fieldDefs = REPORT_FIELDS_BY_ENTITY[input.entityType];
+  const selected = input.fields.map((key) => fieldDefs.find((d) => d.key === key)).filter((d) => !!d);
+  const current = selected.filter((d) => !d.requiresReportingPeriod).map((d) => d.label);
+  const periodBound = selected.filter((d) => d.requiresReportingPeriod).map((d) => d.label);
+  const filterLines = await describeFilters(user.institutionId, input);
+
+  const entries: ProvenanceEntry[] = [
+    ["Report"],
+    ...(reportName ? ([["Name", reportName]] as ProvenanceEntry[]) : []),
+    ["Entity", input.entityType],
+    ["Generated at", formatTimestamp(new Date())],
+    ["Generated by", await describeGeneratedBy(user.sub)],
+    ["Rows", String(rowCount)],
+    ["Filters", filterLines.length > 0 ? filterLines.join("; ") : "None"],
+    ["Reporting periods"],
+    ...(await describePeriods(periods)),
+    ["Data as of"],
+  ];
+  entries.push([
+    "Current attributes",
+    current.length > 0
+      ? `${current.join(", ")} — read from live records at generation time, not as they were during the period`
+      : "None selected",
+  ]);
+  entries.push([
+    "Period-based values",
+    periodBound.length > 0
+      ? `${periodBound.join(", ")} — as recorded/computed for each row's reporting period`
+      : "None selected",
+  ]);
+  return entries;
+}
+
+/**
+ * The synchronous, in-request export — unlike buildCustomReportSheet above,
+ * this one IS bounded: a report over REPORT_BUILDER_SYNC_EXPORT_THRESHOLD
+ * rows risks tying up a request thread and hitting a client/proxy timeout,
+ * so it's rejected here with a clear message pointing at the queued export
+ * instead. Reuses the same bounded runQuery() call for both the size check
+ * and (when under threshold) the actual export rows, rather than fetching
+ * twice — when totalCount <= the limit passed in, nothing was truncated, so
+ * the returned rows already are the complete matching set.
+ */
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 export async function exportCustomReport(
   req: Request<Record<string, never>, unknown, RunReportInput>,
   res: Response,
 ) {
   const input = req.body;
+<<<<<<< HEAD
   const sheet = await buildCustomReportSheet(req.user!, input);
   await sendXlsx(res, `custom-report-${input.entityType.toLowerCase()}.xlsx`, [sheet]);
+=======
+  const { rows, totalCount, comparingPeriods, periods } = await runQuery(
+    req.user!,
+    input,
+    REPORT_BUILDER_SYNC_EXPORT_THRESHOLD,
+  );
+  if (totalCount > REPORT_BUILDER_SYNC_EXPORT_THRESHOLD) {
+    throw ApiError.badRequest(
+      `This report has ${totalCount} rows, over the ${REPORT_BUILDER_SYNC_EXPORT_THRESHOLD}-row limit for a direct download — queue it as a background export instead.`,
+    );
+  }
+  const sheet: XlsxSheet = { name: "Report", columns: buildReportColumns(input, comparingPeriods), rows };
+  const provenance = await describeCustomReport(req.user!, input, periods, rows.length);
+  await sendXlsx(res, `custom-report-${input.entityType.toLowerCase()}.xlsx`, [
+    sheet,
+    buildProvenanceSheet(provenance),
+  ]);
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 }

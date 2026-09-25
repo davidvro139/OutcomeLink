@@ -10,6 +10,10 @@ import {
   useUpdateLicensureResult,
 } from "../../api/licensure";
 import { usePrograms } from "../../api/programs";
+<<<<<<< HEAD
+=======
+import { usePermissions } from "../../auth/usePermissions";
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
 const RESULT_COLORS: Record<string, string> = {
   PASSED: "green",
@@ -20,6 +24,10 @@ const RESULT_COLORS: Record<string, string> = {
 };
 
 export function LicensureTab({ studentId }: { studentId: number }) {
+<<<<<<< HEAD
+=======
+  const { canWrite } = usePermissions();
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
   const { data: results, isLoading } = useLicensureResults(studentId);
   const { data: programs } = usePrograms();
   const createResult = useCreateLicensureResult(studentId);
@@ -53,7 +61,14 @@ export function LicensureTab({ studentId }: { studentId: number }) {
   async function handleResultChange(id: number, result: string | null) {
     if (!result) return;
     try {
+<<<<<<< HEAD
       await updateResult.mutateAsync({ id, input: { result: result as CreateLicensureResultInput["result"] } });
+=======
+      await updateResult.mutateAsync({
+        id,
+        input: { result: result as CreateLicensureResultInput["result"] },
+      });
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
       notifications.show({ message: "Licensure result updated", color: "green" });
     } catch (err) {
       notifications.show({
@@ -67,9 +82,17 @@ export function LicensureTab({ studentId }: { studentId: number }) {
     <Stack gap="md">
       <Group justify="space-between">
         <Text fw={500}>Licensure attempts</Text>
+<<<<<<< HEAD
         <Button size="xs" variant="light" onClick={toggleForm}>
           {formOpened ? "Cancel" : "Record Attempt"}
         </Button>
+=======
+        {canWrite && (
+          <Button size="xs" variant="light" onClick={toggleForm}>
+            {formOpened ? "Cancel" : "Record Attempt"}
+          </Button>
+        )}
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
       </Group>
 
       {formOpened && (
@@ -145,6 +168,7 @@ export function LicensureTab({ studentId }: { studentId: number }) {
                 {result.examDate ? new Date(result.examDate).toLocaleDateString() : "—"}
               </Table.Td>
               <Table.Td>
+<<<<<<< HEAD
                 <Select
                   size="xs"
                   w={140}
@@ -154,6 +178,26 @@ export function LicensureTab({ studentId }: { studentId: number }) {
                   allowDeselect={false}
                   styles={{ input: { color: `var(--mantine-color-${RESULT_COLORS[result.result]}-4)` } }}
                 />
+=======
+                {!canWrite ? (
+                  <Text size="sm" c={RESULT_COLORS[result.result]}>
+                    {result.result}
+                  </Text>
+                ) : (
+                  <Select
+                    size="xs"
+                    w={140}
+                    aria-label={`Result for ${result.examName}, attempt ${result.attemptNumber}`}
+                    data={LICENSURE_RESULT_STATUSES.map((s) => ({ value: s, label: s }))}
+                    value={result.result}
+                    onChange={(v) => handleResultChange(result.id, v)}
+                    allowDeselect={false}
+                    styles={{
+                      input: { color: `var(--mantine-color-${RESULT_COLORS[result.result]}-4)` },
+                    }}
+                  />
+                )}
+>>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
               </Table.Td>
             </Table.Tr>
           ))}

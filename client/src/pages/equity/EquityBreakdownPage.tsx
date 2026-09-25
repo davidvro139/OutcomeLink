@@ -3,6 +3,17 @@ import { IconDownload } from "@tabler/icons-react";
 import { EQUITY_DIMENSION_LABELS, EQUITY_DIMENSIONS } from "@outcomelink/shared";
 import type { CplMetric, EquityDimension } from "@outcomelink/shared";
 import { useEffect, useMemo, useState } from "react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  ReferenceLine,
+} from "recharts";
 import { downloadEquityBreakdown, useEquityBreakdown, type EquityBreakdownParams } from "../../api/equity";
 import { apiRequest } from "../../lib/apiClient";
 import { notifications } from "@mantine/notifications";
@@ -148,11 +159,54 @@ export function EquityBreakdownPage() {
       {breakdown.trend.length > 0 && (
         <Box>
           <Title order={3}>Trend over periods</Title>
-          <Text size="sm" c="dimmed">One line per group</Text>
-          {/* Placeholder for chart - would use Recharts/Mantine Charts in full implementation */}
-          <Text size="xs" ta="center" c="dimmed" my="lg">
-            [Chart rendering: {breakdown.trend.length} series × {breakdown.trend[0]?.points.length ?? 0} periods]
-          </Text>
+          <Text size="sm" c="dimmed">Success rate by group across reporting periods</Text>
+          <Box style={{ height: 400, marginTop: 16 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={
+                  breakdown.trend[0]?.points.map((_, idx) => ({
+                    period: breakdown.trend[0]?.points[idx]?.label || `Period ${idx + 1}`,
+                    ...(breakdown.trend.map((series) => ({
+                      [series.label]: series.points[idx]?.percentage ?? null,
+                    })).reduce((acc, obj) => ({ ...acc, ...obj }), {})),
+                    benchmark: breakdown.trend[0]?.points[idx]?.benchmark,
+                  })) || []
+                }
+                margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="period" />
+                <YAxis label={{ value: "Success Rate (%)", angle: -90, position: "insideLeft" }} />
+                <Tooltip formatter={(value) => (value !== null ? `${value.toFixed(1)}%` : "N/A")} />
+                <Legend />
+                {breakdown.trend.map((series, idx) => (
+                  <Line
+                    key={series.label}
+                    type="monotone"
+                    dataKey={series.label}
+                    stroke={[
+                      "#1f77b4",
+                      "#ff7f0e",
+                      "#2ca02c",
+                      "#d62728",
+                      "#9467bd",
+                      "#8c564b",
+                    ][idx % 6]}
+                    connectNulls
+                    isAnimationActive={false}
+                  />
+                ))}
+                {breakdown.benchmark && (
+                  <ReferenceLine
+                    y={breakdown.benchmark.value}
+                    stroke="#666"
+                    strokeDasharray="5 5"
+                    label={{ value: `Benchmark: ${breakdown.benchmark.value.toFixed(1)}%`, position: "right" }}
+                  />
+                )}
+              </LineChart>
+            </ResponsiveContainer>
+          </Box>
         </Box>
       )}
 

@@ -196,12 +196,98 @@ export async function buildEquityBreakdown(
     coverage = { totalDenominator, withDataOnFile };
   }
 
+  // Build trend across last 6 periods
+  const trend: EquityBreakdownTrendSeries[] = [];
+  const periods = await prisma.reportingPeriod.findMany({
+    where: { institutionId },
+    orderBy: { endDate: "desc" },
+    take: 6,
+    select: { id: true, label: true, endDate: true },
+  });
+
+  // Get group values to build trend series
+  const groupValues = new Set(groups.map((g) => g.value));
+  for (const groupValue of groupValues) {
+    const points: EquityBreakdownTrendPoint[] = [];
+
+    for (const period of periods.reverse()) {
+      const periodsClassifications = await prisma.studentClassification.findMany({
+        where: {
+          reportingPeriodId: period.id,
+          metric: params.metric,
+          ...(programIds.length > 0 ? { enrollment: { programId: { in: programIds } } } : {}),
+        },
+        include: { explanation: true, enrollment: { select: { startDate: true, studentId: true } } },
+      });
+
+      let numerator = 0;
+      let denominator = 0;
+      const studentIds = new Set<number>();
+
+      for (const c of periodsClassifications) {
+        if (!c.explanation) continue;
+
+        let matches = false;
+        if (params.dimension === "entryYear") {
+          matches = String(c.enrollment.startDate.getUTCFullYear()) === groupValue;
+        } else {
+          studentIds.add(c.enrollment.studentId);
+          matches = true;
+        }
+
+        if (matches) {
+          if (c.explanation.countsInDenominator) denominator += 1;
+          if (c.explanation.countsInNumerator) numerator += 1;
+        }
+      }
+
+      // For demographics, filter by actual demographic values
+      if (params.dimension !== "entryYear" && studentIds.size > 0) {
+        const demographics = await prisma.studentDemographics.findMany({
+          where: { studentId: { in: Array.from(studentIds) } },
+        });
+        const demographicsMap = new Map(demographics.map((d) => [d.studentId, d]));
+
+        numerator = 0;
+        denominator = 0;
+
+        for (const c of periodsClassifications) {
+          if (!c.explanation) continue;
+
+          const demo = demographicsMap.get(c.enrollment.studentId);
+          const fieldValue = demo?.[params.dimension as keyof typeof demo];
+          const matches = fieldValue ? String(fieldValue) === groupValue : groupValue === "NOT_ON_FILE";
+
+          if (matches) {
+            if (c.explanation.countsInDenominator) denominator += 1;
+            if (c.explanation.countsInNumerator) numerator += 1;
+          }
+        }
+      }
+
+      const suppressed = denominator < SUPPRESSION_THRESHOLD;
+      const percentage =
+        !suppressed && denominator > 0 ? Math.round((numerator / denominator) * 100 * 100) / 100 : null;
+
+      points.push({
+        label: period.label,
+        percentage,
+        benchmark: programIds.length === 1 ? 0 : null, // Placeholder for benchmark
+      });
+    }
+
+    trend.push({
+      label: groups.find((g) => g.value === groupValue)?.label || groupValue,
+      points,
+    });
+  }
+
   return {
     metric: params.metric,
     dimension: params.dimension,
     period: latestPeriod ? { ...latestPeriod, endDate: latestPeriod.endDate.toISOString() } : null,
     groups,
-    trend: [],
+    trend,
     coverage,
     benchmark: null,
     scope: { programId: programIds[0], programName },

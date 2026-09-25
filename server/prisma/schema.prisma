@@ -399,6 +399,7 @@ model Student {
   institution             Institution                     @relation(fields: [institutionId], references: [id])
   assignedStaffUser       User?                           @relation("StudentFollowUpAssignment", fields: [assignedStaffUserId], references: [id])
   communicationPreference StudentCommunicationPreference?
+  demographics            StudentDemographics?
   enrollments             StudentEnrollment[]
   employmentRecords       EmploymentRecord[]
   licensureResults        LicensureResult[]
@@ -431,6 +432,20 @@ model StudentCommunicationPreference {
   student Student @relation(fields: [studentId], references: [id])
 
   @@map("student_communication_preferences")
+}
+
+model StudentDemographics {
+  id                       Int     @id @default(autoincrement())
+  studentId                Int     @unique @map("student_id")
+  gender                   String? @map("gender")
+  raceEthnicity            String? @map("race_ethnicity")
+  economicallyDisadvantaged Boolean? @map("economically_disadvantaged")
+  firstGenerationStudent   Boolean? @map("first_generation_student")
+  disabilityStatus         Boolean? @map("disability_status")
+
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@map("student_demographics")
 }
 
 model StudentEnrollment {

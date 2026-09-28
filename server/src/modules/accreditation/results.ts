@@ -71,25 +71,41 @@ export async function exportResults(req: Request, res: Response) {
     orderBy: [{ programId: "asc" }, { metric: "asc" }],
   });
 
-  await sendXlsx(res, `cpl-results-${period.label}.xlsx`, [
-    {
-      name: "CPL Results",
-      columns: [
-        { header: "Program", key: "program", width: 32 },
-        { header: "Metric", key: "metric", width: 14 },
-        { header: "Numerator", key: "numerator", width: 12 },
-        { header: "Denominator", key: "denominator", width: 12 },
-        { header: "Percentage", key: "percentage", width: 12 },
-      ],
-      rows: results.map((r) => ({
-        program: r.program?.name ?? "Institution-wide",
-        metric: r.metric,
-        numerator: r.numerator,
-        denominator: r.denominator,
-        percentage: Number(r.percentage),
-      })),
-    },
-  ]);
+  const resultsSheet = {
+    name: "CPL Results",
+    columns: [
+      { header: "Program", key: "program", width: 32 },
+      { header: "Metric", key: "metric", width: 14 },
+      { header: "Numerator", key: "numerator", width: 12 },
+      { header: "Denominator", key: "denominator", width: 12 },
+      { header: "Percentage", key: "percentage", width: 12 },
+    ],
+    rows: results.map((r) => ({
+      program: r.program?.name ?? "Institution-wide",
+      metric: r.metric,
+      numerator: r.numerator,
+      denominator: r.denominator,
+      percentage: Number(r.percentage),
+    })),
+  };
+
+  const provenanceSheet = {
+    name: "Provenance",
+    columns: [
+      { header: "Item", key: "item", width: 32 },
+      { header: "Details", key: "value", width: 64 },
+    ],
+    rows: [
+      { item: "Report Generated", value: new Date().toISOString() },
+      { item: "Reporting Period", value: period.label },
+      { item: "Period Dates", value: `${period.startDate.toISOString().split('T')[0]} to ${period.endDate.toISOString().split('T')[0]}` },
+      { item: "Data Freshness", value: "Results reflect the most recent CPL calculation run for this reporting period" },
+      { item: "Calculation Method", value: "Outcomes classified per COE institutional effectiveness rules" },
+      { item: "Row Count", value: `${results.length} program-metric combinations` },
+    ],
+  };
+
+  await sendXlsx(res, `cpl-results-${period.label}.xlsx`, [resultsSheet, provenanceSheet]);
 }
 
 export const drillDownQuerySchema = z.object({

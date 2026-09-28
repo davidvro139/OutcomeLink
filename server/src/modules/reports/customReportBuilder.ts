@@ -374,7 +374,7 @@ function pickFields(row: Row, fields: string[], includePeriodLabel: boolean): Ro
 async function runQuery(
   user: AccessTokenPayload,
   input: RunReportInput,
-): Promise<{ rows: Row[]; comparingPeriods: boolean }> {
+): Promise<{ rows: Row[]; comparingPeriods: boolean; periods: ResolvedPeriod[] }> {
   validateDefinition(input);
   const institutionId = user.institutionId;
   const [periods, accessibleProgramIds] = await Promise.all([
@@ -383,7 +383,7 @@ async function runQuery(
   ]);
   const comparingPeriods = periods.length > 1;
   const allRows = await FETCHERS[input.entityType](institutionId, input, periods, accessibleProgramIds);
-  return { rows: allRows.map((row) => pickFields(row, input.fields, comparingPeriods)), comparingPeriods };
+  return { rows: allRows.map((row) => pickFields(row, input.fields, comparingPeriods)), comparingPeriods, periods };
 }
 
 export async function runCustomReport(
@@ -399,16 +399,17 @@ export async function runCustomReport(
 }
 
 /**
- * Runs a saved-or-ad-hoc report definition and shapes the result as an
- * `XlsxSheet` — shared by the HTTP export endpoint below and, without any
- * `req`/`res` in sight, the Scheduled Reports subscription runner (Phase 3,
- * docs/TODO.md), which re-executes a `SavedReport.definition` on a schedule.
+ * Runs a saved-or-ad-hoc report definition and shapes the result as
+ * an `XlsxSheet` array with data and provenance — shared by the HTTP
+ * export endpoint, job exports, and the Scheduled Reports subscription
+ * runner (Phase 3, docs/TODO.md), which re-executes a
+ * `SavedReport.definition` on a schedule.
  */
 export async function buildCustomReportSheet(
   user: AccessTokenPayload,
   input: RunReportInput,
-): Promise<XlsxSheet> {
-  const { rows, comparingPeriods } = await runQuery(user, input);
+): Promise<{ sheets: XlsxSheet[]; rowCount: number }> {
+  const { rows, comparingPeriods, periods } = await runQuery(user, input);
   const fieldDefs = REPORT_FIELDS_BY_ENTITY[input.entityType];
 
   const columns = [
@@ -422,7 +423,70 @@ export async function buildCustomReportSheet(
     })),
   ];
 
-  return { name: "Report", columns, rows };
+  const dataSheet: XlsxSheet = { name: "Report", columns, rows };
+  const provenanceSheet = await buildProvenanceSheet(input, periods, user.institutionId);
+
+  return { sheets: [dataSheet, provenanceSheet], rowCount: rows.length };
+}
+
+async function buildProvenanceSheet(
+  input: RunReportInput,
+  periods: ResolvedPeriod[],
+  institutionId: number,
+): Promise<XlsxSheet> {
+  const filterDefs = new Map(REPORT_FILTERS_BY_ENTITY[input.entityType].map((f) => [f.key, f]));
+
+  const rows: Record<string, string>[] = [
+    { item: "Report Generated", value: new Date().toISOString() },
+    { item: "Entity Type", value: input.entityType },
+    { item: "Institution", value: String(institutionId) },
+  ];
+
+  if (periods.length > 0) {
+    rows.push({
+      item: "Reporting Periods",
+      value: periods.map(p => `${p.label} (${p.startDate.toISOString().split('T')[0]} to ${p.endDate.toISOString().split('T')[0]})`).join("; "),
+    });
+  }
+
+  if (input.fields.length > 0) {
+    const fieldDefs = REPORT_FIELDS_BY_ENTITY[input.entityType];
+    const fieldLabels = input.fields.map(key => {
+      const field = fieldDefs.find(f => f.key === key);
+      return field?.label || key;
+    });
+    rows.push({
+      item: "Selected Fields",
+      value: fieldLabels.join(", "),
+    });
+  }
+
+  if (input.filters.length > 0) {
+    const filterStrings = input.filters.map(filter => {
+      const def = filterDefs.get(filter.field);
+      const label = def?.label || filter.field;
+      const valueStr = Array.isArray(filter.value) ? filter.value.join(", ") : String(filter.value);
+      return `${label}: ${valueStr}`;
+    });
+    rows.push({
+      item: "Applied Filters",
+      value: filterStrings.join("; "),
+    });
+  }
+
+  rows.push(
+    { item: "Data Freshness", value: "Results reflect the most recent validation run for each reporting period" },
+    { item: "Enrollment Attributes", value: "Multi-period reports show enrollment status and program as of the selected period start date" },
+  );
+
+  return {
+    name: "Provenance",
+    columns: [
+      { header: "Item", key: "item", width: 32 },
+      { header: "Details", key: "value", width: 64 },
+    ],
+    rows,
+  };
 }
 
 export async function exportCustomReport(
@@ -430,6 +494,7 @@ export async function exportCustomReport(
   res: Response,
 ) {
   const input = req.body;
-  const sheet = await buildCustomReportSheet(req.user!, input);
-  await sendXlsx(res, `custom-report-${input.entityType.toLowerCase()}.xlsx`, [sheet]);
+  const { sheets } = await buildCustomReportSheet(req.user!, input);
+
+  await sendXlsx(res, `custom-report-${input.entityType.toLowerCase()}.xlsx`, sheets);
 }

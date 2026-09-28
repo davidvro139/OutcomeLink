@@ -91,27 +91,42 @@ export async function exportStudents(req: Request, res: Response) {
     orderBy: { lastName: "asc" },
   });
 
-  await sendXlsx(res, "students.xlsx", [
-    {
-      name: "Students",
-      columns: [
-        { header: "Internal Student ID", key: "internalStudentId", width: 20 },
-        { header: "First Name", key: "firstName", width: 18 },
-        { header: "Last Name", key: "lastName", width: 18 },
-        { header: "Email", key: "email", width: 28 },
-        { header: "Phone", key: "phone", width: 16 },
-        { header: "Do Not Contact", key: "doNotContact", width: 16 },
-      ],
-      rows: students.map((s) => ({
-        internalStudentId: s.internalStudentId,
-        firstName: s.firstName,
-        lastName: s.lastName,
-        email: s.email ?? "",
-        phone: s.phone ?? "",
-        doNotContact: s.communicationPreference?.doNotContact ? "Yes" : "No",
-      })),
-    },
-  ]);
+  const studentsSheet = {
+    name: "Students",
+    columns: [
+      { header: "Internal Student ID", key: "internalStudentId", width: 20 },
+      { header: "First Name", key: "firstName", width: 18 },
+      { header: "Last Name", key: "lastName", width: 18 },
+      { header: "Email", key: "email", width: 28 },
+      { header: "Phone", key: "phone", width: 16 },
+      { header: "Do Not Contact", key: "doNotContact", width: 16 },
+    ],
+    rows: students.map((s) => ({
+      internalStudentId: s.internalStudentId,
+      firstName: s.firstName,
+      lastName: s.lastName,
+      email: s.email ?? "",
+      phone: s.phone ?? "",
+      doNotContact: s.communicationPreference?.doNotContact ? "Yes" : "No",
+    })),
+  };
+
+  const provenanceSheet = {
+    name: "Provenance",
+    columns: [
+      { header: "Item", key: "item", width: 32 },
+      { header: "Details", key: "value", width: 64 },
+    ],
+    rows: [
+      { item: "Report Generated", value: new Date().toISOString() },
+      { item: "Students Exported", value: `${students.length} student${students.length === 1 ? "" : "s"}` },
+      { item: "Search Filter", value: search ? `Name/ID contains: "${search}"` : "No filter applied" },
+      { item: "Data Includes", value: "Internal ID, name, email, phone, communication preferences" },
+      { item: "Data Does Not Include", value: "Outcomes, demographics, or enrollment records (see other exports)" },
+    ],
+  };
+
+  await sendXlsx(res, "students.xlsx", [studentsSheet, provenanceSheet]);
 }
 
 export async function show(req: Request, res: Response) {

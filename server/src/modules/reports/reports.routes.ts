@@ -7,6 +7,7 @@ import { exportCustomReport, runCustomReport, runReportSchema } from "./customRe
 import * as reports from "./reports";
 import { geographicPlacements } from "./geographicPlacements";
 import * as savedReports from "./savedReports";
+import * as reportExportJobs from "./reportExportJobs";
 
 export const reportsRouter = Router();
 
@@ -28,6 +29,22 @@ reportsRouter.post(
   requireAuth,
   validate(runReportSchema),
   asyncHandler(exportCustomReport),
+);
+reportsRouter.post(
+  "/custom/export/queue",
+  requireAuth,
+  validate(runReportSchema),
+  asyncHandler(reportExportJobs.queueExport),
+);
+reportsRouter.get(
+  "/custom/exports",
+  requireAuth,
+  asyncHandler(reportExportJobs.list),
+);
+reportsRouter.get(
+  "/custom/exports/:id/download",
+  requireAuth,
+  asyncHandler(reportExportJobs.downloadJob),
 );
 reportsRouter.get("/custom/saved", requireAuth, asyncHandler(savedReports.list));
 reportsRouter.post(

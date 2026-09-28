@@ -164,29 +164,49 @@ export async function exportIssues(req: Request, res: Response) {
     orderBy: [{ severity: "asc" }, { id: "asc" }],
   });
 
-  await sendXlsx(res, `validation-issues-${period.label}.xlsx`, [
-    {
-      name: "Validation Issues",
-      columns: [
-        { header: "Issue Type", key: "issueType", width: 34 },
-        { header: "Severity", key: "severity", width: 14 },
-        { header: "Student", key: "student", width: 26 },
-        { header: "Program", key: "program", width: 26 },
-        { header: "Detected At", key: "detectedAt", width: 20 },
-        { header: "Resolved At", key: "resolvedAt", width: 20 },
-        { header: "Resolved By", key: "resolvedBy", width: 20 },
-      ],
-      rows: issues.map((i) => ({
-        issueType: i.issueType,
-        severity: i.severity,
-        student: i.student ? `${i.student.firstName} ${i.student.lastName}` : "",
-        program: i.program?.name ?? "",
-        detectedAt: i.detectedAt.toISOString(),
-        resolvedAt: i.resolvedAt ? i.resolvedAt.toISOString() : "",
-        resolvedBy: i.resolvedBy ?? "",
-      })),
-    },
-  ]);
+  const issuesSheet = {
+    name: "Validation Issues",
+    columns: [
+      { header: "Issue Type", key: "issueType", width: 34 },
+      { header: "Severity", key: "severity", width: 14 },
+      { header: "Student", key: "student", width: 26 },
+      { header: "Program", key: "program", width: 26 },
+      { header: "Detected At", key: "detectedAt", width: 20 },
+      { header: "Resolved At", key: "resolvedAt", width: 20 },
+      { header: "Resolved By", key: "resolvedBy", width: 20 },
+    ],
+    rows: issues.map((i) => ({
+      issueType: i.issueType,
+      severity: i.severity,
+      student: i.student ? `${i.student.firstName} ${i.student.lastName}` : "",
+      program: i.program?.name ?? "",
+      detectedAt: i.detectedAt.toISOString(),
+      resolvedAt: i.resolvedAt ? i.resolvedAt.toISOString() : "",
+      resolvedBy: i.resolvedBy ?? "",
+    })),
+  };
+
+  const severityFilter = severity ? `Severity: ${severity}` : "All severity levels";
+  const resolvedFilter = includeResolved ? "Including resolved issues" : "Open issues only";
+
+  const provenanceSheet = {
+    name: "Provenance",
+    columns: [
+      { header: "Item", key: "item", width: 32 },
+      { header: "Details", key: "value", width: 64 },
+    ],
+    rows: [
+      { item: "Report Generated", value: new Date().toISOString() },
+      { item: "Reporting Period", value: period.label },
+      { item: "Period Dates", value: `${period.startDate.toISOString().split('T')[0]} to ${period.endDate.toISOString().split('T')[0]}` },
+      { item: "Issues Found", value: `${issues.length} validation issue${issues.length === 1 ? "" : "s"}` },
+      { item: "Severity Filter", value: severityFilter },
+      { item: "Status Filter", value: resolvedFilter },
+      { item: "Issue Detection", value: "Validation checks run on enrollment data and demographic information" },
+    ],
+  };
+
+  await sendXlsx(res, `validation-issues-${period.label}.xlsx`, [issuesSheet, provenanceSheet]);
 }
 
 export async function resolveIssue(req: Request, res: Response) {

@@ -18,10 +18,6 @@ import { equityRouter } from "./modules/equity";
 import { evidenceRouter } from "./modules/evidence";
 import { followupsRouter } from "./modules/followups";
 import { importsRouter } from "./modules/imports";
-<<<<<<< HEAD
-=======
-import { jobRunsRouter } from "./modules/jobRuns";
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 import { licensureRouter } from "./modules/licensure";
 import { notificationsRouter } from "./modules/notifications";
 import { outcomesRouter } from "./modules/outcomes";
@@ -30,11 +26,6 @@ import { programDashboardRouter } from "./modules/programDashboard";
 import { programsRouter } from "./modules/programs";
 import { reportsRouter } from "./modules/reports";
 import { scheduledReportsRouter } from "./modules/scheduledReports";
-<<<<<<< HEAD
-=======
-import { settingsRouter } from "./modules/settings";
-import { systemRouter } from "./modules/system";
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 import { searchRouter } from "./modules/search";
 import { studentsRouter } from "./modules/students";
 import { publicSurveysRouter, surveysRouter } from "./modules/surveys";
@@ -94,14 +85,6 @@ export function createApp() {
   app.use("/api/imports", importsRouter);
   app.use("/api/notifications", notificationsRouter);
   app.use("/api/scheduled-reports", scheduledReportsRouter);
-<<<<<<< HEAD
-=======
-  app.use("/api/job-runs", jobRunsRouter);
-  app.use("/api/email-deliveries", emailDeliveriesRouter);
-  app.use("/api/settings", settingsRouter);
-  app.use("/api/dashboard", programDashboardRouter);
-  app.use("/api/system", systemRouter);
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
   // Further domain routers are mounted here as each module lands.
 
   app.use(notFoundHandler);

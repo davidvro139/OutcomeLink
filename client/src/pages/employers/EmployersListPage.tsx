@@ -4,10 +4,7 @@ import {
   Group,
   Loader,
   Modal,
-<<<<<<< HEAD
   Pagination,
-=======
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
   Stack,
   Table,
   Text,
@@ -60,11 +57,7 @@ export function EmployersListPage() {
           <Button variant="light" component={Link} to="/employers/analytics">
             View Analytics
           </Button>
-<<<<<<< HEAD
           <Button onClick={open}>New Employer</Button>
-=======
-          {canManageEmployers && <Button onClick={open}>New Employer</Button>}
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
         </Group>
       </Group>
 
@@ -109,11 +102,7 @@ export function EmployersListPage() {
           </Table>
           {data.pagination.totalPages > 1 && (
             <Group justify="center">
-<<<<<<< HEAD
               <Pagination total={data.pagination.totalPages} value={page} onChange={setPage} />
-=======
-              <Pager total={data.pagination.totalPages} value={page} onChange={setPage} />
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
             </Group>
           )}
         </>

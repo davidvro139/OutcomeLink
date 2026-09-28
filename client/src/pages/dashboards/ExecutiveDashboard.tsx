@@ -1,5 +1,4 @@
 import { CPL_METRICS } from "@outcomelink/shared";
-<<<<<<< HEAD
 import {
   Badge,
   Group,
@@ -10,9 +9,6 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-=======
-import { Badge, Group, Loader, Paper, SimpleGrid, Stack, Text, Title } from "@mantine/core";
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 import { IconArrowDown, IconArrowUp, IconMinus } from "@tabler/icons-react";
 import { useMemo } from "react";
 import { useReadiness, useReportingPeriods, useTrends } from "../../api/accreditation";
@@ -81,14 +77,7 @@ export function ExecutiveDashboard() {
               (acc, r) => {
                 const m = r.metrics[metric];
                 if (!m) return acc;
-<<<<<<< HEAD
                 return { numerator: acc.numerator + m.numerator, denominator: acc.denominator + m.denominator };
-=======
-                return {
-                  numerator: acc.numerator + m.numerator,
-                  denominator: acc.denominator + m.denominator,
-                };
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
               },
               { numerator: 0, denominator: 0 },
             );
@@ -130,13 +119,7 @@ export function ExecutiveDashboard() {
             Programs Ready
           </Text>
           <Title order={3}>
-<<<<<<< HEAD
             {readiness ? `${readiness.summary.readyPrograms} / ${readiness.summary.totalPrograms}` : "—"}
-=======
-            {readiness
-              ? `${readiness.summary.readyPrograms} / ${readiness.summary.totalPrograms}`
-              : "—"}
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
           </Title>
         </Paper>
         <Paper withBorder p="md" radius="md">
@@ -161,11 +144,7 @@ export function ExecutiveDashboard() {
           <Text size="xs" c="dimmed" tt="uppercase">
             Licensure Queue
           </Text>
-<<<<<<< HEAD
           <Title order={3}>{licensureQueue?.length ?? "—"}</Title>
-=======
-          <Title order={3}>{licensureQueue?.pagination.totalItems ?? "—"}</Title>
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
         </Paper>
       </SimpleGrid>
     </Stack>

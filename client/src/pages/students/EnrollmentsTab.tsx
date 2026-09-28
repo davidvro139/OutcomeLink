@@ -290,7 +290,6 @@ function EnrollmentDetail({
 
   return (
     <Stack gap="md">
-<<<<<<< HEAD
       <Group align="flex-end">
         <Select
           label="Update status"
@@ -316,66 +315,17 @@ function EnrollmentDetail({
           />
         )}
       </Group>
-=======
-      {canManageStudents && (
-        <Group align="flex-end">
-          <Select
-            label="Update status"
-            data={ENROLLMENT_STATUSES.map((s) => ({
-              value: s,
-              label: ENROLLMENT_STATUS_LABELS[s],
-            }))}
-            defaultValue={enrollmentStatus}
-            onChange={handleStatusChange}
-            w={260}
-          />
-          {currentStatus === "WITHDRAWN" && (
-            <Select
-              label="Allowable subtraction reason (if any)"
-              description="Excludes this withdrawal from the completion rate entirely, rather than counting it against the institution"
-              placeholder="None — counts as an ordinary withdrawal"
-              data={ALLOWABLE_SUBTRACTION_REASONS.map((r) => ({
-                value: r,
-                label: ALLOWABLE_SUBTRACTION_REASON_LABELS[r],
-              }))}
-              defaultValue={allowableSubtractionReason}
-              onChange={handleAllowableSubtractionReasonChange}
-              clearable
-              allowDeselect={false}
-              w={360}
-            />
-          )}
-        </Group>
-      )}
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
       <Group>
         <Text size="sm" c="dimmed">
           Objective: {enrollmentObjective ?? "not specified"}
         </Text>
-<<<<<<< HEAD
         <Checkbox
           label="Reportable for accreditation"
           description="Uncheck for enrollments out of scope for CPL reporting"
           checked={reportableForAccreditation}
           onChange={(e) => handleReportableChange(e.currentTarget.checked)}
         />
-=======
-        {canManageStudents ? (
-          <Checkbox
-            label="Reportable for accreditation"
-            description="Uncheck for enrollments out of scope for CPL reporting"
-            checked={reportableForAccreditation}
-            onChange={(e) => handleReportableChange(e.currentTarget.checked)}
-          />
-        ) : (
-          <Text size="sm" c="dimmed">
-            {reportableForAccreditation
-              ? "Reportable for accreditation"
-              : "Not reportable for accreditation"}
-          </Text>
-        )}
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
       </Group>
 
       <Group justify="space-between">

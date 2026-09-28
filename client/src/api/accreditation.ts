@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-=======
-import type { CloseoutBlocker, CloseoutStep } from "@outcomelink/shared";
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 import type {
   CplMetric,
   ImprovementPlanStatus,
@@ -182,20 +178,10 @@ export function useSetOutcomesDeadline(id: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (outcomesDeadline: string | null) =>
-<<<<<<< HEAD
       apiRequest<{ reportingPeriod: ReportingPeriod }>(`/api/accreditation/reporting-periods/${id}`, {
         method: "PATCH",
         body: JSON.stringify({ outcomesDeadline }),
       }),
-=======
-      apiRequest<{ reportingPeriod: ReportingPeriod }>(
-        `/api/accreditation/reporting-periods/${id}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({ outcomesDeadline }),
-        },
-      ),
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accreditation", "reporting-periods", id] });
       queryClient.invalidateQueries({ queryKey: ["accreditation", "readiness", id] });
@@ -365,13 +351,7 @@ export interface TrendPoint {
     endDate: string;
     status: ReportingPeriodStatus;
   };
-<<<<<<< HEAD
   metrics: Partial<Record<CplMetric, { numerator: number; denominator: number; percentage: number }>>;
-=======
-  metrics: Partial<
-    Record<CplMetric, { numerator: number; denominator: number; percentage: number }>
-  >;
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 }
 
 export function useTrends(programId: number | undefined) {

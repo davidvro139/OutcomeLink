@@ -1,10 +1,6 @@
 import { Group, Loader, Paper, SimpleGrid, Stack, Tabs, Text, Title } from "@mantine/core";
 import {
   IconChecklist,
-<<<<<<< HEAD
-=======
-  IconTargetArrow,
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
   IconFileSpreadsheet,
   IconReportAnalytics,
   type Icon,
@@ -71,20 +67,6 @@ export function DashboardPage() {
     <Stack p="xl" gap="md">
       <Title order={2}>Welcome, {user?.name}</Title>
 
-<<<<<<< HEAD
-=======
-      {user?.role === "PROGRAM_ADMINISTRATOR" && (
-        <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
-          <QuickLinkCard
-            to="/my-programs"
-            label="My Programs"
-            description="Status against benchmarks, and what to do next"
-            icon={IconTargetArrow}
-          />
-        </SimpleGrid>
-      )}
-
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
       {isLoading && <Loader />}
 
       {!isLoading && !currentPeriod && (
@@ -106,11 +88,7 @@ export function DashboardPage() {
             icon={IconReportAnalytics}
           />
           <QuickLinkCard
-<<<<<<< HEAD
             to={`/accreditation/reporting-periods/${currentPeriod.id}`}
-=======
-            to={`/accreditation/reporting-periods/${currentPeriod.id}?tab=dashboard`}
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
             label="CPL Results Export"
             description="CPL Dashboard tab → Export to Excel"
             icon={IconFileSpreadsheet}

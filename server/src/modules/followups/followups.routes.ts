@@ -9,11 +9,7 @@ import * as automation from "./automationScheduler";
 import * as attempts from "./followUpAttempts";
 import * as queueModule from "./queue";
 
-<<<<<<< HEAD
 const CAN_MANAGE_AUTOMATION = ["SYSTEM_ADMINISTRATOR", "INSTITUTIONAL_ADMINISTRATOR"] as const;
-=======
-const CAN_MANAGE_AUTOMATION = ADMIN_ROLES;
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
 export const followupsRouter = Router();
 

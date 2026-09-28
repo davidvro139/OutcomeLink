@@ -1,18 +1,4 @@
-<<<<<<< HEAD
 import { Button, Checkbox, Group, Modal, Select, Stack, Table, Text, TextInput } from "@mantine/core";
-=======
-import {
-  Button,
-  Checkbox,
-  Group,
-  Modal,
-  Select,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-} from "@mantine/core";
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -130,17 +116,9 @@ export function EmploymentTab({ studentId }: { studentId: number }) {
                 searchable
                 style={{ flex: 1 }}
               />
-<<<<<<< HEAD
               <Button variant="light" size="sm" onClick={openEmployerModal}>
                 New employer
               </Button>
-=======
-              {canManageEmployers && (
-                <Button variant="light" size="sm" onClick={openEmployerModal}>
-                  New employer
-                </Button>
-              )}
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
             </Group>
             <TextInput label="Job title" required {...form.getInputProps("jobTitle")} />
             <input type="date" {...form.getInputProps("startDate")} style={{ padding: 8 }} />

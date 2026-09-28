@@ -5,10 +5,7 @@ import { useStudent, useUpsertCommunicationPreference } from "../../api/students
 import { usePermissions } from "../../auth/usePermissions";
 import { AuditHistory } from "../../components/AuditHistory";
 import { CommunicationTimelineTab } from "./CommunicationTimelineTab";
-<<<<<<< HEAD
 import { DemographicsTab } from "./DemographicsTab";
-=======
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 import { EmploymentTab } from "./EmploymentTab";
 import { EnrollmentsTab } from "./EnrollmentsTab";
 import { FollowUpsTab } from "./FollowUpsTab";
@@ -79,10 +76,7 @@ export function StudentDetailPage() {
           <Tabs.Tab value="followups">Follow-ups</Tabs.Tab>
           <Tabs.Tab value="surveys">Surveys</Tabs.Tab>
           <Tabs.Tab value="timeline">Timeline</Tabs.Tab>
-<<<<<<< HEAD
           <Tabs.Tab value="demographics">Demographics</Tabs.Tab>
-=======
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
           <Tabs.Tab value="audit">Audit History</Tabs.Tab>
         </Tabs.List>
 
@@ -104,12 +98,9 @@ export function StudentDetailPage() {
         <Tabs.Panel value="timeline" pt="md">
           <CommunicationTimelineTab studentId={studentId} />
         </Tabs.Panel>
-<<<<<<< HEAD
         <Tabs.Panel value="demographics" pt="md">
           <DemographicsTab studentId={studentId} />
         </Tabs.Panel>
-=======
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
         <Tabs.Panel value="audit" pt="md">
           <AuditHistory entityType="Student" entityId={studentId} />
         </Tabs.Panel>

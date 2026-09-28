@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-=======
-import { usePermissions } from "../../auth/usePermissions";
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 import {
   IMPORT_ENROLLMENT_TARGET_FIELDS,
   IMPORT_REQUIRED_ENROLLMENT_TARGET_FIELDS,
@@ -11,23 +7,7 @@ import {
   type ImportColumnMapping,
   type ImportTargetField,
 } from "@outcomelink/shared";
-<<<<<<< HEAD
 import { Alert, Badge, Button, Checkbox, Group, Loader, Pagination, Select, Stack, Table, Text, Title } from "@mantine/core";
-=======
-import {
-  Alert,
-  Badge,
-  Button,
-  Checkbox,
-  Group,
-  Loader,
-  Select,
-  Stack,
-  Table,
-  Text,
-  Title,
-} from "@mantine/core";
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
@@ -39,10 +19,6 @@ import {
   useSetImportMapping,
   useValidateImportBatch,
 } from "../../api/imports";
-<<<<<<< HEAD
-=======
-import { Pager } from "../../components/Pager";
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
 const STATUS_COLORS: Record<string, string> = {
   UPLOADED: "gray",
@@ -114,14 +90,7 @@ function MappingStep({
     IMPORT_REQUIRED_TARGET_FIELDS.every((f) => byTarget[f]) &&
     (!mapsAnyEnrollmentField || IMPORT_REQUIRED_ENROLLMENT_TARGET_FIELDS.every((f) => byTarget[f]));
 
-<<<<<<< HEAD
   function fieldTable(fields: readonly ImportTargetField[], requiredFields: readonly ImportTargetField[]) {
-=======
-  function fieldTable(
-    fields: readonly ImportTargetField[],
-    requiredFields: readonly ImportTargetField[],
-  ) {
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
     return (
       <Table withTableBorder>
         <Table.Thead>
@@ -181,14 +150,7 @@ function MappingStep({
         import will also create one enrollment per row (for both new and already-existing students).
         Enrollment Status accepts either spelling (e.g. "Active" or "ACTIVE").
       </Text>
-<<<<<<< HEAD
       {fieldTable(IMPORT_ENROLLMENT_TARGET_FIELDS, mapsAnyEnrollmentField ? IMPORT_REQUIRED_ENROLLMENT_TARGET_FIELDS : [])}
-=======
-      {fieldTable(
-        IMPORT_ENROLLMENT_TARGET_FIELDS,
-        mapsAnyEnrollmentField ? IMPORT_REQUIRED_ENROLLMENT_TARGET_FIELDS : [],
-      )}
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
       <Checkbox
         label={`Save this mapping for future "${sourceSystem}" imports`}
@@ -202,17 +164,7 @@ function MappingStep({
   );
 }
 
-<<<<<<< HEAD
 function PreviewSection({ batchId, mappedFields }: { batchId: number; mappedFields: ImportTargetField[] }) {
-=======
-function PreviewSection({
-  batchId,
-  mappedFields,
-}: {
-  batchId: number;
-  mappedFields: ImportTargetField[];
-}) {
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
   const [page, setPage] = useState(1);
   const { data, isLoading } = useImportPreview(batchId, page);
 
@@ -245,11 +197,7 @@ function PreviewSection({
         </Table>
       </Table.ScrollContainer>
       {Math.ceil(data.totalValidRows / data.pageSize) > 1 && (
-<<<<<<< HEAD
         <Pagination
-=======
-        <Pager
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
           total={Math.ceil(data.totalValidRows / data.pageSize)}
           value={page}
           onChange={setPage}
@@ -265,10 +213,6 @@ export function ImportBatchPage() {
   const { data, isLoading } = useImportBatch(batchId);
   const validateBatch = useValidateImportBatch(batchId);
   const commitBatch = useCommitImportBatch(batchId);
-<<<<<<< HEAD
-=======
-  const { canManageStudents } = usePermissions();
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
   async function handleValidate() {
     try {
@@ -321,11 +265,7 @@ export function ImportBatchPage() {
         </Badge>
       </Group>
 
-<<<<<<< HEAD
       {(batch.status === "UPLOADED" || batch.status === "MAPPED") && (
-=======
-      {canManageStudents && (batch.status === "UPLOADED" || batch.status === "MAPPED") && (
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
         <MappingStep
           batchId={batch.id}
           sourceColumns={sourceColumns}
@@ -334,11 +274,7 @@ export function ImportBatchPage() {
         />
       )}
 
-<<<<<<< HEAD
       {batch.status === "MAPPED" && (
-=======
-      {canManageStudents && batch.status === "MAPPED" && (
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
         <Button onClick={handleValidate} loading={validateBatch.isPending}>
           Run Validation
         </Button>
@@ -346,7 +282,6 @@ export function ImportBatchPage() {
 
       {(batch.status === "VALIDATED" || batch.status === "PREVIEWED") && (
         <Stack gap="md">
-<<<<<<< HEAD
           <Group>
             <Button variant="light" onClick={handleValidate} loading={validateBatch.isPending}>
               Re-run Validation
@@ -355,18 +290,6 @@ export function ImportBatchPage() {
               Commit Import
             </Button>
           </Group>
-=======
-          {canManageStudents && (
-            <Group>
-              <Button variant="light" onClick={handleValidate} loading={validateBatch.isPending}>
-                Re-run Validation
-              </Button>
-              <Button onClick={handleCommit} loading={commitBatch.isPending} color="teal">
-                Commit Import
-              </Button>
-            </Group>
-          )}
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
           {rowErrors.length > 0 && (
             <Stack gap="sm">
@@ -402,13 +325,7 @@ export function ImportBatchPage() {
 
           <PreviewSection
             batchId={batch.id}
-<<<<<<< HEAD
             mappedFields={Object.values(batch.columnMapping ?? {}).filter((f): f is ImportTargetField => !!f)}
-=======
-            mappedFields={Object.values(batch.columnMapping ?? {}).filter(
-              (f): f is ImportTargetField => !!f,
-            )}
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
           />
         </Stack>
       )}
@@ -419,12 +336,7 @@ export function ImportBatchPage() {
           {batch.importedEnrollmentCount !== null && (
             <>
               {" "}
-<<<<<<< HEAD
               {batch.importedEnrollmentCount} enrollment{batch.importedEnrollmentCount === 1 ? "" : "s"} created.
-=======
-              {batch.importedEnrollmentCount} enrollment
-              {batch.importedEnrollmentCount === 1 ? "" : "s"} created.
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
             </>
           )}
         </Alert>

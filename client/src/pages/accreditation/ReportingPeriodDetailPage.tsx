@@ -23,10 +23,6 @@ import {
 } from "../../api/accreditation";
 import { AuditHistory } from "../../components/AuditHistory";
 import { CplDashboardTab } from "./CplDashboardTab";
-<<<<<<< HEAD
-=======
-import { CloseoutTab } from "./CloseoutTab";
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 import { ImprovementPlansTab } from "./ImprovementPlansTab";
 import { ReadinessTab } from "./ReadinessTab";
 import { ReportsTab } from "./ReportsTab";
@@ -42,19 +38,7 @@ const STATUS_COLORS: Record<string, string> = {
   REOPENED: "orange",
 };
 
-<<<<<<< HEAD
 const TAB_VALUES = ["dashboard", "readiness", "validation", "improvement-plans", "reports", "audit"];
-=======
-const TAB_VALUES = [
-  "closeout",
-  "dashboard",
-  "readiness",
-  "validation",
-  "improvement-plans",
-  "reports",
-  "audit",
-];
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
 export function ReportingPeriodDetailPage() {
   const { canAdminister } = usePermissions();
@@ -62,11 +46,7 @@ export function ReportingPeriodDetailPage() {
   const periodId = Number(id);
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get("tab");
-<<<<<<< HEAD
   const activeTab = requestedTab && TAB_VALUES.includes(requestedTab) ? requestedTab : "dashboard";
-=======
-  const activeTab = requestedTab && TAB_VALUES.includes(requestedTab) ? requestedTab : "closeout";
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
   const { data: period, isLoading } = useReportingPeriod(periodId);
   const compute = useComputeReportingPeriod(periodId);
   const validate = useValidateReportingPeriod(periodId);
@@ -187,11 +167,7 @@ export function ReportingPeriodDetailPage() {
       <Tabs
         value={activeTab}
         onChange={(value) =>
-<<<<<<< HEAD
           setSearchParams(value && value !== "dashboard" ? { tab: value } : {}, { replace: true })
-=======
-          setSearchParams(value && value !== "closeout" ? { tab: value } : {}, { replace: true })
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
         }
       >
         <Tabs.List>

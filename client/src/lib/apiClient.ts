@@ -130,11 +130,7 @@ export async function apiRequestPaginated<T>(
  * Builder's arbitrary field/filter selection) rather than a plain GET.
  */
 export async function apiRequestBlob(path: string, init?: RequestInit): Promise<Blob> {
-<<<<<<< HEAD
   const response = await fetch(`${API_BASE_URL}${path}`, {
-=======
-  const response = await authedFetch(path, () => ({
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
     credentials: "include",
     headers: {
       ...(init?.body ? { "Content-Type": "application/json" } : {}),
@@ -142,11 +138,7 @@ export async function apiRequestBlob(path: string, init?: RequestInit): Promise<
       ...init?.headers,
     },
     ...init,
-<<<<<<< HEAD
   });
-=======
-  }));
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
   if (!response.ok) {
     throw new ApiRequestError(response.status, response.statusText);

@@ -19,10 +19,6 @@ import { type CreateContactInput, useCreateContact, useEmployer } from "../../ap
 import { AuditHistory } from "../../components/AuditHistory";
 import { stripEmptyStrings } from "../../lib/forms";
 import { EmployerLocationPanel } from "./EmployerLocationPanel";
-<<<<<<< HEAD
-=======
-import { usePermissions } from "../../auth/usePermissions";
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
 export function EmployerDetailPage() {
   const { canManageEmployers } = usePermissions();
@@ -98,14 +94,7 @@ export function EmployerDetailPage() {
         </Table.Tbody>
       </Table>
 
-<<<<<<< HEAD
       <EmployerLocationPanel key={`${employer.id}:${employer.city}:${employer.state}`} employer={employer} />
-=======
-      <EmployerLocationPanel
-        key={`${employer.id}:${employer.city}:${employer.state}`}
-        employer={employer}
-      />
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
       <AuditHistory entityType="Employer" entityId={employerId} />
 
       <Modal opened={opened} onClose={close} title="Add Contact">

@@ -4,10 +4,7 @@ import {
   Group,
   Loader,
   Modal,
-<<<<<<< HEAD
   Pagination,
-=======
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
   Stack,
   Table,
   Text,
@@ -82,11 +79,7 @@ export function StudentsListPage() {
           <Button variant="light" onClick={handleExport} loading={exporting}>
             Export to Excel
           </Button>
-<<<<<<< HEAD
           <Button onClick={open}>New Student</Button>
-=======
-          {canManageStudents && <Button onClick={open}>New Student</Button>}
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
         </Group>
       </Group>
 
@@ -128,11 +121,7 @@ export function StudentsListPage() {
           </Table>
           {data.pagination.totalPages > 1 && (
             <Group justify="center">
-<<<<<<< HEAD
               <Pagination total={data.pagination.totalPages} value={page} onChange={setPage} />
-=======
-              <Pager total={data.pagination.totalPages} value={page} onChange={setPage} />
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
             </Group>
           )}
         </>

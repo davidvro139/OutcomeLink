@@ -1,12 +1,4 @@
-<<<<<<< HEAD
 import { CPL_METRICS, IMPROVEMENT_PLAN_STATUSES, type ImprovementPlanStatus } from "@outcomelink/shared";
-=======
-import {
-  CPL_METRICS,
-  IMPROVEMENT_PLAN_STATUSES,
-  type ImprovementPlanStatus,
-} from "@outcomelink/shared";
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 import {
   Accordion,
   Badge,
@@ -33,10 +25,6 @@ import {
 } from "../../api/accreditation";
 import { usePrograms } from "../../api/programs";
 import { useUsers } from "../../api/users";
-<<<<<<< HEAD
-=======
-import { usePermissions } from "../../auth/usePermissions";
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: "gray",
@@ -65,10 +53,6 @@ interface NewPlanFormValues {
 }
 
 export function ImprovementPlansTab({ reportingPeriodId }: { reportingPeriodId: number }) {
-<<<<<<< HEAD
-=======
-  const { canWrite } = usePermissions();
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
   const { data: plans, isLoading } = useImprovementPlans({ reportingPeriodId });
   const { data: programs } = usePrograms();
   const { data: users } = useUsers();
@@ -116,17 +100,9 @@ export function ImprovementPlansTab({ reportingPeriodId }: { reportingPeriodId: 
     <Stack gap="md">
       <Group justify="space-between">
         <Text fw={500}>Improvement Plans</Text>
-<<<<<<< HEAD
         <Button size="xs" variant="light" onClick={openForm}>
           New Plan
         </Button>
-=======
-        {canWrite && (
-          <Button size="xs" variant="light" onClick={openForm}>
-            New Plan
-          </Button>
-        )}
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
       </Group>
 
       {isLoading && <Loader />}
@@ -180,16 +156,7 @@ export function ImprovementPlansTab({ reportingPeriodId }: { reportingPeriodId: 
               allowDeselect={false}
             />
             <Group grow>
-<<<<<<< HEAD
               <NumberInput label="Current result (%)" min={0} max={100} {...form.getInputProps("currentResult")} />
-=======
-              <NumberInput
-                label="Current result (%)"
-                min={0}
-                max={100}
-                {...form.getInputProps("currentResult")}
-              />
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
               <NumberInput label="Target (%)" min={0} max={100} {...form.getInputProps("target")} />
             </Group>
             <Textarea
@@ -198,16 +165,7 @@ export function ImprovementPlansTab({ reportingPeriodId }: { reportingPeriodId: 
               minRows={2}
               {...form.getInputProps("problemDescription")}
             />
-<<<<<<< HEAD
             <Textarea label="Root cause" autosize minRows={2} {...form.getInputProps("rootCause")} />
-=======
-            <Textarea
-              label="Root cause"
-              autosize
-              minRows={2}
-              {...form.getInputProps("rootCause")}
-            />
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
             <Select
               label="Responsible person"
               required
@@ -219,15 +177,7 @@ export function ImprovementPlansTab({ reportingPeriodId }: { reportingPeriodId: 
               <Text size="sm" fw={500} mb={4}>
                 Due date
               </Text>
-<<<<<<< HEAD
               <input type="date" {...form.getInputProps("dueDate")} style={{ padding: 8, width: "100%" }} />
-=======
-              <input
-                type="date"
-                {...form.getInputProps("dueDate")}
-                style={{ padding: 8, width: "100%" }}
-              />
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
             </div>
             <Button type="submit" loading={createPlan.isPending}>
               Create Plan
@@ -240,10 +190,6 @@ export function ImprovementPlansTab({ reportingPeriodId }: { reportingPeriodId: 
 }
 
 function PlanDetail({ planId }: { planId: number }) {
-<<<<<<< HEAD
-=======
-  const { canWrite } = usePermissions();
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
   const { data: plan } = useImprovementPlan(planId);
   const updatePlan = useUpdateImprovementPlan(planId);
   const addUpdate = useAddImprovementPlanUpdate(planId);
@@ -286,7 +232,6 @@ function PlanDetail({ planId }: { planId: number }) {
   return (
     <Stack gap="sm">
       <Group>
-<<<<<<< HEAD
         <Select
           label="Status"
           w={200}
@@ -295,20 +240,6 @@ function PlanDetail({ planId }: { planId: number }) {
           onChange={handleStatusChange}
           allowDeselect={false}
         />
-=======
-        {canWrite ? (
-          <Select
-            label="Status"
-            w={200}
-            data={IMPROVEMENT_PLAN_STATUSES.map((s) => ({ value: s, label: s }))}
-            defaultValue={plan.status}
-            onChange={handleStatusChange}
-            allowDeselect={false}
-          />
-        ) : (
-          <Text size="sm">Status: {plan.status}</Text>
-        )}
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
       </Group>
 
       {plan.problemDescription && (
@@ -332,33 +263,15 @@ function PlanDetail({ planId }: { planId: number }) {
         <Text size="sm" fw={500}>
           Progress Updates
         </Text>
-<<<<<<< HEAD
         <Button size="xs" variant="subtle" onClick={toggleUpdateForm}>
           {updateFormOpened ? "Cancel" : "Add Update"}
         </Button>
-=======
-        {canWrite && (
-          <Button size="xs" variant="subtle" onClick={toggleUpdateForm}>
-            {updateFormOpened ? "Cancel" : "Add Update"}
-          </Button>
-        )}
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
       </Group>
 
       {updateFormOpened && (
         <form onSubmit={updateForm.onSubmit(handleAddUpdate)}>
           <Stack gap="xs" p="sm" bg="var(--mantine-color-default)" style={{ borderRadius: 8 }}>
-<<<<<<< HEAD
             <Textarea label="Update" required autosize minRows={2} {...updateForm.getInputProps("updateText")} />
-=======
-            <Textarea
-              label="Update"
-              required
-              autosize
-              minRows={2}
-              {...updateForm.getInputProps("updateText")}
-            />
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
             <Textarea
               label="Corrective action"
               autosize
@@ -373,17 +286,7 @@ function PlanDetail({ planId }: { planId: number }) {
       )}
 
       {plan.updates?.map((u) => (
-<<<<<<< HEAD
         <Stack key={u.id} gap={2} p="xs" bg="var(--mantine-color-default)" style={{ borderRadius: 8 }}>
-=======
-        <Stack
-          key={u.id}
-          gap={2}
-          p="xs"
-          bg="var(--mantine-color-default)"
-          style={{ borderRadius: 8 }}
-        >
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
           <Text size="xs" c="dimmed">
             {u.createdBy} · {new Date(u.createdAt).toLocaleString()}
           </Text>

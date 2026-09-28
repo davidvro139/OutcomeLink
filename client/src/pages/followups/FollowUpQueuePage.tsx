@@ -1,48 +1,14 @@
-<<<<<<< HEAD
 import { Anchor, Badge, Button, Checkbox, Group, Loader, NumberInput, Select, Stack, Table, Text, Title } from "@mantine/core";
-=======
-import {
-  Anchor,
-  Badge,
-  Button,
-  Checkbox,
-  Group,
-  Loader,
-  NumberInput,
-  Select,
-  Stack,
-  Table,
-  Text,
-  Title,
-} from "@mantine/core";
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAssignFollowUp, useFollowUpQueue } from "../../api/followups";
 import { useUsers } from "../../api/users";
-<<<<<<< HEAD
 import { BulkAssignModal } from "./BulkAssignModal";
 import { BulkFollowUpModal } from "./BulkFollowUpModal";
 
 function AssignedToCell({ studentId, assignedTo }: { studentId: number; assignedTo: { id: number; name: string } | null }) {
-=======
-import { usePermissions } from "../../auth/usePermissions";
-import { BulkAssignModal } from "./BulkAssignModal";
-import { BulkFollowUpModal } from "./BulkFollowUpModal";
-
-function AssignedToCell({
-  studentId,
-  studentName,
-  assignedTo,
-}: {
-  studentId: number;
-  studentName: string;
-  assignedTo: { id: number; name: string } | null;
-}) {
-  const { canWrite } = usePermissions();
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
   const { data: staff } = useUsers();
   const assign = useAssignFollowUp();
 
@@ -61,16 +27,8 @@ function AssignedToCell({
     .filter((u) => u.role !== "READ_ONLY_AUDITOR")
     .map((u) => ({ value: String(u.id), label: u.name }));
 
-<<<<<<< HEAD
   return (
     <Select
-=======
-  if (!canWrite) return <Text size="sm">{assignedTo?.name ?? "Unassigned"}</Text>;
-
-  return (
-    <Select
-      aria-label={`Assigned to, ${studentName}`}
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
       placeholder="Unassigned"
       data={staffOptions}
       value={assignedTo ? String(assignedTo.id) : null}
@@ -137,11 +95,7 @@ export function FollowUpQueuePage() {
           w={220}
           min={0}
         />
-<<<<<<< HEAD
         {selectedIds.size > 0 && (
-=======
-        {canWrite && selectedIds.size > 0 && (
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
           <Group gap="xs">
             <Button variant="light" onClick={openBulkAssign}>
               Assign {selectedIds.size} Selected
@@ -157,7 +111,6 @@ export function FollowUpQueuePage() {
         <Table striped highlightOnHover>
           <Table.Thead>
             <Table.Tr>
-<<<<<<< HEAD
               <Table.Th w={36}>
                 <Checkbox
                   checked={allSelected}
@@ -166,18 +119,6 @@ export function FollowUpQueuePage() {
                   aria-label="Select all"
                 />
               </Table.Th>
-=======
-              {canWrite && (
-                <Table.Th w={36}>
-                  <Checkbox
-                    checked={allSelected}
-                    indeterminate={someSelected && !allSelected}
-                    onChange={toggleAll}
-                    aria-label="Select all"
-                  />
-                </Table.Th>
-              )}
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
               <Table.Th>Student</Table.Th>
               <Table.Th>Program</Table.Th>
               <Table.Th>Campus</Table.Th>
@@ -195,7 +136,6 @@ export function FollowUpQueuePage() {
                 key={row.student.id}
                 bg={row.daysOverdue > 0 ? "var(--mantine-color-red-light)" : undefined}
               >
-<<<<<<< HEAD
                 <Table.Td>
                   <Checkbox
                     checked={selectedIds.has(row.student.id)}
@@ -204,18 +144,6 @@ export function FollowUpQueuePage() {
                   />
                 </Table.Td>
                 <Table.Td>
-=======
-                {canWrite && (
-                  <Table.Td>
-                    <Checkbox
-                      checked={selectedIds.has(row.student.id)}
-                      onChange={() => toggleOne(row.student.id)}
-                      aria-label={`Select ${row.student.firstName} ${row.student.lastName}`}
-                    />
-                  </Table.Td>
-                )}
-                <Table.Td>
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
                   <Anchor component={Link} to={`/students/${row.student.id}`}>
                     {row.student.firstName} {row.student.lastName}
                   </Anchor>
@@ -231,15 +159,7 @@ export function FollowUpQueuePage() {
                   {row.nextFollowUpDate ? new Date(row.nextFollowUpDate).toLocaleDateString() : "—"}
                 </Table.Td>
                 <Table.Td>
-<<<<<<< HEAD
                   <AssignedToCell studentId={row.student.id} assignedTo={row.assignedTo} />
-=======
-                  <AssignedToCell
-                    studentId={row.student.id}
-                    studentName={`${row.student.firstName} ${row.student.lastName}`}
-                    assignedTo={row.assignedTo}
-                  />
->>>>>>> 8c25610ddc365645f25f969dacf22a47f82f4c0a
                 </Table.Td>
                 <Table.Td>
                   {row.daysOverdue > 0 ? (

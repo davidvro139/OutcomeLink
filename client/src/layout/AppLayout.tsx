@@ -4,7 +4,6 @@ import {
   Burger,
   Group,
   Menu,
-  Switch,
   NavLink,
   Stack,
   Text,
@@ -29,7 +28,6 @@ import {
   IconChartPie,
 } from "@tabler/icons-react";
 import { ROLE_LABELS } from "@outcomelink/shared";
-import { useEffect } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { GlobalSearch } from "../components/GlobalSearch";
@@ -81,7 +79,6 @@ const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
 /** The authenticated app shell: header with search + user menu, navbar, content area for routed pages. */
 export function AppLayout() {
   const { user, logout } = useAuth();
-  const permissions = usePermissions();
   const location = useLocation();
   const [navOpened, { toggle: toggleNav, close: closeNav }] = useDisclosure(false);
 
@@ -182,44 +179,9 @@ export function AppLayout() {
         </Stack>
       </AppShell.Navbar>
 
-        <AppShell.Navbar p="md">
-          <Stack gap="lg">
-            {NAV_SECTIONS.map((section) => ({
-              ...section,
-              items: section.items.filter((item) => !item.requires || permissions[item.requires]),
-            }))
-              .filter((section) => section.items.length > 0)
-              .map((section) => (
-                <Stack key={section.items[0]?.to ?? section.label} gap={4}>
-                  {section.label && (
-                    <Text size="xs" fw={700} c="dimmed" tt="uppercase" px={8}>
-                      {section.label}
-                    </Text>
-                  )}
-                  {section.items.map((item) => (
-                    <NavLink
-                      key={item.to}
-                      component={Link}
-                      to={item.to}
-                      label={item.label}
-                      leftSection={<item.icon size={18} />}
-                      active={
-                        item.to === "/"
-                          ? location.pathname === "/"
-                          : location.pathname.startsWith(item.to)
-                      }
-                      onClick={closeNav}
-                    />
-                  ))}
-                </Stack>
-              ))}
-          </Stack>
-        </AppShell.Navbar>
-
-        <AppShell.Main id="main-content" tabIndex={-1} style={{ outline: "none" }}>
-          <Outlet />
-        </AppShell.Main>
-      </AppShell>
-    </>
+      <AppShell.Main id="main-content" tabIndex={-1} style={{ outline: "none" }}>
+        <Outlet />
+      </AppShell.Main>
+    </AppShell>
   );
 }

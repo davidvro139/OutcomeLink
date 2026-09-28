@@ -24,6 +24,7 @@ import { EmployerSurveyPage } from "./pages/surveys/EmployerSurveyPage";
 import { GraduateSurveyPage } from "./pages/surveys/GraduateSurveyPage";
 import { DataConnectionsPage } from "./pages/imports/DataConnectionsPage";
 import { EquityBreakdownPage } from "./pages/equity/EquityBreakdownPage";
+import { ProgramDashboardPage } from "./pages/dashboards/ProgramDashboardPage";
 import { UsersPage } from "./pages/users/UsersPage";
 
 function App() {

@@ -44,6 +44,7 @@ const PAGES = [
   "/accreditation/trends",
   "/report-builder",
   "/report-builder/scheduled",
+  "/equity",
   "/imports",
   "/imports/connections",
   "/users",
@@ -85,7 +86,7 @@ const PAGES = [
       cy.get("h2").should("exist");
       cy.wait(1000);
       expectNoViolations();
-      ["Employment", "Licensure", "Follow-ups", "Surveys", "Timeline", "Audit History"].forEach(
+      ["Demographics", "Employment", "Licensure", "Follow-ups", "Surveys", "Timeline", "Audit History"].forEach(
         (tab) => {
           cy.contains('[role="tab"]', tab).click();
           cy.wait(700);

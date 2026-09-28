@@ -248,8 +248,8 @@ Review validation: server/shared typechecks and all 27 server unit tests passed.
   - [ ] Manual verification in browser (equity page navigation, metric/dimension/program selection, chart rendering)
   - [ ] Suppression and benchmark display verification
   - [ ] Unit/integration/E2E test suites
-  - [ ] Excel export endpoint and testing
-  - [ ] Import pipeline demographic field support
+  - [x] Excel export endpoint and testing
+  - [x] Import pipeline demographic field support
   - [ ] Accessibility audit (WCAG 2.1 AA)
   - [ ] User guide and documentation
   - (See details under "Cohort and Equity Breakdowns" in Phase 3 section above)

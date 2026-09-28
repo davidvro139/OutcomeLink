@@ -4,6 +4,7 @@ import {
   ENROLLMENT_STATUS_LABELS,
   ENROLLMENT_STATUSES,
   IMPORT_ACCEPTED_FILE_EXTENSIONS,
+  IMPORT_DEMOGRAPHIC_TARGET_FIELDS,
   IMPORT_ENROLLMENT_TARGET_FIELDS,
   IMPORT_REQUIRED_ENROLLMENT_TARGET_FIELDS,
   IMPORT_REQUIRED_TARGET_FIELDS,
@@ -73,6 +74,66 @@ const importEnrollmentSchema = z.object({
   enrollmentObjective: z.string().trim().max(100).optional(),
 });
 
+const GENDER_LOOKUP = new Map<string, string>([
+  ["m", "MALE"],
+  ["f", "FEMALE"],
+  ["male", "MALE"],
+  ["female", "FEMALE"],
+  ["nonbinary", "NONBINARY"],
+  ["prefer not to say", "PREFER_NOT_TO_SAY"],
+]);
+for (const [key, val] of GENDER_LOOKUP) {
+  GENDER_LOOKUP.set(key.toUpperCase(), val);
+}
+
+const RACE_ETHNICITY_LOOKUP = new Map<string, string>([
+  ["american indian", "AMERICAN_INDIAN_ALASKA_NATIVE"],
+  ["alaska native", "AMERICAN_INDIAN_ALASKA_NATIVE"],
+  ["asian", "ASIAN"],
+  ["black", "BLACK_AFRICAN_AMERICAN"],
+  ["african american", "BLACK_AFRICAN_AMERICAN"],
+  ["hispanic", "HISPANIC_LATINO"],
+  ["latino", "HISPANIC_LATINO"],
+  ["native hawaiian", "NATIVE_HAWAIIAN_PACIFIC_ISLANDER"],
+  ["pacific islander", "NATIVE_HAWAIIAN_PACIFIC_ISLANDER"],
+  ["white", "WHITE"],
+  ["two or more", "TWO_OR_MORE_RACES"],
+  ["nonresident alien", "NONRESIDENT_ALIEN"],
+  ["unknown", "UNKNOWN_OR_NOT_REPORTED"],
+  ["not reported", "UNKNOWN_OR_NOT_REPORTED"],
+]);
+for (const [key, val] of RACE_ETHNICITY_LOOKUP) {
+  RACE_ETHNICITY_LOOKUP.set(key.toUpperCase(), val);
+}
+
+const BOOLEAN_LOOKUP = new Map<string, boolean | null>([
+  ["yes", true],
+  ["y", true],
+  ["true", true],
+  ["1", true],
+  ["no", false],
+  ["n", false],
+  ["false", false],
+  ["0", false],
+  ["", null],
+  ["not on file", null],
+  ["unknown", null],
+  ["na", null],
+  ["n/a", null],
+]);
+for (const [key, val] of BOOLEAN_LOOKUP) {
+  BOOLEAN_LOOKUP.set(key.toUpperCase(), val);
+}
+
+/** A row's demographic-subset once any demographic field is mapped — lenient, drops unrecognized values. */
+const importDemographicSchema = z.object({
+  gender: z.string().optional().catch(undefined),
+  raceEthnicity: z.string().optional().catch(undefined),
+  economicallyDisadvantaged: z.string().optional().catch(undefined),
+  firstGenerationStudent: z.string().optional().catch(undefined),
+  disabilityStatus: z.string().optional().catch(undefined),
+});
+
 function isExcelFile(filename: string): boolean {
   return /\.xlsx?$/i.test(filename);
 }
@@ -139,6 +200,18 @@ function mapRow(
 function importsEnrollments(mapping: ImportColumnMapping): boolean {
   const targets = new Set(Object.values(mapping));
   return IMPORT_ENROLLMENT_TARGET_FIELDS.some((f) => targets.has(f));
+}
+
+/**
+ * True once the mapping touches any demographic field, which switches this
+ * batch to also create one StudentDemographics row per student. Unlike
+ * enrollments, demographics are optional as a group (no required-together
+ * subset) and missing/unrecognized values are dropped leniently during
+ * commit rather than blocking the row.
+ */
+function importsDemographics(mapping: ImportColumnMapping): boolean {
+  const targets = new Set(Object.values(mapping));
+  return IMPORT_DEMOGRAPHIC_TARGET_FIELDS.some((f) => targets.has(f));
 }
 
 async function findOwnedBatch(institutionId: number, id: number) {
@@ -453,6 +526,7 @@ export async function commit(req: Request<{ id: string }>, res: Response) {
 
   const mapping = batch.columnMapping as ImportColumnMapping;
   const enrollmentImport = importsEnrollments(mapping);
+  const demographicImport = importsDemographics(mapping);
   const validRows = await loadValidCandidates(batch);
   if (validRows.length === 0) {
     throw ApiError.badRequest("No valid rows to import — resolve validation errors first");
@@ -547,6 +621,90 @@ export async function commit(req: Request<{ id: string }>, res: Response) {
         ? await prisma.studentEnrollment.createMany({ data: newEnrollments })
         : { count: 0 };
     importedEnrollmentCount = createdEnrollments.count;
+  }
+
+  if (demographicImport) {
+    const students = await prisma.student.findMany({
+      where: {
+        institutionId,
+        internalStudentId: { in: validRows.map((r) => r.candidate.internalStudentId!) },
+      },
+      select: { id: true, internalStudentId: true },
+    });
+    const studentIdByInternalId = new Map(students.map((s) => [s.internalStudentId, s.id]));
+
+    const demographicsToUpsert = validRows
+      .map((r) => {
+        const studentId = studentIdByInternalId.get(r.candidate.internalStudentId!);
+        if (!studentId) return null;
+
+        let gender: string | null = null;
+        let raceEthnicity: string | null = null;
+        let economicallyDisadvantaged: boolean | null = null;
+        let firstGenerationStudent: boolean | null = null;
+        let disabilityStatus: boolean | null = null;
+        let hasAnyValue = false;
+
+        if (r.candidate.gender) {
+          const resolved = GENDER_LOOKUP.get(r.candidate.gender.trim().toLowerCase());
+          if (resolved) {
+            gender = resolved;
+            hasAnyValue = true;
+          }
+        }
+        if (r.candidate.raceEthnicity) {
+          const resolved = RACE_ETHNICITY_LOOKUP.get(r.candidate.raceEthnicity.trim().toLowerCase());
+          if (resolved) {
+            raceEthnicity = resolved;
+            hasAnyValue = true;
+          }
+        }
+        if (r.candidate.economicallyDisadvantaged) {
+          const resolved = BOOLEAN_LOOKUP.get(r.candidate.economicallyDisadvantaged.trim().toLowerCase());
+          if (resolved !== undefined) {
+            economicallyDisadvantaged = resolved;
+            hasAnyValue = true;
+          }
+        }
+        if (r.candidate.firstGenerationStudent) {
+          const resolved = BOOLEAN_LOOKUP.get(r.candidate.firstGenerationStudent.trim().toLowerCase());
+          if (resolved !== undefined) {
+            firstGenerationStudent = resolved;
+            hasAnyValue = true;
+          }
+        }
+        if (r.candidate.disabilityStatus) {
+          const resolved = BOOLEAN_LOOKUP.get(r.candidate.disabilityStatus.trim().toLowerCase());
+          if (resolved !== undefined) {
+            disabilityStatus = resolved;
+            hasAnyValue = true;
+          }
+        }
+
+        if (!hasAnyValue) return null;
+
+        return {
+          studentId,
+          gender,
+          raceEthnicity,
+          economicallyDisadvantaged,
+          firstGenerationStudent,
+          disabilityStatus,
+        };
+      })
+      .filter((d): d is NonNullable<typeof d> => d !== null);
+
+    if (demographicsToUpsert.length > 0) {
+      await Promise.all(
+        demographicsToUpsert.map((data) =>
+          prisma.studentDemographics.upsert({
+            where: { studentId: data.studentId },
+            create: data,
+            update: data,
+          }),
+        ),
+      );
+    }
   }
 
   const updated = await prisma.importBatch.update({

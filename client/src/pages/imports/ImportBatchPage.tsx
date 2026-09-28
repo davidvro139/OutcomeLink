@@ -1,4 +1,5 @@
 import {
+  IMPORT_DEMOGRAPHIC_TARGET_FIELDS,
   IMPORT_ENROLLMENT_TARGET_FIELDS,
   IMPORT_REQUIRED_ENROLLMENT_TARGET_FIELDS,
   IMPORT_REQUIRED_TARGET_FIELDS,
@@ -151,6 +152,13 @@ function MappingStep({
         Enrollment Status accepts either spelling (e.g. "Active" or "ACTIVE").
       </Text>
       {fieldTable(IMPORT_ENROLLMENT_TARGET_FIELDS, mapsAnyEnrollmentField ? IMPORT_REQUIRED_ENROLLMENT_TARGET_FIELDS : [])}
+
+      <Title order={6}>Demographic fields</Title>
+      <Text size="xs" c="dimmed">
+        Optional as a group — map any of these to include student demographic data in this import.
+        Unrecognized values are dropped leniently rather than blocking the row.
+      </Text>
+      {fieldTable(IMPORT_DEMOGRAPHIC_TARGET_FIELDS, [])}
 
       <Checkbox
         label={`Save this mapping for future "${sourceSystem}" imports`}

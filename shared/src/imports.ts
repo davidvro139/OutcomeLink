@@ -12,6 +12,11 @@
  * which point the whole IMPORT_REQUIRED_ENROLLMENT_TARGET_FIELDS subset
  * becomes required together (see setMapping's validation in
  * server/src/modules/imports/importBatches.ts).
+ *
+ * Demographic fields are optional AS A GROUP: mapping any one creates a
+ * StudentDemographics row on commit. All demographic fields are independently
+ * optional (no required-together subset), and missing/unrecognized values are
+ * dropped leniently rather than blocking the row (see server-side commit logic).
  */
 export const IMPORT_STUDENT_TARGET_FIELDS = [
   "internalStudentId",
@@ -20,6 +25,14 @@ export const IMPORT_STUDENT_TARGET_FIELDS = [
   "preferredName",
   "email",
   "phone",
+] as const;
+
+export const IMPORT_DEMOGRAPHIC_TARGET_FIELDS = [
+  "gender",
+  "raceEthnicity",
+  "economicallyDisadvantaged",
+  "firstGenerationStudent",
+  "disabilityStatus",
 ] as const;
 
 /**
@@ -46,6 +59,7 @@ export const IMPORT_ENROLLMENT_TARGET_FIELDS = [
 export const IMPORT_TARGET_FIELDS = [
   ...IMPORT_STUDENT_TARGET_FIELDS,
   ...IMPORT_ENROLLMENT_TARGET_FIELDS,
+  ...IMPORT_DEMOGRAPHIC_TARGET_FIELDS,
 ] as const;
 export type ImportTargetField = (typeof IMPORT_TARGET_FIELDS)[number];
 
@@ -76,6 +90,11 @@ export const IMPORT_TARGET_FIELD_LABELS: Record<ImportTargetField, string> = {
   actualCompletionDate: "Actual Completion Date",
   credentialEarned: "Credential Earned",
   enrollmentObjective: "Enrollment Objective",
+  gender: "Gender",
+  raceEthnicity: "Race/Ethnicity",
+  economicallyDisadvantaged: "Economically Disadvantaged",
+  firstGenerationStudent: "First Generation Student",
+  disabilityStatus: "Disability Status",
 };
 
 /** Source file column name -> target field, per docs/DATA_MODEL.md §11. */

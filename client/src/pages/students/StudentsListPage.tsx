@@ -79,7 +79,7 @@ export function StudentsListPage() {
           <Button variant="light" onClick={handleExport} loading={exporting}>
             Export to Excel
           </Button>
-          <Button onClick={open}>New Student</Button>
+          {canManageStudents && <Button onClick={open}>New Student</Button>}
         </Group>
       </Group>
 

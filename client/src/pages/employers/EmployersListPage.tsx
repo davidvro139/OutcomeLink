@@ -57,7 +57,7 @@ export function EmployersListPage() {
           <Button variant="light" component={Link} to="/employers/analytics">
             View Analytics
           </Button>
-          <Button onClick={open}>New Employer</Button>
+          {canManageEmployers && <Button onClick={open}>New Employer</Button>}
         </Group>
       </Group>
 

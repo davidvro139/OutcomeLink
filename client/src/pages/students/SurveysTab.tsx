@@ -4,6 +4,7 @@ import { notifications } from "@mantine/notifications";
 import { Fragment, useState } from "react";
 import type { Employer } from "../../api/employers";
 import { useEmploymentRecords } from "../../api/placements";
+import { usePermissions } from "../../auth/usePermissions";
 import {
   type EmployerSurvey,
   type GraduateSurvey,
@@ -30,6 +31,7 @@ async function copyLink(kind: "graduate" | "employer", token: string) {
 }
 
 function GraduateSurveysSection({ studentId }: { studentId: number }) {
+  const { canWrite } = usePermissions();
   const { data: surveys, isLoading } = useGraduateSurveys(studentId);
   const sendSurvey = useSendGraduateSurvey(studentId);
   const [formOpened, { toggle: toggleForm, close: closeForm }] = useDisclosure(false);
@@ -53,9 +55,11 @@ function GraduateSurveysSection({ studentId }: { studentId: number }) {
     <Stack gap="md">
       <Group justify="space-between">
         <Text fw={500}>Graduate surveys</Text>
-        <Button size="xs" variant="light" onClick={toggleForm}>
-          {formOpened ? "Cancel" : "Send Graduate Survey"}
-        </Button>
+        {canWrite && (
+          <Button size="xs" variant="light" onClick={toggleForm}>
+            {formOpened ? "Cancel" : "Send Graduate Survey"}
+          </Button>
+        )}
       </Group>
 
       {formOpened && (
@@ -157,6 +161,7 @@ function GraduateSurveysSection({ studentId }: { studentId: number }) {
 }
 
 function EmployerSurveysSection({ studentId }: { studentId: number }) {
+  const { canWrite } = usePermissions();
   const { data: surveys, isLoading } = useEmployerSurveys(studentId);
   const { data: employmentRecords } = useEmploymentRecords(studentId);
   const sendSurvey = useSendEmployerSurvey(studentId);
@@ -188,9 +193,11 @@ function EmployerSurveysSection({ studentId }: { studentId: number }) {
     <Stack gap="md">
       <Group justify="space-between">
         <Text fw={500}>Employer surveys</Text>
-        <Button size="xs" variant="light" onClick={toggleForm}>
-          {formOpened ? "Cancel" : "Send Employer Survey"}
-        </Button>
+        {canWrite && (
+          <Button size="xs" variant="light" onClick={toggleForm}>
+            {formOpened ? "Cancel" : "Send Employer Survey"}
+          </Button>
+        )}
       </Group>
 
       {formOpened && (

@@ -9,6 +9,7 @@ import {
   useLicensureResults,
   useUpdateLicensureResult,
 } from "../../api/licensure";
+import { usePermissions } from "../../auth/usePermissions";
 import { usePrograms } from "../../api/programs";
 
 const RESULT_COLORS: Record<string, string> = {
@@ -20,6 +21,7 @@ const RESULT_COLORS: Record<string, string> = {
 };
 
 export function LicensureTab({ studentId }: { studentId: number }) {
+  const { canWrite } = usePermissions();
   const { data: results, isLoading } = useLicensureResults(studentId);
   const { data: programs } = usePrograms();
   const createResult = useCreateLicensureResult(studentId);
@@ -67,9 +69,11 @@ export function LicensureTab({ studentId }: { studentId: number }) {
     <Stack gap="md">
       <Group justify="space-between">
         <Text fw={500}>Licensure attempts</Text>
-        <Button size="xs" variant="light" onClick={toggleForm}>
-          {formOpened ? "Cancel" : "Record Attempt"}
-        </Button>
+        {canWrite && (
+          <Button size="xs" variant="light" onClick={toggleForm}>
+            {formOpened ? "Cancel" : "Record Attempt"}
+          </Button>
+        )}
       </Group>
 
       {formOpened && (

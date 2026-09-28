@@ -256,7 +256,7 @@ Review validation: server/shared typechecks and all 27 server unit tests passed.
 
 - [ ] **Clear cached data when authenticated identity changes.** Logout leaves the shared React Query cache intact, and query keys lack user/institution identity, allowing a subsequent account in the same tab to briefly see previous-account data. Cancel in-flight requests and clear the cache on identity changes; verify account switching. See [AuthProvider.tsx](../client/src/auth/AuthProvider.tsx).
 
-- [ ] **High: refresh expired access tokens during an active session.** Refresh currently runs only on mount; after token expiry, requests fail while the UI remains authenticated. Add coordinated refresh-and-retry handling for API requests and downloads, and end the session if refresh fails. See [apiClient.ts](../client/src/lib/apiClient.ts).
+- [x] **High: refresh expired access tokens during an active session.** Refresh runs on mount and automatically on token expiry via `authedFetch()` interceptor for all API requests. Downloads via `apiRequestBlob()` now use the same refresh-and-retry pattern. Session ends cleanly if refresh fails. See [apiClient.ts](../client/src/lib/apiClient.ts).
 
 ### Medium Priority — Data Quality & Reliability
 

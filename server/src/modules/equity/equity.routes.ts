@@ -12,3 +12,10 @@ equityRouter.get(
   validate(handlers.breakdownQuerySchema, "query"),
   asyncHandler(handlers.show),
 );
+
+equityRouter.get(
+  "/breakdown/export",
+  requireAuth,
+  validate(handlers.breakdownQuerySchema, "query"),
+  asyncHandler(handlers.exportBreakdown),
+);

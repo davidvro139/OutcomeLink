@@ -34,7 +34,7 @@ export async function show(req: Request, res: Response) {
   const demographics = await prisma.studentDemographics.findUnique({
     where: { studentId },
   });
-  sendData(res, { demographics });
+  sendData(res, demographics || {});
 }
 
 export async function upsert(
@@ -50,5 +50,5 @@ export async function upsert(
     create: { ...req.body, studentId },
     update: req.body,
   });
-  sendData(res, { demographics });
+  sendData(res, demographics);
 }

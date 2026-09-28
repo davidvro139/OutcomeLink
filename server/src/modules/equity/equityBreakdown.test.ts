@@ -116,18 +116,23 @@ describe("equityBreakdown", () => {
 
   afterAll(async () => {
     // Cleanup in correct order to avoid foreign key constraints
-    await prisma.cplCalculationExplanation.deleteMany();
-    await prisma.studentClassification.deleteMany();
-    await prisma.cplCalculationResult.deleteMany();
-    await prisma.studentDemographics.deleteMany();
-    await prisma.studentEnrollment.deleteMany();
-    await prisma.student.deleteMany();
-    await prisma.reportingPeriod.deleteMany();
-    await prisma.ruleSet.deleteMany();
-    await prisma.accreditationFramework.deleteMany();
-    await prisma.program.deleteMany();
-    await prisma.campus.deleteMany();
-    await prisma.institution.deleteMany();
+    try {
+      await prisma.cplCalculationExplanation.deleteMany();
+      await prisma.studentClassification.deleteMany();
+      await prisma.cplCalculationResult.deleteMany();
+      await prisma.studentDemographics.deleteMany();
+      await prisma.studentEnrollment.deleteMany();
+      await prisma.student.deleteMany();
+      await prisma.reportingPeriod.deleteMany();
+      await prisma.ruleSet.deleteMany();
+      await prisma.accreditationFramework.deleteMany();
+      await prisma.program.deleteMany();
+      await prisma.campus.deleteMany();
+      await prisma.institution.deleteMany();
+    } catch (err) {
+      // Ignore cleanup errors in test
+      console.error("Cleanup error:", err);
+    }
   });
 
   it("should aggregate by entry year", async () => {

@@ -48,13 +48,15 @@ export async function buildEquityBreakdown(
   },
 ): Promise<EquityBreakdownResult> {
   // Resolve program scope
-  let programIds = accessibleProgramIds ?? [];
+  // null = unrestricted user, can see all programs
+  // [] = scoped user with no grants (sees nothing)
   if (params.programId) {
-    if (!programIds.includes(params.programId)) {
+    if (accessibleProgramIds !== null && !accessibleProgramIds.includes(params.programId)) {
       throw new Error("Program not accessible to this user");
     }
-    programIds = [params.programId];
   }
+
+  const programIds = params.programId ? [params.programId] : accessibleProgramIds ?? [];
 
   // Find latest reporting period
   const latestPeriod = await prisma.reportingPeriod.findFirst({

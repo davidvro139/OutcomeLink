@@ -1,5 +1,7 @@
 import type { Request, Response } from "express";
 import {
+  ENROLLMENT_STATUSES,
+  EMPLOYMENT_STATUSES,
   REPORT_BUILDER_MAX_PERIODS,
   REPORT_BUILDER_PREVIEW_LIMIT,
   REPORT_ENTITY_TYPES,
@@ -46,7 +48,7 @@ import { sendXlsx, type XlsxSheet } from "../../lib/xlsx";
 
 const filterInputSchema = z.object({
   field: z.string(),
-  value: z.union([z.array(z.string()), z.array(z.number()), z.boolean()]),
+  value: z.unknown(),
 });
 
 export const runReportSchema = z.object({
@@ -73,6 +75,107 @@ function average(values: number[]): number | null {
 
 function filterValue<T>(input: RunReportInput, field: string): T | undefined {
   return input.filters.find((f) => f.field === field)?.value as T | undefined;
+}
+
+/**
+ * Validate filter values against their definitions. Checks:
+ * - Value type matches filter definition (array vs. scalar)
+ * - Element types match (string[], number[], boolean)
+ * - No duplicate filters for the same field
+ * - Enum-valued filters use only valid values
+ * - ID-valued filters reference existing records
+ * - Filter dependencies (e.g., requiresReportingPeriod) are satisfied
+ */
+async function validateFilters(
+  input: RunReportInput,
+  filterDefs: Map<string, typeof REPORT_FILTERS_BY_ENTITY[ReportEntityType][0]>,
+  institutionId: number,
+  hasPeriod: boolean,
+) {
+  const seenFields = new Set<string>();
+
+  // Enum values for string-type filters
+  const validEnumValues: Record<string, Set<string>> = {
+    enrollmentStatus: new Set(ENROLLMENT_STATUSES),
+    employmentStatus: new Set(EMPLOYMENT_STATUSES),
+    // Additional enums can be added here as needed
+  };
+
+  for (const filter of input.filters) {
+    const def = filterDefs.get(filter.field);
+    if (!def) throw ApiError.badRequest(`Unknown filter field "${filter.field}" for ${input.entityType}`);
+
+    // Check for duplicates
+    if (seenFields.has(filter.field)) {
+      throw ApiError.badRequest(`Duplicate filter for field "${filter.field}"`);
+    }
+    seenFields.add(filter.field);
+
+    // Check requirements
+    if (def.requiresReportingPeriod && !hasPeriod) {
+      throw ApiError.badRequest(`Filter "${def.label}" requires at least one reporting period`);
+    }
+
+    // Validate value type matches definition
+    const isArray = Array.isArray(filter.value);
+    const expectedArray = def.operator === "in";
+    if (isArray !== expectedArray) {
+      const got = isArray ? "array" : "scalar";
+      const expected = expectedArray ? "array" : "scalar";
+      throw ApiError.badRequest(
+        `Filter "${def.label}" expects ${expected} value, got ${got}`,
+      );
+    }
+
+    // Validate element types
+    const valuesToCheck: (string | number | boolean)[] = isArray ? (filter.value as (string | number | boolean)[]) : [filter.value as string | number | boolean];
+    for (const val of valuesToCheck) {
+      const actual = typeof val;
+      if (actual !== def.valueType) {
+        throw ApiError.badRequest(
+          `Filter "${def.label}" expects ${def.valueType}[] values, got ${actual}`,
+        );
+      }
+    }
+
+    // Validate enum-constrained string values
+    if (def.valueType === "string" && validEnumValues[filter.field]) {
+      const validValues = validEnumValues[filter.field]!;
+      const invalidValues = (filter.value as string[]).filter((v) => !validValues.has(v));
+      if (invalidValues.length > 0) {
+        throw ApiError.badRequest(
+          `Filter "${def.label}": invalid value(s) "${invalidValues.join('", "')}" — valid options are ${[...validValues].join(", ")}`,
+        );
+      }
+    }
+
+    // Validate ID-constrained number values (programId, campusId)
+    if (def.valueType === "number" && filter.field === "programId") {
+      const ids = filter.value as number[];
+      const existing = await prisma.program.findMany({
+        where: { id: { in: ids }, institutionId },
+        select: { id: true },
+      });
+      const existingIds = new Set(existing.map((p) => p.id));
+      const invalid = ids.filter((id) => !existingIds.has(id));
+      if (invalid.length > 0) {
+        throw ApiError.badRequest(`Unknown program ID(s): ${invalid.join(", ")}`);
+      }
+    }
+
+    if (def.valueType === "number" && filter.field === "campusId") {
+      const ids = filter.value as number[];
+      const existing = await prisma.campus.findMany({
+        where: { id: { in: ids }, institutionId },
+        select: { id: true },
+      });
+      const existingIds = new Set(existing.map((c) => c.id));
+      const invalid = ids.filter((id) => !existingIds.has(id));
+      if (invalid.length > 0) {
+        throw ApiError.badRequest(`Unknown campus ID(s): ${invalid.join(", ")}`);
+      }
+    }
+  }
 }
 
 function validateDefinition(input: RunReportInput) {
@@ -381,6 +484,11 @@ async function runQuery(
     resolvePeriods(institutionId, input),
     getAccessibleProgramIds(user),
   ]);
+
+  const hasPeriod = periods.length > 0;
+  const filterDefs = new Map(REPORT_FILTERS_BY_ENTITY[input.entityType].map((f) => [f.key, f]));
+  await validateFilters(input, filterDefs, institutionId, hasPeriod);
+
   const comparingPeriods = periods.length > 1;
   const allRows = await FETCHERS[input.entityType](institutionId, input, periods, accessibleProgramIds);
   return { rows: allRows.map((row) => pickFields(row, input.fields, comparingPeriods)), comparingPeriods, periods };

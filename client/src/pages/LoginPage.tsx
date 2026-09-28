@@ -15,7 +15,7 @@ import {
 import { useForm } from "@mantine/form";
 import { ROLE_LABELS, type Role } from "@outcomelink/shared";
 import { useState } from "react";
-import { Link, Navigate, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { ApiRequestError } from "../lib/apiClient";
 
@@ -48,6 +48,7 @@ interface LoginLocationState {
 export function LoginPage() {
   const { status, login } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const locationState = location.state as LoginLocationState | undefined;
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -65,9 +66,12 @@ export function LoginPage() {
     },
   });
 
+  // Declarative redirect only when already authenticated (page reload restores session).
+  // Login navigation is handled imperatively below to avoid racing with RequireAuth.
   if (status === "authenticated") {
     const destination = locationState?.from?.pathname ?? "/";
-    return <Navigate to={destination} replace />;
+    navigate(destination, { replace: true });
+    return null;
   }
 
   async function handleLogin(email: string, password: string) {
@@ -75,10 +79,11 @@ export function LoginPage() {
     setSubmitting(true);
     setPendingEmail(email);
     try {
-      // No imperative navigate here: the declarative <Navigate> above fires once
-      // status flips to authenticated. Having both raced, and whichever ran
-      // last decided the destination.
       await login(email, password);
+      // Imperative navigation after login succeeds, before re-render.
+      // Prevents a race with RequireAuth's declarative redirect on logout.
+      const destination = locationState?.from?.pathname ?? "/";
+      navigate(destination, { replace: true });
     } catch (err) {
       setError(
         err instanceof ApiRequestError ? err.message : "Unable to log in. Please try again.",

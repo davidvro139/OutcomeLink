@@ -10,6 +10,8 @@
     "test": "jest --selectProjects unit",
     "test:integration": "jest --selectProjects integration --runInBand",
     "test:all": "jest --runInBand",
+    "test:vitest": "vitest",
+    "test:vitest:ui": "vitest --ui",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts",
@@ -49,11 +51,13 @@
     "@types/node": "^22.10.2",
     "@types/node-cron": "^3.0.11",
     "@types/supertest": "^6.0.2",
+    "@vitest/ui": "^5.0.2",
     "jest": "^29.7.0",
     "prisma": "^5.22.0",
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.5",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^5.0.2"
   }
 }

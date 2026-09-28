@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "../../lib/prisma";
 import { buildEquityBreakdown } from "./equityBreakdown";
 
@@ -7,8 +7,9 @@ describe("equityBreakdown", () => {
   let programId: number;
   let reportingPeriodId: number;
   let campusId: number;
+  let ruleSetId: number;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     // Create test institution
     const institution = await prisma.institution.create({
       data: { name: "Test Institution" },
@@ -33,6 +34,20 @@ describe("equityBreakdown", () => {
     });
     programId = program.id;
 
+    // Create accreditation framework and rule set
+    const framework = await prisma.accreditationFramework.create({
+      data: { name: `TEST-EQUITY-FW-${Date.now()}` },
+    });
+    const ruleSet = await prisma.ruleSet.create({
+      data: {
+        frameworkId: framework.id,
+        versionLabel: "2024",
+        effectiveStartDate: new Date("2024-01-01"),
+        ruleDefinition: { benchmarks: { completion: 70, placement: 75, licensure: 80 } },
+      },
+    });
+    ruleSetId = ruleSet.id;
+
     // Create reporting period
     const reportingPeriod = await prisma.reportingPeriod.create({
       data: {
@@ -40,7 +55,7 @@ describe("equityBreakdown", () => {
         label: "2024-2025",
         startDate: new Date("2024-01-01"),
         endDate: new Date("2025-01-01"),
-        ruleSetId: 1, // dummy
+        ruleSetId: ruleSet.id,
       },
     });
     reportingPeriodId = reportingPeriod.id;
@@ -86,7 +101,7 @@ describe("equityBreakdown", () => {
           reportingPeriodId,
           metric: "COMPLETION",
           classificationCode: "CODE",
-          determinedByRuleSetId: 1,
+          determinedByRuleSetId: ruleSetId,
           explanation: {
             create: {
               countsInDenominator: true,
@@ -99,14 +114,17 @@ describe("equityBreakdown", () => {
     }
   });
 
-  afterEach(async () => {
-    // Cleanup
-    await prisma.studentClassification.deleteMany();
+  afterAll(async () => {
+    // Cleanup in correct order to avoid foreign key constraints
     await prisma.cplCalculationExplanation.deleteMany();
-    await prisma.studentEnrollment.deleteMany();
+    await prisma.studentClassification.deleteMany();
+    await prisma.cplCalculationResult.deleteMany();
     await prisma.studentDemographics.deleteMany();
+    await prisma.studentEnrollment.deleteMany();
     await prisma.student.deleteMany();
     await prisma.reportingPeriod.deleteMany();
+    await prisma.ruleSet.deleteMany();
+    await prisma.accreditationFramework.deleteMany();
     await prisma.program.deleteMany();
     await prisma.campus.deleteMany();
     await prisma.institution.deleteMany();
@@ -191,7 +209,7 @@ describe("equityBreakdown", () => {
         label: "2025-2026",
         startDate: new Date("2025-01-01"),
         endDate: new Date("2026-01-01"),
-        ruleSetId: 1,
+        ruleSetId,
       },
     });
 

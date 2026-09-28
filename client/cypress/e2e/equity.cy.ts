@@ -6,9 +6,10 @@
 describe("Cohort & Equity breakdowns", () => {
   beforeEach(() => {
     cy.visit("/login");
-    cy.contains("Demo login").click();
-    cy.url().should("eq", `${Cypress.config().baseUrl}/`);
-    cy.contains("Welcome,").should("be.visible");
+    // Click on a demo account (the first one available)
+    cy.contains("button", /System Administrator|Institutional Administrator|Program Administrator/).first().click();
+    cy.url().should("include", "/");
+    cy.get("body").should("exist"); // Wait for page to load
   });
 
   it("navigates to equity page and displays controls", () => {

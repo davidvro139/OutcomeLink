@@ -56,6 +56,9 @@ export const runReportSchema = z.object({
   fields: z.array(z.string()).min(1).max(50),
   filters: z.array(filterInputSchema).max(20).default([]),
   reportingPeriodIds: z.array(z.coerce.number().int().positive()).max(REPORT_BUILDER_MAX_PERIODS).optional(),
+  // Pagination: limit is used for preview (with default), offset for both preview and export
+  limit: z.number().int().positive().optional().default(REPORT_BUILDER_PREVIEW_LIMIT),
+  offset: z.number().int().nonnegative().optional().default(0),
 });
 export type RunReportInput = z.infer<typeof runReportSchema>;
 
@@ -246,12 +249,15 @@ async function fetchStudentRows(
   input: RunReportInput,
   periods: ResolvedPeriod[],
   accessibleProgramIds: number[] | null,
+  limit: number,
+  offset: number,
 ): Promise<Row[]> {
   const programIds = effectiveProgramIdFilter(filterValue<number[]>(input, "programId"), accessibleProgramIds);
   const campusIds = filterValue<number[]>(input, "campusId");
   const enrollmentStatuses = filterValue<string[]>(input, "enrollmentStatus");
   const employmentStatuses = filterValue<string[]>(input, "employmentStatus");
 
+  // Base conditions applied to all queries
   const baseWhere = {
     student: { institutionId },
     ...(programIds ? { programId: { in: programIds } } : {}),
@@ -267,8 +273,23 @@ async function fetchStudentRows(
 
   const rows: Row[] = [];
   for (const period of contexts) {
+    // For period-specific queries with employmentStatus filter, add relation filter
+    // to the where clause instead of filtering in JS. This allows the database to
+    // push down the filter and use indexes efficiently.
+    const where = employmentStatuses && employmentStatuses.length > 0 && period
+      ? {
+          ...baseWhere,
+          outcomeRecords: {
+            some: {
+              reportingPeriodId: period.id,
+              employmentStatus: { in: employmentStatuses },
+            },
+          },
+        }
+      : baseWhere;
+
     const enrollments = await prisma.studentEnrollment.findMany({
-      where: baseWhere,
+      where,
       include: {
         student: true,
         program: { select: { name: true } },
@@ -285,9 +306,11 @@ async function fetchStudentRows(
         },
       },
       orderBy: { id: "asc" },
+      // Only apply pagination for single-period queries (multi-period applies it to final result)
+      ...(periods.length === 1 ? { take: limit, skip: offset } : {}),
     });
 
-    let periodRows: Row[] = enrollments.map((e) => {
+    const periodRows: Row[] = enrollments.map((e) => {
       const outcome = e.outcomeRecords[0];
       const row: Row = {
         internalStudentId: e.student.internalStudentId,
@@ -312,9 +335,6 @@ async function fetchStudentRows(
       return row;
     });
 
-    if (employmentStatuses && employmentStatuses.length > 0) {
-      periodRows = periodRows.filter((r) => employmentStatuses.includes(r.employmentStatus as string));
-    }
     rows.push(...periodRows);
   }
 
@@ -326,6 +346,8 @@ async function fetchEmployerRows(
   input: RunReportInput,
   periods: ResolvedPeriod[],
   _accessibleProgramIds: number[] | null,
+  limit: number,
+  offset: number,
 ): Promise<Row[]> {
   // Employers aren't program-scoped (see search.ts's identical reasoning):
   // an employer can hire from several programs, so there's no single
@@ -397,6 +419,8 @@ async function fetchProgramRows(
   input: RunReportInput,
   periods: ResolvedPeriod[],
   accessibleProgramIds: number[] | null,
+  limit: number,
+  offset: number,
 ): Promise<Row[]> {
   const campusIds = filterValue<number[]>(input, "campusId");
   const credentialTypes = filterValue<string[]>(input, "credentialType");
@@ -460,6 +484,8 @@ const FETCHERS: Record<
     input: RunReportInput,
     periods: ResolvedPeriod[],
     accessibleProgramIds: number[] | null,
+    limit: number,
+    offset: number,
   ) => Promise<Row[]>
 > = {
   STUDENT: fetchStudentRows,
@@ -477,7 +503,7 @@ function pickFields(row: Row, fields: string[], includePeriodLabel: boolean): Ro
 async function runQuery(
   user: AccessTokenPayload,
   input: RunReportInput,
-): Promise<{ rows: Row[]; comparingPeriods: boolean; periods: ResolvedPeriod[] }> {
+): Promise<{ rows: Row[]; comparingPeriods: boolean; periods: ResolvedPeriod[]; totalCount: number }> {
   validateDefinition(input);
   const institutionId = user.institutionId;
   const [periods, accessibleProgramIds] = await Promise.all([
@@ -490,19 +516,31 @@ async function runQuery(
   await validateFilters(input, filterDefs, institutionId, hasPeriod);
 
   const comparingPeriods = periods.length > 1;
-  const allRows = await FETCHERS[input.entityType](institutionId, input, periods, accessibleProgramIds);
-  return { rows: allRows.map((row) => pickFields(row, input.fields, comparingPeriods)), comparingPeriods, periods };
+  // For multi-period reports, fetch all results then paginate on the final set
+  // For single-period reports, pagination is applied at the database level
+  const fetchLimit = comparingPeriods ? Number.MAX_SAFE_INTEGER : input.limit;
+  const fetchOffset = comparingPeriods ? 0 : input.offset;
+
+  const allRows = await FETCHERS[input.entityType](institutionId, input, periods, accessibleProgramIds, fetchLimit, fetchOffset);
+  const pickedRows = allRows.map((row) => pickFields(row, input.fields, comparingPeriods));
+
+  // For multi-period reports, apply pagination to final result
+  const finalRows = comparingPeriods
+    ? pickedRows.slice(input.offset, input.offset + input.limit)
+    : pickedRows;
+
+  return { rows: finalRows, comparingPeriods, periods, totalCount: pickedRows.length };
 }
 
 export async function runCustomReport(
   req: Request<Record<string, never>, unknown, RunReportInput>,
   res: Response,
 ) {
-  const { rows } = await runQuery(req.user!, req.body);
+  const { rows, totalCount } = await runQuery(req.user!, req.body);
   sendData(res, {
-    rows: rows.slice(0, REPORT_BUILDER_PREVIEW_LIMIT),
-    totalCount: rows.length,
-    truncated: rows.length > REPORT_BUILDER_PREVIEW_LIMIT,
+    rows,
+    totalCount,
+    truncated: totalCount > (req.body.offset + rows.length),
   });
 }
 

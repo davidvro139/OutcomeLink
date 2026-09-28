@@ -128,9 +128,10 @@ export async function apiRequestPaginated<T>(
  * first and hand the browser a blob: URL instead. Accepts an optional
  * `init` for exports that need a POST body (e.g. the Custom Report
  * Builder's arbitrary field/filter selection) rather than a plain GET.
+ * Includes refresh-and-retry handling like other authenticated requests.
  */
 export async function apiRequestBlob(path: string, init?: RequestInit): Promise<Blob> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await authedFetch(path, () => ({
     credentials: "include",
     headers: {
       ...(init?.body ? { "Content-Type": "application/json" } : {}),
@@ -138,7 +139,7 @@ export async function apiRequestBlob(path: string, init?: RequestInit): Promise<
       ...init?.headers,
     },
     ...init,
-  });
+  }));
 
   if (!response.ok) {
     throw new ApiRequestError(response.status, response.statusText);

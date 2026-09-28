@@ -62,17 +62,3 @@ export const scheduledReportStorage: StorageAdapter = new LocalDiskStorageAdapte
 export const reportExportStorage: StorageAdapter = new LocalDiskStorageAdapter(
   path.join(UPLOADS_ROOT, "report-exports"),
 );
-
-/**
- * A CSV import batch is re-read and re-parsed at each wizard step (map,
- * validate, preview, commit) rather than persisting parsed rows in the
- * database — separate directory from evidence uploads, same adapter.
- */
-export const importStorage: StorageAdapter = new LocalDiskStorageAdapter(
-  path.join(process.cwd(), "uploads", "imports"),
-);
-
-/** Generated .xlsx workbooks from Scheduled Reports (Phase 3, docs/TODO.md) — one file per ScheduledReportRun. */
-export const scheduledReportStorage: StorageAdapter = new LocalDiskStorageAdapter(
-  path.join(process.cwd(), "uploads", "scheduled-reports"),
-);

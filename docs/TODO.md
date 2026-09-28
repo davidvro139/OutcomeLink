@@ -266,7 +266,7 @@ Review validation: server/shared typechecks and all 27 server unit tests passed.
 
 - [x] **Report provenance:** All exports (CPL Results, Validation Issues, Students, Custom Reports, Equity Breakdowns) now include a "Provenance" sheet with generation timestamp, period/filter information, data freshness notes, and methodology documentation. Clearly distinguishes current enrollment attributes from historical outcomes in multi-period reports.
 
-- [ ] **Report pagination and bounded exports:** avoid fetching every matching row before truncating previews. Add database pagination and queued exports for large reports while preserving accurate filtering and total counts.
+- [x] **Report pagination and bounded exports:** Single-period reports now use database-level LIMIT/OFFSET for pagination. employmentStatus filter moved from application code to Prisma where clause for database-level optimization. Multi-period reports apply pagination to final concatenated result set. API returns totalCount for accurate pagination. Queued exports already implemented with fire-and-forget pattern. See [customReportBuilder.ts](../server/src/modules/reports/customReportBuilder.ts).
 
 ### Low Priority — UX Polish & Edge Cases
 

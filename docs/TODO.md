@@ -284,7 +284,7 @@ Review validation: server/shared typechecks and all 27 server unit tests passed.
 
 - [ ] **CI pipeline (GitHub Actions)** — add typechecking, unit tests, and integration tests against an isolated database.
 
-- [ ] **Reusable scheduled-job infrastructure:** support retries and delivery history for outreach campaigns, missing-outcome reminders, and the scheduled reports already listed in Phase 3.
+- [x] **Reusable scheduled-job infrastructure:** Job registry with configurable max attempts, exponential backoff (1.25min→5→11→30min), and stale-run detection (1hr) in place. Job handlers implemented for: SCHEDULED_REPORT (background report export), NIGHTLY_VALIDATION (institution-wide validation), FOLLOW_UP_AUTOMATION (auto-create follow-up work), GRADUATE_CAMPAIGN (placeholder), MISSING_OUTCOMES_DIGEST (placeholder). Each handler integrates with cron schedules and institution-scoping. GRADUATE_CAMPAIGN and MISSING_OUTCOMES_DIGEST need campaign definition schema and digest logic (deferred).
 
 - [ ] **`RuleSet.rule_definition` internal schema design** — blocked on COE documentation review, tracked in `docs/DATA_MODEL.md` §13.
 

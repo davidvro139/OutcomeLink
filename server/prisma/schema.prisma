@@ -131,6 +131,9 @@ enum NotificationType {
   // ScheduledReportRun, not the subscription, so the client can resolve
   // straight to a download without a second lookup.
   SCHEDULED_REPORT_READY
+  REPORT_EXPORT_READY
+  BACKUP_STALE
+  PROGRAM_AT_RISK
 }
 
 enum AuditAction {
@@ -188,6 +191,7 @@ model Institution {
   dataSourceConnections DataSourceConnection[]
   scheduledReportSubscriptions ScheduledReportSubscription[]
   programFollowUpOwners ProgramFollowUpOwner[]
+  reportExportJobs ReportExportJob[]
 
   @@map("institutions")
 }
@@ -321,6 +325,7 @@ model User {
   name          String
   email         String    @unique
   passwordHash  String    @map("password_hash")
+  emailNotifications Boolean @default(true) @map("email_notifications")
   role          Role
   active        Boolean   @default(true)
   lastLoginAt   DateTime? @map("last_login_at")
@@ -346,6 +351,7 @@ model User {
   savedReports     SavedReport[]
   scheduledReportSubscriptions ScheduledReportSubscription[]
   programFollowUpOwnerOf       ProgramFollowUpOwner[]
+  reportExportJobs ReportExportJob[]
   assignedFollowUpStudents     Student[]                      @relation("StudentFollowUpAssignment")
 
   @@map("users")
@@ -1222,4 +1228,133 @@ model ScheduledReportRun {
   subscription ScheduledReportSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 
   @@map("scheduled_report_runs")
+}
+
+enum ReportExportStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model ReportExportJob {
+  id Int @id @default(autoincrement())
+  institutionId Int @map("institution_id")
+  requestedBy Int @map("requested_by")
+  definition Json
+  status ReportExportStatus @default(PENDING)
+  fileReference String? @map("file_reference")
+  rowCount Int? @map("row_count")
+  errorMessage String? @map("error_message") @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+  institution Institution @relation(fields: [institutionId], references: [id])
+  requester User @relation(fields: [requestedBy], references: [id])
+  @@map("report_export_jobs")
+}
+
+enum JobTrigger {
+  SCHEDULE
+  MANUAL
+}
+
+enum JobStatus {
+  RUNNING
+  RETRY_PENDING
+  SUCCESS
+  FAILED
+}
+
+model JobRun {
+  id Int @id @default(autoincrement())
+  institutionId Int? @map("institution_id")
+  jobType String @map("job_type")
+  trigger JobTrigger
+  requestedBy Int? @map("requested_by")
+  status JobStatus
+  attempt Int @default(1)
+  maxAttempts Int @default(1) @map("max_attempts")
+  params Json?
+  result Json?
+  errorMessage String? @map("error_message") @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  startedAt DateTime? @map("started_at")
+  finishedAt DateTime? @map("finished_at")
+  nextAttemptAt DateTime? @map("next_attempt_at")
+  @@index([institutionId, createdAt])
+  @@index([status, nextAttemptAt])
+  @@map("job_runs")
+}
+
+enum EmailPurpose {
+  TEST
+  INVITATION
+  PASSWORD_RESET
+  GRADUATE_SURVEY
+  EMPLOYER_SURVEY
+  STAFF_NOTIFICATION
+}
+
+enum EmailDeliveryStatus {
+  SENT
+  FAILED
+}
+
+model EmailDelivery {
+  id Int @id @default(autoincrement())
+  institutionId Int @map("institution_id")
+  purpose EmailPurpose
+  toAddress String @map("to_address")
+  subject String
+  status EmailDeliveryStatus
+  errorMessage String? @map("error_message") @db.Text
+  relatedEntityType String? @map("related_entity_type")
+  relatedEntityId Int? @map("related_entity_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@index([institutionId, createdAt])
+  @@index([relatedEntityType, relatedEntityId, createdAt], map: "email_deliveries_related_idx")
+  @@map("email_deliveries")
+}
+
+model InstitutionSettings {
+  id Int @id @default(autoincrement())
+  institutionId Int @unique @map("institution_id")
+  smtpHost String? @map("smtp_host")
+  smtpPort Int? @map("smtp_port")
+  smtpSecure Boolean @default(false) @map("smtp_secure")
+  smtpUser String? @map("smtp_user")
+  smtpPasswordEncrypted String? @map("smtp_password_encrypted") @db.Text
+  mailFrom String? @map("mail_from")
+  retentionJobRunDays Int? @map("retention_job_run_days")
+  retentionEmailLogDays Int? @map("retention_email_log_days")
+  retentionNotificationDays Int? @map("retention_notification_days")
+  retentionExportDays Int? @map("retention_export_days")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedBy Int? @map("updated_by")
+  @@map("institution_settings")
+}
+
+enum BackupStatus {
+  SUCCESS
+  FAILED
+}
+
+model BackupCheckin {
+  id Int @id @default(autoincrement())
+  status BackupStatus
+  note String? @db.Text
+  sizeMb Int? @map("size_mb")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@index([createdAt])
+  @@map("backup_checkins")
+}
+
+model AtRiskAlert {
+  id Int @id @default(autoincrement())
+  reportingPeriodId Int @map("reporting_period_id")
+  programId Int @map("program_id")
+  metric CplMetric
+  kind String
+  createdAt DateTime @default(now()) @map("created_at")
+  @@unique([reportingPeriodId, programId, metric, kind], map: "at_risk_alerts_key")
+  @@map("at_risk_alerts")
 }

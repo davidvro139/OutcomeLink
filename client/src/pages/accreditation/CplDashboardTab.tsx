@@ -148,7 +148,7 @@ export function CplDashboardTab({ reportingPeriodId }: { reportingPeriodId: numb
             </Badge>
           )}
         </Button>
-        {belowBenchmark && programId !== null && (
+        {canWrite && belowBenchmark && programId !== null && (
           <Tooltip label="Create improvement plan">
             <Button
               variant="subtle"

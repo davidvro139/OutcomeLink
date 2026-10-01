@@ -12,6 +12,12 @@ export interface StaffUser {
   campusIds?: number[];
 }
 
+export interface PasswordLinkResult {
+  token?: string;
+  emailStatus: "SENT" | "FAILED" | "SKIPPED";
+  emailReason?: string;
+}
+
 export function useUsers(options: { includeInactive?: boolean } = {}) {
   const query = options.includeInactive ? "?includeInactive=true" : "";
   return useQuery({
@@ -30,7 +36,7 @@ export function useInviteUser() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: InviteUserInput) =>
-      apiRequest<{ user: StaffUser; token: string }>("/api/users/invite", {
+      apiRequest<PasswordLinkResult & { user: StaffUser }>("/api/users/invite", {
         method: "POST",
         body: JSON.stringify(input),
       }),
@@ -67,7 +73,7 @@ export function useSetUserActive(id: number) {
 
 export function useResetUserPassword(id: number) {
   return useMutation({
-    mutationFn: () => apiRequest<{ token: string }>(`/api/users/${id}/reset-password`, { method: "POST" }),
+    mutationFn: () => apiRequest<PasswordLinkResult>(`/api/users/${id}/reset-password`, { method: "POST" }),
   });
 }
 

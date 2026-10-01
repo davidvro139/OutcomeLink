@@ -20,7 +20,6 @@ import { type CreateStudentInput, useCreateStudent, useStudents } from "../../ap
 import { downloadFile } from "../../lib/apiClient";
 import { stripEmptyStrings } from "../../lib/forms";
 import { usePermissions } from "../../auth/usePermissions";
-import { Pager } from "../../components/Pager";
 
 export function StudentsListPage() {
   const { canManageStudents } = usePermissions();

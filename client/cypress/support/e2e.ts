@@ -1,33 +1,57 @@
-// Runs before every spec file. Custom commands for testing.
+/// <reference types="cypress" />
 
+// Shared helpers for the end-to-end specs. They assume the demo data from
+// `npm run prisma:seed` (every seeded account shares one password) and a
+// running API + web app — see the README ("Checks").
+
+const DEMO_PASSWORD = "password123";
+
+/** The seeded staff accounts, one per role. */
 export const ACCOUNTS = {
-  systemAdmin: { email: "admin@test.edu", password: "password123" },
-  institutionalAdmin: { email: "inst-admin@test.edu", password: "password123" },
-};
+  systemAdmin: "sam@mwtc.edu",
+  institutionalAdmin: "ada@mwtc.edu",
+  programAdmin: "priya.patel@mwtc.edu",
+  careerServices: "jordan.blake@mwtc.edu",
+  instructor: "terry.osei@mwtc.edu",
+  auditor: "quinn.alvarado@mwtc.edu",
+} as const;
 
-// Custom command to log in as a specific account
-Cypress.Commands.add(
-  "loginAs",
-  (account: typeof ACCOUNTS[keyof typeof ACCOUNTS]) => {
-    cy.visit("/login");
-    cy.get("input[type=email]").type(account.email);
-    cy.get("input[type=password]").type(account.password);
-    cy.contains("button", "Sign in").click();
-    cy.url().should("include", "/");
-  }
-);
-
-// Custom command to get the navigation sidebar
-Cypress.Commands.add("nav", () => {
-  return cy.get("nav");
-});
-
-// Extend types
 declare global {
+  // Cypress custom commands extend its ambient namespace.
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Cypress {
     interface Chainable {
-      loginAs(account: { email: string; password: string }): Chainable<void>;
+      /** Signs in through the real login form (cached per account for the run), then opens the home page. */
+      loginAs(email: string): Chainable<void>;
+      /** The input belonging to a Mantine-labelled field. */
+      field(label: string): Chainable<JQuery<HTMLElement>>;
+      /** The left-hand navigation. */
       nav(): Chainable<JQuery<HTMLElement>>;
     }
   }
 }
+
+Cypress.Commands.add("field", (label: string) =>
+  cy
+    .contains("label", label)
+    .invoke("attr", "for")
+    .then((id) => cy.get(`#${id}`)),
+);
+
+Cypress.Commands.add("nav", () => cy.get('nav[aria-label="Main"]'));
+
+Cypress.Commands.add("loginAs", (email: string) => {
+  cy.session(
+    email,
+    () => {
+      cy.visit("/login");
+      cy.field("Email").type(email);
+      cy.field("Password").type(DEMO_PASSWORD, { log: false });
+      cy.contains("button", "Sign in").click();
+      cy.contains("Welcome,").should("be.visible");
+    },
+    { cacheAcrossSpecs: true },
+  );
+  cy.visit("/");
+  cy.contains("Welcome,").should("be.visible");
+});

@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { getAccessibleProgramIds } from "../../lib/accessScope";
-import { sendData } from "../../lib/apiResponse";
+import { sendData, sendPaginated, toPagination } from "../../lib/apiResponse";
+import { paginationQuerySchema } from "../../lib/pagination";
 import { prisma } from "../../lib/prisma";
 
 /**
@@ -57,5 +58,10 @@ export async function queue(req: Request, res: Response) {
     });
   }
 
-  sendData(res, { queue: rows });
+  if (req.query.page !== undefined || req.query.pageSize !== undefined) {
+    const { page, pageSize } = paginationQuerySchema.parse(req.query);
+    sendPaginated(res, rows.slice((page - 1) * pageSize, page * pageSize), toPagination(page, pageSize, rows.length));
+  } else {
+    sendData(res, { queue: rows });
+  }
 }

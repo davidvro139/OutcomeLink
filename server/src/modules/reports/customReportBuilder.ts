@@ -251,7 +251,7 @@ async function fetchStudentRows(
   accessibleProgramIds: number[] | null,
   limit: number,
   offset: number,
-): Promise<Row[]> {
+): Promise<{ rows: Row[]; totalCount: number }> {
   const programIds = effectiveProgramIdFilter(filterValue<number[]>(input, "programId"), accessibleProgramIds);
   const campusIds = filterValue<number[]>(input, "campusId");
   const enrollmentStatuses = filterValue<string[]>(input, "enrollmentStatus");
@@ -272,6 +272,7 @@ async function fetchStudentRows(
   const labelRows = periods.length > 1;
 
   const rows: Row[] = [];
+  let totalCount = 0;
   for (const period of contexts) {
     // For period-specific queries with employmentStatus filter, add relation filter
     // to the where clause instead of filtering in JS. This allows the database to
@@ -288,6 +289,7 @@ async function fetchStudentRows(
         }
       : baseWhere;
 
+    totalCount += await prisma.studentEnrollment.count({ where });
     const enrollments = await prisma.studentEnrollment.findMany({
       where,
       include: {
@@ -307,7 +309,7 @@ async function fetchStudentRows(
       },
       orderBy: { id: "asc" },
       // Only apply pagination for single-period queries (multi-period applies it to final result)
-      ...(periods.length === 1 ? { take: limit, skip: offset } : {}),
+      ...(periods.length <= 1 ? { take: limit, skip: offset } : {}),
     });
 
     const periodRows: Row[] = enrollments.map((e) => {
@@ -338,7 +340,7 @@ async function fetchStudentRows(
     rows.push(...periodRows);
   }
 
-  return rows;
+  return { rows, totalCount };
 }
 
 async function fetchEmployerRows(
@@ -348,7 +350,7 @@ async function fetchEmployerRows(
   _accessibleProgramIds: number[] | null,
   limit: number,
   offset: number,
-): Promise<Row[]> {
+): Promise<{ rows: Row[]; totalCount: number }> {
   // Employers aren't program-scoped (see search.ts's identical reasoning):
   // an employer can hire from several programs, so there's no single
   // program to check a scoped caller's access against.
@@ -356,14 +358,17 @@ async function fetchEmployerRows(
   const states = filterValue<string[]>(input, "state");
   const activeFilter = filterValue<boolean>(input, "active");
 
-  const employers = await prisma.employer.findMany({
-    where: {
+  const where = {
       institutionId,
       ...(industries && industries.length > 0 ? { industry: { in: industries } } : {}),
       ...(states && states.length > 0 ? { state: { in: states } } : {}),
       ...(activeFilter !== undefined ? { active: activeFilter } : {}),
-    },
-    orderBy: { name: "asc" },
+    };
+  const totalCount = await prisma.employer.count({ where }) * Math.max(1, periods.length);
+  const employers = await prisma.employer.findMany({
+    where,
+    ...(periods.length <= 1 ? { take: limit, skip: offset } : {}),
+    orderBy: [{ name: "asc" }, { id: "asc" }],
   });
   const employerIds = employers.map((e) => e.id);
 
@@ -411,7 +416,7 @@ async function fetchEmployerRows(
     }
   }
 
-  return rows;
+  return { rows, totalCount };
 }
 
 async function fetchProgramRows(
@@ -421,19 +426,22 @@ async function fetchProgramRows(
   accessibleProgramIds: number[] | null,
   limit: number,
   offset: number,
-): Promise<Row[]> {
+): Promise<{ rows: Row[]; totalCount: number }> {
   const campusIds = filterValue<number[]>(input, "campusId");
   const credentialTypes = filterValue<string[]>(input, "credentialType");
   const licensureRequiredFilter = filterValue<boolean>(input, "licensureRequired");
 
-  const programs = await prisma.program.findMany({
-    where: {
+  const where = {
       institutionId,
       ...(campusIds && campusIds.length > 0 ? { campusId: { in: campusIds } } : {}),
       ...(credentialTypes && credentialTypes.length > 0 ? { credentialType: { in: credentialTypes } } : {}),
       ...(licensureRequiredFilter !== undefined ? { licensureRequired: licensureRequiredFilter } : {}),
       ...(accessibleProgramIds && { id: { in: accessibleProgramIds } }),
-    },
+    };
+  const totalCount = await prisma.program.count({ where }) * Math.max(1, periods.length);
+  const programs = await prisma.program.findMany({
+    where,
+    ...(periods.length <= 1 ? { take: limit, skip: offset } : {}),
     include: { campus: { select: { name: true } } },
     orderBy: { name: "asc" },
   });
@@ -474,7 +482,7 @@ async function fetchProgramRows(
     }
   }
 
-  return rows;
+  return { rows, totalCount };
 }
 
 const FETCHERS: Record<
@@ -486,7 +494,7 @@ const FETCHERS: Record<
     accessibleProgramIds: number[] | null,
     limit: number,
     offset: number,
-  ) => Promise<Row[]>
+  ) => Promise<{ rows: Row[]; totalCount: number }>
 > = {
   STUDENT: fetchStudentRows,
   EMPLOYER: fetchEmployerRows,
@@ -521,7 +529,7 @@ async function runQuery(
   const fetchLimit = comparingPeriods ? Number.MAX_SAFE_INTEGER : input.limit;
   const fetchOffset = comparingPeriods ? 0 : input.offset;
 
-  const allRows = await FETCHERS[input.entityType](institutionId, input, periods, accessibleProgramIds, fetchLimit, fetchOffset);
+  const { rows: allRows, totalCount } = await FETCHERS[input.entityType](institutionId, input, periods, accessibleProgramIds, fetchLimit, fetchOffset);
   const pickedRows = allRows.map((row) => pickFields(row, input.fields, comparingPeriods));
 
   // For multi-period reports, apply pagination to final result
@@ -529,7 +537,7 @@ async function runQuery(
     ? pickedRows.slice(input.offset, input.offset + input.limit)
     : pickedRows;
 
-  return { rows: finalRows, comparingPeriods, periods, totalCount: pickedRows.length };
+  return { rows: finalRows, comparingPeriods, periods, totalCount };
 }
 
 export async function runCustomReport(
@@ -555,7 +563,8 @@ export async function buildCustomReportSheet(
   user: AccessTokenPayload,
   input: RunReportInput,
 ): Promise<{ sheets: XlsxSheet[]; rowCount: number }> {
-  const { rows, comparingPeriods, periods } = await runQuery(user, input);
+  input = runReportSchema.parse(input);
+  const { rows, comparingPeriods, periods } = await runQuery(user, { ...input, limit: 2_147_483_647, offset: 0 });
   const fieldDefs = REPORT_FIELDS_BY_ENTITY[input.entityType];
 
   const columns = [
@@ -621,8 +630,8 @@ async function buildProvenanceSheet(
   }
 
   rows.push(
-    { item: "Data Freshness", value: "Results reflect the most recent validation run for each reporting period" },
-    { item: "Enrollment Attributes", value: "Multi-period reports show enrollment status and program as of the selected period start date" },
+    { item: "Data Freshness", value: "Live records at export time; calculated CPL results reflect the most recent computation for each period" },
+    { item: "Enrollment Attributes", value: "Enrollment attributes are current values, not historical snapshots; outcome records use the selected reporting periods" },
   );
 
   return {
@@ -640,6 +649,8 @@ export async function exportCustomReport(
   res: Response,
 ) {
   const input = req.body;
+  const { totalCount } = await runQuery(req.user!, { ...input, limit: 1, offset: 0 });
+  if (totalCount > 5000) throw ApiError.badRequest("This report is too large for a direct download; queue it as a background export");
   const { sheets } = await buildCustomReportSheet(req.user!, input);
 
   await sendXlsx(res, `custom-report-${input.entityType.toLowerCase()}.xlsx`, sheets);

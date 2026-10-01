@@ -1,10 +1,32 @@
 # OutcomeLink
 
-An accreditation and student-outcomes platform for career and technical colleges. It tracks students,
-enrollments, employment, licensure and follow-up, computes the Council on Occupational Education (COE)
-Completion, Placement and Licensure (CPL) rates, and produces the reports and exports used for
-accreditation. The full requirements are in [OutcomeLink_Project_Specification.md](OutcomeLink_Project_Specification.md);
-what has been built, and what is still open, is in [docs/TODO.md](docs/TODO.md).
+OutcomeLink is an outcomes system for career and technical colleges. It keeps the records behind
+accreditation — students, enrollments, jobs, licensure, and follow-up — and calculates Council on
+Occupational Education (COE) Completion, Placement, and Licensure (CPL) rates from those records. A
+rate on screen can be opened down to the students in it, and each student has a plain-language
+explanation of why that student is included or excluded.
+
+The full requirements are in [OutcomeLink_Project_Specification.md](OutcomeLink_Project_Specification.md).
+The build diary is [docs/TODO.md](docs/TODO.md).
+
+## A two-minute look
+
+Load the demo college (steps below), open the app, and sign in as Ada Administrator
+(`ada@mwtc.edu` / `password123`). In development the login page lists one account for each role.
+The password is the demo seed only.
+
+1. **My Programs** — each program against its benchmark, and what still needs attention.
+2. **Accreditation** — open the current reporting period and its CPL dashboard. Open a rate to see
+   the students behind it, then open a student and read how that student counts.
+3. **Follow-Up Queue** — graduates who still need an outcome.
+4. **Cohort & Equity** — the same rates split by entry year or demographic group. Groups smaller
+   than 10 are suppressed.
+5. **Help** — the user guide, from the bottom of the sidebar. **About OutcomeLink** on the login
+   page is readable before signing in, including what the app does with student data.
+
+**Settings**, **Job History**, and **Users** are on the Administration menu for an institution
+administrator (Ada, or Sam Sysadmin at `sam@mwtc.edu`). **Bulk Import** is on that menu for a
+program administrator as well.
 
 ## What's in the repository
 

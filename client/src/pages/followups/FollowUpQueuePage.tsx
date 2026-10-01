@@ -1,3 +1,4 @@
+import { usePermissions } from "../../auth/usePermissions";
 import { Anchor, Badge, Button, Checkbox, Group, Loader, NumberInput, Select, Stack, Table, Text, Title } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -95,7 +96,7 @@ export function FollowUpQueuePage() {
           w={220}
           min={0}
         />
-        {selectedIds.size > 0 && (
+        {canWrite && selectedIds.size > 0 && (
           <Group gap="xs">
             <Button variant="light" onClick={openBulkAssign}>
               Assign {selectedIds.size} Selected
@@ -117,6 +118,7 @@ export function FollowUpQueuePage() {
                   indeterminate={someSelected && !allSelected}
                   onChange={toggleAll}
                   aria-label="Select all"
+                  disabled={!canWrite}
                 />
               </Table.Th>
               <Table.Th>Student</Table.Th>
@@ -141,6 +143,7 @@ export function FollowUpQueuePage() {
                     checked={selectedIds.has(row.student.id)}
                     onChange={() => toggleOne(row.student.id)}
                     aria-label={`Select ${row.student.firstName} ${row.student.lastName}`}
+                    disabled={!canWrite}
                   />
                 </Table.Td>
                 <Table.Td>
@@ -159,7 +162,7 @@ export function FollowUpQueuePage() {
                   {row.nextFollowUpDate ? new Date(row.nextFollowUpDate).toLocaleDateString() : "—"}
                 </Table.Td>
                 <Table.Td>
-                  <AssignedToCell studentId={row.student.id} assignedTo={row.assignedTo} />
+                  {canWrite ? <AssignedToCell studentId={row.student.id} assignedTo={row.assignedTo} /> : row.assignedTo?.name ?? "Unassigned"}
                 </Table.Td>
                 <Table.Td>
                   {row.daysOverdue > 0 ? (

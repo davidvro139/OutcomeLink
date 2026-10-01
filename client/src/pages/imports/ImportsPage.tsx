@@ -5,6 +5,7 @@ import { notifications } from "@mantine/notifications";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import { usePermissions } from "../../auth/usePermissions";
 import { type ImportBatch, useImportBatches, useUploadImportBatch } from "../../api/imports";
 
 // Matches imports.routes.ts's CAN_MANAGE_CONNECTIONS.
@@ -25,6 +26,7 @@ const STATUS_COLORS: Record<string, string> = {
  */
 export function ImportsPage() {
   const { user } = useAuth();
+  const { canManageStudents } = usePermissions();
   const canManageConnections = !!user && CAN_MANAGE_CONNECTIONS.includes(user.role);
   const { data: batches, isLoading } = useImportBatches();
   const upload = useUploadImportBatch();
@@ -60,7 +62,7 @@ export function ImportsPage() {
               Data Source Connections
             </Button>
           )}
-          <Button onClick={open}>New Import</Button>
+          {canManageStudents && <Button onClick={open}>New Import</Button>}
         </Group>
       </Group>
 
@@ -68,7 +70,9 @@ export function ImportsPage() {
 
       {batches && batches.length === 0 && (
         <Text c="dimmed" ta="center" py="xl">
-          No imports yet. Click "New Import" to upload a roster or term export.
+          {canManageStudents
+            ? 'No imports yet. Click "New Import" to upload a roster or term export.'
+            : "No imports yet."}
         </Text>
       )}
 

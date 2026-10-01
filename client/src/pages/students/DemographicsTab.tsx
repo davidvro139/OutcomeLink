@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { apiRequest } from "../../lib/apiClient";
 import { stripEmptyStrings } from "../../lib/forms";
 import { notifications } from "@mantine/notifications";
+import { usePermissions } from "../../auth/usePermissions";
 
 interface StudentDemographics {
   gender: string | null;
@@ -33,6 +34,7 @@ function triStateToBool(value: string | null): boolean | null {
 }
 
 export function DemographicsTab({ studentId }: { studentId: number }) {
+  const { canManageStudents } = usePermissions();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState<StudentDemographics>({
@@ -47,8 +49,9 @@ export function DemographicsTab({ studentId }: { studentId: number }) {
   const { data: demographicsRes, isLoading } = useQuery({
     queryKey: ["students", studentId, "demographics"],
     queryFn: async () => {
-      const res = await apiRequest(`/api/students/${studentId}/demographics`);
-      return res as { demographics: StudentDemographics | null };
+      const res = await apiRequest<Partial<StudentDemographics>>(`/api/students/${studentId}/demographics`);
+      return { demographics: { gender: null, raceEthnicity: null, economicallyDisadvantaged: null,
+        firstGenerationStudent: null, disabilityStatus: null, ...res } };
     },
   });
 
@@ -93,7 +96,7 @@ export function DemographicsTab({ studentId }: { studentId: number }) {
     <Stack gap="md">
       <Group justify="space-between">
         <Text fw={600}>Demographics</Text>
-        {!editing && <Button size="xs" variant="light" onClick={() => setEditing(true)}>Edit</Button>}
+        {canManageStudents && !editing && <Button size="xs" variant="light" onClick={() => setEditing(true)}>Edit</Button>}
       </Group>
 
       <Stack gap="md">

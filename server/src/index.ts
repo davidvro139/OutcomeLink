@@ -1,8 +1,7 @@
 import { createApp } from "./app";
 import { env } from "./config/env";
 import { prisma } from "./lib/prisma";
-import { startNightlyValidationScheduler } from "./modules/accreditation";
-import { startFollowUpAutomationScheduler } from "./modules/followups";
+import { startJobRunner } from "./lib/jobRunner";
 import { startScheduler } from "./modules/scheduledReports";
 
 const app = createApp();
@@ -25,9 +24,7 @@ process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));
 
 // Only reached from the real server entrypoint (never from tests, which
-// import createApp() directly) — three independent cron registrations for
-// time-based background tasks (docs/TODO.md's Scheduled Reports, Follow-Up
-// Automation, and Nightly Validation).
+// import createApp() directly). Subscription polling and the job registry
+// each start once; the registry owns nightly jobs and retry processing.
 startScheduler();
-startFollowUpAutomationScheduler();
-startNightlyValidationScheduler();
+startJobRunner();

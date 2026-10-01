@@ -1,4 +1,5 @@
 import cron from "node-cron";
+import { runJob } from "../../lib/jobRunner";
 import type { ScheduledReportFrequency } from "@outcomelink/shared";
 import type { AccessTokenPayload } from "../../lib/jwt";
 import { createNotification } from "../../lib/notifications";
@@ -48,7 +49,7 @@ function toAccessTokenPayload(user: { id: number; role: AccessTokenPayload["role
  * Notification, success or failure, so a broken subscription surfaces
  * instead of silently never delivering anything.
  */
-export async function runSubscription(subscriptionId: number) {
+export async function runSubscription(subscriptionId: number, notifyFailure = true) {
   const subscription = await prisma.scheduledReportSubscription.findUniqueOrThrow({
     where: { id: subscriptionId },
     include: { savedReport: true, creator: true },
@@ -57,23 +58,17 @@ export async function runSubscription(subscriptionId: number) {
 
   let run;
   try {
-    const sheet =
-      subscription.reportSource === "SAVED_REPORT"
-        ? await buildCustomReportSheet(
-            creatorPayload,
-            subscription.savedReport!.definition as unknown as RunReportInput,
-          )
-        : (
-            await buildBuiltInReportSheet(
-              subscription.institutionId,
-              creatorPayload,
-              subscription.builtInReportType!,
-              subscription.reportingPeriodId,
-            )
-          ).sheet;
-    const effectiveRowCount = sheet.rows.length;
+    let report;
+    if (subscription.reportSource === "SAVED_REPORT") {
+      report = await buildCustomReportSheet(creatorPayload, subscription.savedReport!.definition as unknown as RunReportInput);
+    } else {
+      const { sheet } = await buildBuiltInReportSheet(subscription.institutionId, creatorPayload,
+        subscription.builtInReportType!, subscription.reportingPeriodId);
+      report = { sheets: [sheet], rowCount: sheet.rows.length };
+    }
+    const effectiveRowCount = report.rowCount;
 
-    const buffer = await buildXlsxBuffer([sheet]);
+    const buffer = await buildXlsxBuffer(report.sheets);
     const { fileReference } = await scheduledReportStorage.save({
       buffer,
       originalName: `${subscription.name}.xlsx`,
@@ -96,7 +91,7 @@ export async function runSubscription(subscriptionId: number) {
     run = await prisma.scheduledReportRun.create({
       data: { subscriptionId, status: "FAILED", errorMessage: message },
     });
-    await createNotification({
+    if (notifyFailure) await createNotification({
       userId: subscription.createdBy,
       type: "SCHEDULED_REPORT_READY",
       message: `Your scheduled report "${subscription.name}" failed to run: ${message}`,
@@ -131,11 +126,11 @@ export function startScheduler(): void {
 async function runDueSubscriptions(): Promise<void> {
   const due = await prisma.scheduledReportSubscription.findMany({
     where: { active: true, nextRunAt: { lte: new Date() }, creator: { active: true } },
-    select: { id: true },
+    select: { id: true, institutionId: true },
   });
   for (const subscription of due) {
     try {
-      await runSubscription(subscription.id);
+      await runJob("SCHEDULED_REPORT", { institutionId: subscription.institutionId, trigger: "SCHEDULE", params: { subscriptionId: subscription.id } });
     } catch (err) {
       // runSubscription already records a FAILED run for report-generation
       // errors; this is only a last-resort guard so one broken subscription

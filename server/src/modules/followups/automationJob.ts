@@ -1,4 +1,3 @@
-import type { JobContext } from "../../lib/jobRunner";
 import { DEFAULT_BACKOFF_MS, registerJob } from "../../lib/jobRunner";
 import { runFollowUpAutomation } from "./automationScheduler";
 
@@ -11,7 +10,7 @@ registerJob({
   type: "FOLLOW_UP_AUTOMATION",
   maxAttempts: 3,
   backoffMs: DEFAULT_BACKOFF_MS,
-  handler: async (ctx: JobContext) => {
+  handler: async () => {
     const result = await runFollowUpAutomation();
     return result;
   },

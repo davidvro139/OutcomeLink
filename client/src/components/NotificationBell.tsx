@@ -58,7 +58,7 @@ export function NotificationBell() {
           color="red"
           disabled={unreadCount === 0}
         >
-          <ActionIcon variant="subtle" size="lg" aria-label="Notifications">
+          <ActionIcon variant="subtle" size="lg" aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}>
             <IconBell size={20} />
           </ActionIcon>
         </Indicator>

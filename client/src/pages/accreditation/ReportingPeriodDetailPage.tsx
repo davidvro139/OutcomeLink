@@ -23,6 +23,7 @@ import {
 } from "../../api/accreditation";
 import { AuditHistory } from "../../components/AuditHistory";
 import { CplDashboardTab } from "./CplDashboardTab";
+import { CloseoutTab } from "./CloseoutTab";
 import { ImprovementPlansTab } from "./ImprovementPlansTab";
 import { ReadinessTab } from "./ReadinessTab";
 import { ReportsTab } from "./ReportsTab";

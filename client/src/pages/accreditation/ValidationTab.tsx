@@ -11,6 +11,7 @@ import {
 } from "../../api/accreditation";
 import { downloadFile } from "../../lib/apiClient";
 import { MergeDuplicatesModal } from "./MergeDuplicatesModal";
+import { usePermissions } from "../../auth/usePermissions";
 
 const SEVERITY_COLORS: Record<string, string> = {
   ERROR: "red",
@@ -122,7 +123,7 @@ export function ValidationTab({ reportingPeriodId }: { reportingPeriodId: number
           </Badge>
         </Group>
         <Group>
-          {selectedIssueIds.size > 0 && (
+          {canAdminister && selectedIssueIds.size > 0 && (
             <Button size="xs" onClick={handleBulkResolve} loading={bulkResolve.isPending}>
               Resolve {selectedIssueIds.size} Selected
             </Button>
@@ -149,6 +150,7 @@ export function ValidationTab({ reportingPeriodId }: { reportingPeriodId: number
                   indeterminate={someSelected && !allSelected}
                   onChange={toggleAll}
                   aria-label="Select all"
+                  disabled={!canAdminister}
                 />
               </Table.Th>
               <Table.Th>Severity</Table.Th>
@@ -166,6 +168,7 @@ export function ValidationTab({ reportingPeriodId }: { reportingPeriodId: number
                     checked={selectedIssueIds.has(issue.id)}
                     onChange={() => toggleIssue(issue.id)}
                     aria-label={`Select issue ${issue.id}`}
+                    disabled={!canAdminister}
                   />
                 </Table.Td>
                 <Table.Td>
@@ -184,7 +187,7 @@ export function ValidationTab({ reportingPeriodId }: { reportingPeriodId: number
                 <Table.Td>{issue.program?.name ?? "—"}</Table.Td>
                 <Table.Td>
                   <Group gap={4} wrap="nowrap">
-                    {issue.issueType === "POSSIBLE_DUPLICATE_STUDENT" && issue.student && (
+                    {canManageStudents && issue.issueType === "POSSIBLE_DUPLICATE_STUDENT" && issue.student && (
                       <Button
                         size="xs"
                         variant="light"
@@ -194,14 +197,14 @@ export function ValidationTab({ reportingPeriodId }: { reportingPeriodId: number
                         Merge
                       </Button>
                     )}
-                    <Button
+                    {canAdminister && <Button
                       size="xs"
                       variant="subtle"
                       onClick={() => handleResolve(issue.id)}
                       loading={resolveIssue.isPending}
                     >
                       Resolve
-                    </Button>
+                    </Button>}
                   </Group>
                 </Table.Td>
               </Table.Tr>

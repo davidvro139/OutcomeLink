@@ -63,7 +63,7 @@ Groups with **fewer than 10 students have their numerator and percentage hidden*
 
 Why 10? It's a standard threshold in higher-education reporting to balance privacy and transparency.
 
-### Coverage
+### Coverage definition
 
 When disaggregating by a demographic field, you see **coverage**: what percentage of students have that data on file.
 

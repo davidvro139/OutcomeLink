@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useCampuses, usePrograms } from "../../api/programs";
 import {
   type InviteUserInput,
+  type PasswordLinkResult,
   type StaffUser,
   type UpdateUserInput,
   useInviteUser,
@@ -31,6 +32,15 @@ async function copySetPasswordLink(token: string, label: string) {
     notifications.show({ message: `${label} link copied to clipboard`, color: "blue" });
   } catch {
     notifications.show({ message: url, autoClose: false, color: "blue", title: `${label} link` });
+  }
+}
+
+async function showPasswordLinkResult(result: PasswordLinkResult, label: string) {
+  if (result.emailStatus === "SENT") {
+    notifications.show({ message: `${label} email sent`, color: "green" });
+  } else if (result.token) {
+    if (result.emailStatus === "FAILED") notifications.show({ message: result.emailReason ?? "Email failed; share the link below", color: "orange" });
+    await copySetPasswordLink(result.token, label);
   }
 }
 
@@ -95,7 +105,7 @@ function UserFormModal({
       } else {
         const input: InviteUserInput = { name: form.name, email: form.email, role: form.role };
         const result = await inviteUser.mutateAsync(input);
-        await copySetPasswordLink(result.token, "Invite");
+        await showPasswordLinkResult(result, "Invite");
       }
       onClose();
     } catch (err) {
@@ -251,7 +261,7 @@ function UserRow({ user, onEdit }: { user: StaffUser; onEdit: () => void }) {
   async function handleResetPassword() {
     try {
       const result = await resetPassword.mutateAsync();
-      await copySetPasswordLink(result.token, "Password reset");
+      await showPasswordLinkResult(result, "Password reset");
     } catch (err) {
       notifications.show({
         message: err instanceof Error ? err.message : "Failed to reset password",

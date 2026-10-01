@@ -1,4 +1,3 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "../../lib/prisma";
 import { buildEquityBreakdown } from "./equityBreakdown";
 
@@ -115,24 +114,8 @@ describe("equityBreakdown", () => {
   });
 
   afterAll(async () => {
-    // Cleanup in correct order to avoid foreign key constraints
-    try {
-      await prisma.cplCalculationExplanation.deleteMany();
-      await prisma.studentClassification.deleteMany();
-      await prisma.cplCalculationResult.deleteMany();
-      await prisma.studentDemographics.deleteMany();
-      await prisma.studentEnrollment.deleteMany();
-      await prisma.student.deleteMany();
-      await prisma.reportingPeriod.deleteMany();
-      await prisma.ruleSet.deleteMany();
-      await prisma.accreditationFramework.deleteMany();
-      await prisma.program.deleteMany();
-      await prisma.campus.deleteMany();
-      await prisma.institution.deleteMany();
-    } catch (err) {
-      // Ignore cleanup errors in test
-      console.error("Cleanup error:", err);
-    }
+    // The integration harness resets the disposable database before the next run.
+    await prisma.$disconnect();
   });
 
   it("should aggregate by entry year", async () => {
@@ -236,6 +219,21 @@ describe("equityBreakdown", () => {
     });
 
     expect(result.scope.programId).toBe(programId);
+  });
+
+  it("returns no classifications or trend data for an empty access scope", async () => {
+    const result = await buildEquityBreakdown(institutionId, [], { reportingPeriodId, metric: "COMPLETION", dimension: "gender" });
+    expect(result.groups).toEqual([]);
+    expect(result.trend).toEqual([]);
+  });
+
+  it("keeps false demographic values separate from missing data and preserves trend order", async () => {
+    await prisma.studentDemographics.updateMany({ where: { student: { institutionId } }, data: { disabilityStatus: false } });
+    const result = await buildEquityBreakdown(institutionId, [programId], { reportingPeriodId, metric: "COMPLETION", dimension: "disabilityStatus" });
+    expect(result.groups.find((g) => g.value === "false")?.denominator).toBe(15);
+    expect(result.groups.find((g) => g.value === "NOT_ON_FILE")?.denominator).toBe(5);
+    expect(result.benchmark?.value).toBe(70);
+    expect(result.trend[0]?.points.map((p) => p.label)).toEqual(result.trend[1]?.points.map((p) => p.label));
   });
 
   it("should throw on inaccessible program", async () => {

@@ -18,7 +18,6 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { type CreateEmployerInput, useCreateEmployer, useEmployers } from "../../api/employers";
 import { usePermissions } from "../../auth/usePermissions";
-import { Pager } from "../../components/Pager";
 
 export function EmployersListPage() {
   const { canManageEmployers } = usePermissions();

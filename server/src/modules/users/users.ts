@@ -1,3 +1,6 @@
+import { publicUrl } from "../../lib/appUrls";
+import { deliverEmail, emailResponseFields } from "../../lib/emailDelivery";
+import { invitationEmail, passwordResetEmail } from "../../lib/emailTemplates";
 import { randomUUID } from "node:crypto";
 import type { Request, Response } from "express";
 import { ROLES } from "@outcomelink/shared";
@@ -96,7 +99,10 @@ export async function invite(
     },
     select: { id: true, name: true, email: true, role: true, active: true, passwordSetToken: true },
   });
-  sendData(res, { user, token: passwordSetToken }, 201);
+  const outcome = await deliverEmail({ institutionId, purpose: "INVITATION", to: user.email,
+    content: invitationEmail({ name: user.name, url: publicUrl(`/set-password/${passwordSetToken}`) }),
+    relatedEntityType: "User", relatedEntityId: user.id });
+  sendData(res, { user, ...emailResponseFields(outcome), ...(outcome.status === "SENT" ? {} : { token: passwordSetToken }) }, 201);
 }
 
 export const updateUserSchema = z.object({
@@ -159,9 +165,12 @@ export async function resetPassword(req: Request<{ id: string }>, res: Response)
   const user = await prisma.user.update({
     where: { id: userId },
     data: newPasswordSetToken(),
-    select: { passwordSetToken: true },
+    select: { passwordSetToken: true, name: true, email: true },
   });
-  sendData(res, { token: user.passwordSetToken });
+  const outcome = await deliverEmail({ institutionId, purpose: "PASSWORD_RESET", to: user.email,
+    content: passwordResetEmail({ name: user.name, url: publicUrl(`/set-password/${user.passwordSetToken}`) }),
+    relatedEntityType: "User", relatedEntityId: userId });
+  sendData(res, { ...emailResponseFields(outcome), ...(outcome.status === "SENT" ? {} : { token: user.passwordSetToken }) });
 }
 
 export const setUserAccessSchema = z.object({

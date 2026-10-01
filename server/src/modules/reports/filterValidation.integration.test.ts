@@ -7,7 +7,7 @@ import type { ReportEntityType } from "@outcomelink/shared";
 interface RunReportInput {
   entityType: ReportEntityType;
   fields: string[];
-  filters?: Array<{ field: string; value: string[] | number[] | boolean }>;
+  filters?: Array<{ field: string; value: unknown }>;
   reportingPeriodIds?: number[];
 }
 
@@ -31,7 +31,7 @@ describe("report filter validation (integration)", () => {
     institutionId = institution.id;
 
     const passwordHash = await hashPassword("password123");
-    const admin = await prisma.user.create({
+    await prisma.user.create({
       data: {
         institutionId,
         name: "Admin",
@@ -90,7 +90,7 @@ describe("report filter validation (integration)", () => {
       const res = await runReport({
         entityType: "EMPLOYER",
         fields: ["name"],
-        filters: [{ field: "active", value: [true, false] as any }],
+        filters: [{ field: "active", value: [true, false] }],
       });
       expect(res.status).toBe(400);
       expect(res.body.error.message).toContain("expects scalar value");
@@ -100,7 +100,7 @@ describe("report filter validation (integration)", () => {
       const res = await runReport({
         entityType: "EMPLOYER",
         fields: ["name"],
-        filters: [{ field: "industry", value: "Tech" as any }],
+        filters: [{ field: "industry", value: "Tech" }],
       });
       expect(res.status).toBe(400);
       expect(res.body.error.message).toContain("expects array");
@@ -110,7 +110,7 @@ describe("report filter validation (integration)", () => {
       const res = await runReport({
         entityType: "STUDENT",
         fields: ["firstName"],
-        filters: [{ field: "programId", value: ["abc"] as any }],
+        filters: [{ field: "programId", value: ["abc"] }],
       });
       expect(res.status).toBe(400);
       expect(res.body.error.message).toContain("expects number");
@@ -120,7 +120,7 @@ describe("report filter validation (integration)", () => {
       const res = await runReport({
         entityType: "STUDENT",
         fields: ["firstName"],
-        filters: [{ field: "enrollmentStatus", value: [123] as any }],
+        filters: [{ field: "enrollmentStatus", value: [123] }],
       });
       expect(res.status).toBe(400);
       expect(res.body.error.message).toContain("expects string");

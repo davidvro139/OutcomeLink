@@ -6,9 +6,13 @@ import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { recordCommunicationEvent } from "../../lib/communicationEvents";
 import { prisma } from "../../lib/prisma";
+import { emailResponseFields, type EmailOutcome } from "../../lib/emailDelivery";
+import { sendEmployerSurveyEmail, noteworthy, emailOutcomeNote } from "./surveyEmail";
 
 export const createEmployerSurveySchema = z.object({
   employerId: z.coerce.number().int().positive(),
+  employerContactId: z.coerce.number().int().positive().optional(),
+  sendEmail: z.boolean().default(true),
 });
 type CreateEmployerSurveyInput = z.infer<typeof createEmployerSurveySchema>;
 
@@ -44,7 +48,7 @@ export async function create(
   const studentId = Number(req.params.studentId);
   const institutionId = req.user!.institutionId;
   const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
-  await findOwnedStudent(institutionId, studentId, accessibleProgramIds);
+  const student = await findOwnedStudent(institutionId, studentId, accessibleProgramIds);
 
   const employer = await prisma.employer.findFirst({
     where: { id: req.body.employerId, institutionId },
@@ -66,12 +70,16 @@ export async function create(
       responseToken: randomUUID(),
     },
   });
+  const outcome: EmailOutcome = req.body.sendEmail
+    ? await sendEmployerSurveyEmail(institutionId, survey, employer.id, `${student.firstName} ${student.lastName}`, req.body.employerContactId)
+    : { status: "SKIPPED", reason: "Email not requested" };
+  const note = noteworthy(req.body.sendEmail ? outcome : null);
   await recordCommunicationEvent({
     studentId,
     eventType: "EMPLOYER_SURVEY_SENT",
     sourceId: survey.id,
     occurredAt: survey.sentAt,
-    summaryText: `Employer survey sent to ${employer.name}`,
+    summaryText: `Employer survey sent to ${employer.name}${note ? `; ${emailOutcomeNote(note)}` : ""}`,
   });
-  sendData(res, { survey }, 201);
+  sendData(res, { survey, ...emailResponseFields(outcome) }, 201);
 }

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import { env } from "../config/env";
 
@@ -17,6 +17,7 @@ export interface StorageAdapter {
   save(file: StoredFile): Promise<{ fileReference: string }>;
   /** Reads back a previously-saved file's bytes given its reference. */
   load(fileReference: string): Promise<Buffer>;
+  delete(fileReference: string): Promise<void>;
 }
 
 /**
@@ -36,7 +37,22 @@ export class LocalDiskStorageAdapter implements StorageAdapter {
   }
 
   async load(fileReference: string): Promise<Buffer> {
-    return readFile(path.join(this.uploadDir, fileReference));
+    return readFile(this.resolveReference(fileReference));
+  }
+
+  private resolveReference(fileReference: string): string {
+    if (!fileReference || fileReference !== path.basename(fileReference) || fileReference === "." || fileReference === "..") {
+      throw new Error("Invalid file reference");
+    }
+    return path.join(this.uploadDir, fileReference);
+  }
+
+  async delete(fileReference: string): Promise<void> {
+    try {
+      await unlink(this.resolveReference(fileReference));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
   }
 }
 

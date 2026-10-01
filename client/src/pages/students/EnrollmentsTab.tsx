@@ -185,7 +185,7 @@ function EnrollmentDetail({
   enrollmentObjective: string | null;
   reportableForAccreditation: boolean;
 }) {
-  const { canWrite, canManageStudents } = usePermissions();
+  const { canWrite } = usePermissions();
   const updateEnrollment = useUpdateEnrollment(studentId);
   const { data: reportingPeriods } = useReportingPeriods();
   const { data: outcomeRecords } = useOutcomeRecords(studentId, enrollmentId);

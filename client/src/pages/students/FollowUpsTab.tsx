@@ -9,6 +9,7 @@ import {
   useFollowUpAttempts,
 } from "../../api/followups";
 import { toDatetimeLocalValue } from "../../lib/forms";
+import { usePermissions } from "../../auth/usePermissions";
 
 export function FollowUpsTab({ studentId }: { studentId: number }) {
   const { canWrite } = usePermissions();

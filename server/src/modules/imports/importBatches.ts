@@ -125,15 +125,6 @@ for (const [key, val] of BOOLEAN_LOOKUP) {
   BOOLEAN_LOOKUP.set(key.toUpperCase(), val);
 }
 
-/** A row's demographic-subset once any demographic field is mapped — lenient, drops unrecognized values. */
-const importDemographicSchema = z.object({
-  gender: z.string().optional().catch(undefined),
-  raceEthnicity: z.string().optional().catch(undefined),
-  economicallyDisadvantaged: z.string().optional().catch(undefined),
-  firstGenerationStudent: z.string().optional().catch(undefined),
-  disabilityStatus: z.string().optional().catch(undefined),
-});
-
 function isExcelFile(filename: string): boolean {
   return /\.xlsx?$/i.test(filename);
 }

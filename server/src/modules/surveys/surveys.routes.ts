@@ -7,6 +7,7 @@ import * as employerSurveys from "./employerSurveys";
 import * as graduateCampaign from "./graduateCampaign";
 import * as graduateSurveys from "./graduateSurveys";
 import * as publicSurveys from "./publicSurveys";
+import { createPublicTokenLimiter } from "../../middleware/rateLimit";
 
 export const surveysRouter = Router();
 
@@ -37,6 +38,7 @@ surveysRouter.post(
 );
 
 export const publicSurveysRouter = Router();
+publicSurveysRouter.use(createPublicTokenLimiter());
 
 publicSurveysRouter.get("/graduate/:token", asyncHandler(publicSurveys.getGraduateSurvey));
 publicSurveysRouter.post(

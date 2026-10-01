@@ -15,21 +15,26 @@ import {
   IconBriefcase,
   IconCertificate,
   IconChartBar,
+  IconChartPie,
   IconChevronDown,
   IconClipboardCheck,
+  IconHelp,
+  IconHistory,
   IconLayoutDashboard,
+  IconLayoutGrid,
   IconLogout,
   IconReportAnalytics,
   IconSchool,
+  IconSettings,
   IconTrendingUp,
   IconUpload,
   IconUserCog,
   IconUsers,
-  IconChartPie,
 } from "@tabler/icons-react";
 import { ROLE_LABELS } from "@outcomelink/shared";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { usePermissions } from "../auth/usePermissions";
 import { GlobalSearch } from "../components/GlobalSearch";
 import { NotificationBell } from "../components/NotificationBell";
 
@@ -37,50 +42,65 @@ interface NavItem {
   to: string;
   label: string;
   icon: typeof IconLayoutDashboard;
+  /** Omit the link when this role cannot use the page. */
+  show: boolean;
 }
-
-// Grouped per the user's own note in docs/TODO.md ("category/section
-// division in the left menu to help organize") — a flat list of 11 items
-// had grown hard to scan. `label: null` renders with no section header
-// (just Dashboard, since it isn't really a category of its own).
-const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
-  {
-    label: null,
-    items: [{ to: "/", label: "Dashboard", icon: IconLayoutDashboard }],
-  },
-  {
-    label: "Students & Outcomes",
-    items: [
-      { to: "/programs", label: "Programs", icon: IconSchool },
-      { to: "/students", label: "Students", icon: IconUsers },
-      { to: "/employers", label: "Employers", icon: IconBriefcase },
-      { to: "/followups", label: "Follow-Up Queue", icon: IconClipboardCheck },
-      { to: "/licensure", label: "Licensure Queue", icon: IconCertificate },
-    ],
-  },
-  {
-    label: "Accreditation",
-    items: [
-      { to: "/accreditation/reporting-periods", label: "Accreditation", icon: IconChartBar },
-      { to: "/accreditation/trends", label: "Trends", icon: IconTrendingUp },
-      { to: "/equity", label: "Cohort & Equity", icon: IconChartPie },
-      { to: "/report-builder", label: "Report Builder", icon: IconReportAnalytics },
-    ],
-  },
-  {
-    label: "Administration",
-    items: [
-      { to: "/imports", label: "Bulk Import", icon: IconUpload },
-      { to: "/users", label: "Users", icon: IconUserCog },
-    ],
-  },
-];
 
 /** The authenticated app shell: header with search + user menu, navbar, content area for routed pages. */
 export function AppLayout() {
   const { user, logout } = useAuth();
+  const { canAdminister, canManageStudents } = usePermissions();
   const location = useLocation();
   const [navOpened, { toggle: toggleNav, close: closeNav }] = useDisclosure(false);
+
+  // Section headers stay off a group that has no links for this role, so an
+  // auditor does not see an empty Administration heading.
+  const navSections: { label: string | null; items: NavItem[] }[] = [
+    {
+      label: null,
+      items: [
+        { to: "/", label: "Dashboard", icon: IconLayoutDashboard, show: true },
+        { to: "/my-programs", label: "My Programs", icon: IconLayoutGrid, show: true },
+      ],
+    },
+    {
+      label: "Students & Outcomes",
+      items: [
+        { to: "/programs", label: "Programs", icon: IconSchool, show: true },
+        { to: "/students", label: "Students", icon: IconUsers, show: true },
+        { to: "/employers", label: "Employers", icon: IconBriefcase, show: true },
+        { to: "/followups", label: "Follow-Up Queue", icon: IconClipboardCheck, show: true },
+        { to: "/licensure", label: "Licensure Queue", icon: IconCertificate, show: true },
+      ],
+    },
+    {
+      label: "Accreditation",
+      items: [
+        {
+          to: "/accreditation/reporting-periods",
+          label: "Accreditation",
+          icon: IconChartBar,
+          show: true,
+        },
+        { to: "/accreditation/trends", label: "Trends", icon: IconTrendingUp, show: true },
+        { to: "/equity", label: "Cohort & Equity", icon: IconChartPie, show: true },
+        { to: "/report-builder", label: "Report Builder", icon: IconReportAnalytics, show: true },
+      ],
+    },
+    {
+      label: "Administration",
+      items: [
+        { to: "/imports", label: "Bulk Import", icon: IconUpload, show: canManageStudents },
+        { to: "/users", label: "Users", icon: IconUserCog, show: canAdminister },
+        { to: "/jobs", label: "Job History", icon: IconHistory, show: canAdminister },
+        { to: "/settings", label: "Settings", icon: IconSettings, show: canAdminister },
+      ],
+    },
+    {
+      label: null,
+      items: [{ to: "/help", label: "Help", icon: IconHelp, show: true }],
+    },
+  ];
 
   async function handleLogout() {
     // RequireAuth redirects to /login once status flips; a second imperative
@@ -150,32 +170,36 @@ export function AppLayout() {
         </Group>
       </AppShell.Header>
 
-      <AppShell.Navbar p="md">
+      <AppShell.Navbar p="md" aria-label="Main">
         <Stack gap="lg">
-          {NAV_SECTIONS.map((section) => (
-            <Stack key={section.label ?? "top"} gap={4}>
-              {section.label && (
-                <Text size="xs" fw={700} c="dimmed" tt="uppercase" px={8}>
-                  {section.label}
-                </Text>
-              )}
-              {section.items.map((item) => (
-                <NavLink
-                  key={item.to}
-                  component={Link}
-                  to={item.to}
-                  label={item.label}
-                  leftSection={<item.icon size={18} />}
-                  active={
-                    item.to === "/"
-                      ? location.pathname === "/"
-                      : location.pathname.startsWith(item.to)
-                  }
-                  onClick={closeNav}
-                />
-              ))}
-            </Stack>
-          ))}
+          {navSections.map((section) => {
+            const items = section.items.filter((item) => item.show);
+            if (items.length === 0) return null;
+            return (
+              <Stack key={section.label ?? items[0]!.to} gap={4}>
+                {section.label && (
+                  <Text size="xs" fw={700} c="dimmed" tt="uppercase" px={8}>
+                    {section.label}
+                  </Text>
+                )}
+                {items.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    component={Link}
+                    to={item.to}
+                    label={item.label}
+                    leftSection={<item.icon size={18} />}
+                    active={
+                      item.to === "/"
+                        ? location.pathname === "/"
+                        : location.pathname.startsWith(item.to)
+                    }
+                    onClick={closeNav}
+                  />
+                ))}
+              </Stack>
+            );
+          })}
         </Stack>
       </AppShell.Navbar>
 

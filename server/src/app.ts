@@ -30,6 +30,9 @@ import { searchRouter } from "./modules/search";
 import { studentsRouter } from "./modules/students";
 import { publicSurveysRouter, surveysRouter } from "./modules/surveys";
 import { publicUsersRouter, usersRouter } from "./modules/users";
+import { settingsRouter } from "./modules/settings";
+import { jobRunsRouter } from "./modules/jobRuns";
+import { systemRouter } from "./modules/system";
 
 export function createApp() {
   const app = express();
@@ -85,6 +88,11 @@ export function createApp() {
   app.use("/api/imports", importsRouter);
   app.use("/api/notifications", notificationsRouter);
   app.use("/api/scheduled-reports", scheduledReportsRouter);
+  app.use("/api/dashboard", programDashboardRouter);
+  app.use("/api/email-deliveries", emailDeliveriesRouter);
+  app.use("/api/settings", settingsRouter);
+  app.use("/api/job-runs", jobRunsRouter);
+  app.use("/api/system", systemRouter);
   // Further domain routers are mounted here as each module lands.
 
   app.use(notFoundHandler);

@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { CPL_METRICS, type CplMetric } from "@outcomelink/shared";
 import { z } from "zod";
+import type { NegotiatedBenchmark } from "@prisma/client";
 import { getAccessibleProgramIds } from "../../../lib/accessScope";
 import { ApiError } from "../../../lib/apiError";
 import { sendData } from "../../../lib/apiResponse";
@@ -13,6 +14,18 @@ export const createNegotiatedBenchmarkSchema = z.object({
   effectiveEndDate: z.coerce.date().optional(),
   approvalReference: z.string().trim().min(1).max(2000),
 });
+
+/** Select from a preloaded set using the same effective-date rule as the database lookup. */
+export function pickEffectiveBenchmark(
+  benchmarks: NegotiatedBenchmark[], programId: number, metric: CplMetric,
+  standardBenchmark: number, referenceDate: Date,
+): { value: number; negotiated: boolean } {
+  const active = benchmarks.filter((b) => b.programId === programId && b.metric === metric &&
+    b.effectiveStartDate <= referenceDate && (!b.effectiveEndDate || b.effectiveEndDate >= referenceDate))
+    .sort((a, b) => b.effectiveStartDate.getTime() - a.effectiveStartDate.getTime())[0];
+  return active ? { value: Number(active.approvedPercentage), negotiated: true }
+    : { value: standardBenchmark, negotiated: false };
+}
 type CreateNegotiatedBenchmarkInput = z.infer<typeof createNegotiatedBenchmarkSchema>;
 
 async function findOwnedProgram(

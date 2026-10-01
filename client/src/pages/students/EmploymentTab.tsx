@@ -116,7 +116,7 @@ export function EmploymentTab({ studentId }: { studentId: number }) {
                 searchable
                 style={{ flex: 1 }}
               />
-              <Button variant="light" size="sm" onClick={openEmployerModal}>
+              <Button variant="light" size="sm" onClick={openEmployerModal} disabled={!canManageEmployers}>
                 New employer
               </Button>
             </Group>

@@ -2,7 +2,7 @@ import { Alert, Box, Button, Group, Select, Stack, Table, Text, Title } from "@m
 import { IconDownload } from "@tabler/icons-react";
 import { EQUITY_DIMENSION_LABELS, EQUITY_DIMENSIONS } from "@outcomelink/shared";
 import type { CplMetric, EquityDimension } from "@outcomelink/shared";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   LineChart,
   Line,
@@ -15,7 +15,7 @@ import {
   ReferenceLine,
 } from "recharts";
 import { downloadEquityBreakdown, useEquityBreakdown, type EquityBreakdownParams } from "../../api/equity";
-import { apiRequest } from "../../lib/apiClient";
+import { usePrograms } from "../../api/programs";
 import { notifications } from "@mantine/notifications";
 
 const METRICS = ["COMPLETION", "PLACEMENT", "LICENSURE"] as const;
@@ -25,23 +25,12 @@ const METRIC_LABELS: Record<CplMetric, string> = {
   LICENSURE: "Licensure",
 };
 
-interface Program {
-  id: number;
-  name: string;
-}
-
 export function EquityBreakdownPage() {
   const [metric, setMetric] = useState<CplMetric>("COMPLETION");
   const [dimension, setDimension] = useState<EquityDimension>("entryYear");
   const [programId, setProgramId] = useState<number | null>(null);
-  const [programs, setPrograms] = useState<Program[]>([]);
-
-  // Fetch accessible programs
-  useEffect(() => {
-    apiRequest("/api/programs").then((data: any) => {
-      setPrograms(data.programs ?? []);
-    });
-  }, []);
+  const { data: programData } = usePrograms();
+  const programs = programData?.items ?? [];
 
   const params: EquityBreakdownParams = useMemo(() => {
     return { metric, dimension, programId: programId ?? undefined };

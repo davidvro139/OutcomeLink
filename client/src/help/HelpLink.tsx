@@ -27,11 +27,3 @@ export function HelpLink({
   );
 }
 
-/** Every context help link the app renders, so the tests can verify each target exists. */
-export const CONTEXT_HELP_TARGETS: { slug: string; headingId?: string }[] = [
-  { slug: "program-health" },
-  { slug: "closeout" },
-  { slug: "importing" },
-  { slug: "administration" },
-  { slug: "reports" },
-];

@@ -1,3 +1,4 @@
+import { createPublicTokenLimiter } from "../../middleware/rateLimit";
 import { Router } from "express";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { requireAuth, requireRole } from "../../middleware/auth";
@@ -46,6 +47,7 @@ usersRouter.put(
 );
 
 export const publicUsersRouter = Router();
+publicUsersRouter.use(createPublicTokenLimiter());
 
 publicUsersRouter.get("/:token", asyncHandler(publicSetPassword.getSetPasswordInfo));
 publicUsersRouter.post(

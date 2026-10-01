@@ -12,6 +12,9 @@ import { FollowUpQueuePage } from "./pages/followups/FollowUpQueuePage";
 import { ImportBatchPage } from "./pages/imports/ImportBatchPage";
 import { ImportsPage } from "./pages/imports/ImportsPage";
 import { LicensureQueuePage } from "./pages/licensure/LicensureQueuePage";
+import { AboutPage } from "./pages/help/AboutPage";
+import { HelpPage } from "./pages/help/HelpPage";
+import { JobHistoryPage } from "./pages/jobs/JobHistoryPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ProgramDetailPage } from "./pages/programs/ProgramDetailPage";
 import { ProgramsListPage } from "./pages/programs/ProgramsListPage";
@@ -25,12 +28,14 @@ import { GraduateSurveyPage } from "./pages/surveys/GraduateSurveyPage";
 import { DataConnectionsPage } from "./pages/imports/DataConnectionsPage";
 import { EquityBreakdownPage } from "./pages/equity/EquityBreakdownPage";
 import { ProgramDashboardPage } from "./pages/dashboards/ProgramDashboardPage";
+import { SettingsPage } from "./pages/settings/SettingsPage";
 import { UsersPage } from "./pages/users/UsersPage";
 
 function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/about" element={<AboutPage />} />
       <Route path="/survey/graduate/:token" element={<GraduateSurveyPage />} />
       <Route path="/survey/employer/:token" element={<EmployerSurveyPage />} />
       <Route path="/set-password/:token" element={<SetPasswordPage />} />
@@ -73,6 +78,10 @@ function App() {
         />
 
         <Route path="/users" element={<UsersPage />} />
+        <Route path="/jobs" element={<JobHistoryPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/help" element={<HelpPage />} />
+        <Route path="/help/:slug" element={<HelpPage />} />
       </Route>
     </Routes>
   );

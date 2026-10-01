@@ -31,18 +31,18 @@ reportsRouter.post(
   asyncHandler(exportCustomReport),
 );
 reportsRouter.post(
-  "/custom/export/queue",
+  ["/custom/export/queue", "/custom/export-jobs"],
   requireAuth,
   validate(runReportSchema),
   asyncHandler(reportExportJobs.queueExport),
 );
 reportsRouter.get(
-  "/custom/exports",
+  ["/custom/exports", "/custom/export-jobs"],
   requireAuth,
   asyncHandler(reportExportJobs.list),
 );
 reportsRouter.get(
-  "/custom/exports/:id/download",
+  ["/custom/exports/:id/download", "/custom/export-jobs/:id/download"],
   requireAuth,
   asyncHandler(reportExportJobs.downloadJob),
 );

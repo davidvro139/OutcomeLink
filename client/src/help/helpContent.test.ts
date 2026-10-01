@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CONTEXT_HELP_TARGETS } from "./HelpLink";
+import { CONTEXT_HELP_TARGETS } from "./contextHelpTargets";
 import {
   HELP_DOCS,
   HELP_GROUPS,

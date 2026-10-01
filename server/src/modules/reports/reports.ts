@@ -270,6 +270,7 @@ export async function computeUnknownOutcomes(
   institutionId: number,
   reportingPeriodId: number,
   accessibleProgramIds: number[] | null,
+  studentLimit?: number,
 ) {
   const seekingOrUnknown = await prisma.studentClassification.findMany({
     where: {
@@ -316,7 +317,8 @@ export async function computeUnknownOutcomes(
   return {
     totalSeekingOrUnknown: seekingOrUnknown.length,
     totalMissingRecord: missingOutcomeIssues.length,
-    students: seekingOrUnknown.map((c) => ({
+    studentsTruncated: studentLimit !== undefined && seekingOrUnknown.length > studentLimit,
+    students: seekingOrUnknown.slice(0, studentLimit).map((c) => ({
       student: c.studentEnrollment.student,
       program: c.studentEnrollment.program,
     })),
@@ -331,7 +333,7 @@ export async function unknownOutcomes(req: Request, res: Response) {
   const { reportingPeriodId } = req.query as unknown as ReportingPeriodQuery;
   await findOwnedPeriod(institutionId, reportingPeriodId);
   const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
-  sendData(res, await computeUnknownOutcomes(institutionId, reportingPeriodId, accessibleProgramIds));
+  sendData(res, await computeUnknownOutcomes(institutionId, reportingPeriodId, accessibleProgramIds, 200));
 }
 
 /**
@@ -525,7 +527,7 @@ export async function skillsGapAnalysis(req: Request, res: Response) {
       responseCount: Math.max(...SKILL_DIMENSIONS.map((d) => agg.ratings[d].length), 0),
       averages,
       gaps,
-      skillsGapNotes: agg.notes.sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime()),
+      skillsGapNotes: agg.notes.sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime()).slice(0, 20),
     };
   });
 

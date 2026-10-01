@@ -1,4 +1,6 @@
 import type {
+  CloseoutStep,
+  CloseoutBlocker,
   CplMetric,
   ImprovementPlanStatus,
   ReportingPeriodStatus,

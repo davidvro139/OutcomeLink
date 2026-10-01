@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
+import type { EquityBreakdownGroup } from "./equityBreakdown";
 import request from "supertest";
 import { createApp } from "../../app";
 import { prisma } from "../../lib/prisma";
@@ -295,7 +295,7 @@ describe("Equity API Integration", () => {
       expect(data.groups.length).toBeGreaterThan(0);
 
       // Each group should have required fields
-      data.groups.forEach((g: any) => {
+      data.groups.forEach((g: EquityBreakdownGroup) => {
         expect(g).toHaveProperty("value");
         expect(g).toHaveProperty("label");
         expect(g).toHaveProperty("denominator");
@@ -318,7 +318,7 @@ describe("Equity API Integration", () => {
       expect(data.groups.length).toBeGreaterThanOrEqual(2);
 
       // Should include NOT_ON_FILE bucket for students without demographics
-      const hasNotOnFile = data.groups.some((g: any) => g.value === "NOT_ON_FILE");
+      const hasNotOnFile = data.groups.some((g: EquityBreakdownGroup) => g.value === "NOT_ON_FILE");
       expect(hasNotOnFile).toBe(true);
 
       // Should have coverage data for demographic dimension
@@ -372,10 +372,10 @@ describe("Equity API Integration", () => {
       const data = res.body.data;
 
       // Should have groups that demonstrate suppression logic
-      const suppressedGroups = data.groups.filter((g: any) => g.suppressed);
+      const suppressedGroups = data.groups.filter((g: EquityBreakdownGroup) => g.suppressed);
       if (suppressedGroups.length > 0) {
         // If suppressed groups exist, verify suppression is correct
-        suppressedGroups.forEach((g: any) => {
+        suppressedGroups.forEach((g: EquityBreakdownGroup) => {
           expect(g.denominator).toBeLessThan(10);
           expect(g.numerator).toBeNull();
           expect(g.percentage).toBeNull();

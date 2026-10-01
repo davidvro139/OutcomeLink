@@ -6,6 +6,8 @@ import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { recordCommunicationEvent } from "../../lib/communicationEvents";
 import { prisma } from "../../lib/prisma";
+import { emailResponseFields, studentEmailTarget, type EmailOutcome } from "../../lib/emailDelivery";
+import { sendGraduateSurveyEmail, noteworthy, emailOutcomeNote } from "./surveyEmail";
 
 export const createGraduateSurveySchema = z.object({
   channel: z.string().trim().max(100).optional(),
@@ -45,6 +47,8 @@ export async function create(
   const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
   await findOwnedStudent(req.user!.institutionId, studentId, accessibleProgramIds);
 
+  const target = await studentEmailTarget(studentId);
+  if ("skipped" in target && target.skipped === "Flagged do-not-contact") throw ApiError.conflict(target.skipped);
   const survey = await prisma.graduateSurvey.create({
     data: {
       studentId,
@@ -53,12 +57,16 @@ export async function create(
       responseToken: randomUUID(),
     },
   });
+  const outcome: EmailOutcome = req.body.channel?.toUpperCase() === "EMAIL"
+    ? await sendGraduateSurveyEmail(req.user!.institutionId, survey)
+    : { status: "SKIPPED", reason: "Channel is not email" };
+  const note = noteworthy(req.body.channel?.toUpperCase() === "EMAIL" ? outcome : null);
   await recordCommunicationEvent({
     studentId,
     eventType: "GRADUATE_SURVEY_SENT",
     sourceId: survey.id,
     occurredAt: survey.sentAt,
-    summaryText: `Graduate survey sent${survey.channel ? ` via ${survey.channel}` : ""}`,
+    summaryText: `Graduate survey sent${survey.channel ? ` via ${survey.channel}` : ""}${note ? `; ${emailOutcomeNote(note)}` : ""}`,
   });
-  sendData(res, { survey }, 201);
+  sendData(res, { survey, ...(req.body.channel?.toUpperCase() === "EMAIL" ? emailResponseFields(outcome) : {}) }, 201);
 }

@@ -1,6 +1,7 @@
 import {
   Anchor,
   Button,
+  Chip,
   Group,
   Loader,
   Modal,
@@ -76,12 +77,25 @@ export function EmployersListPage() {
         </Group>
       </Group>
 
-      <TextInput
-        placeholder="Search by employer name..."
-        value={search}
-        onChange={(event) => setSearch(event.currentTarget.value)}
-        w={320}
-      />
+      <Group gap="md" align="flex-end">
+        <TextInput
+          placeholder="Search by employer name..."
+          value={search}
+          onChange={(event) => setSearch(event.currentTarget.value)}
+          w={320}
+        />
+        {search && (
+          <Chip
+            icon="✕"
+            checked={false}
+            onChange={() => setSearch("")}
+            variant="light"
+            size="sm"
+          >
+            Clear search
+          </Chip>
+        )}
+      </Group>
 
       {isLoading && <Loader />}
 
@@ -147,8 +161,11 @@ export function EmployersListPage() {
             </Table.Tbody>
           </Table>
           {data.pagination.totalPages > 1 && (
-            <Group justify="center">
+            <Group justify="center" align="center" gap="xl">
               <Pagination total={data.pagination.totalPages} value={page} onChange={setPage} />
+              <Text size="sm" c="dimmed">
+                Page {page} of {data.pagination.totalPages}
+              </Text>
             </Group>
           )}
         </>

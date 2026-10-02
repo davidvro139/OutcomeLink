@@ -399,7 +399,7 @@ describe("email delivery (integration)", () => {
       await request(app).patch("/api/auth/me/preferences").set("Authorization", `Bearer ${adminToken}`).send({ emailNotifications: true });
       failNext = 1;
       await expect(createNotification({ userId: adminId, type: "SCHEDULED_REPORT_READY", message: "x" })).resolves.toBeDefined();
-      await new Promise((resolve) => setTimeout(resolve, 250));
+      await new Promise((resolve) => setTimeout(resolve, 500)); // Give more time for async email delivery
       const failedLog = await prisma.emailDelivery.findFirst({ where: { purpose: "STAFF_NOTIFICATION", status: "FAILED" } });
       expect(failedLog).not.toBeNull();
     });

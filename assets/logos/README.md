@@ -1,12 +1,14 @@
 # OutcomeLink Logos
 
-Organized brand assets for OutcomeLink.
+Clean, organized brand assets for OutcomeLink.
 
-## Logo Variants
+## Current Logo in Use
 
-### Square/Icon Logos
-- **logo-icon.png** (200×200) — Profile pictures, favicons, icon displays
-- **logo-square.png** (original) — Card designs, social media avatars
+- **logo-clean-lg.png** (1600×600) — Large format
+- **logo-clean-md.png** (800×300) — Header/navigation use
+- **e6037e27-b598-4128-a72d-3697902e1111.png** — Source file
+
+## Additional Variants
 
 ### Horizontal Logos (with tagline)
 - **logo-horizontal-lg.png** (1600×600) — Full-width hero sections, banners
@@ -21,7 +23,7 @@ Tagline: "STUDENT OUTCOMES | PROGRAM INSIGHTS | ACCREDITATION READY"
 
 ## Usage
 
-- **App header**: Use `logo-icon.png` from `client/public/`
+- **App header**: Uses `logo-clean-md.png` from `client/public/`
 - **README/GitHub**: Use `logo-horizontal-lg.png` or `logo-horizontal-simple-md.png`
 - **Print/presentations**: Use `logo-horizontal-lg.png` with tagline
-- **Web footers**: Use `logo-horizontal-sm.png` or `logo-icon.png`
+- **Web footers**: Use `logo-horizontal-sm.png`

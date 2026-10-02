@@ -1,6 +1,7 @@
 import type { CplMetric } from "@outcomelink/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, apiRequestPaginated } from "../lib/apiClient";
+import { DEFAULT_PAGE_SIZE } from "../lib/pagination";
 
 export interface Campus {
   id: number;
@@ -68,7 +69,7 @@ export function usePrograms(
     order?: "asc" | "desc";
   } = {},
 ) {
-  const query = new URLSearchParams({ pageSize: "100", page: String(params.page || 1) });
+  const query = new URLSearchParams({ pageSize: String(DEFAULT_PAGE_SIZE), page: String(params.page || 1) });
   if (params.campusId) query.set("campusId", String(params.campusId));
   if (params.active !== undefined) query.set("active", String(params.active));
   if (params.sort) query.set("sort", params.sort);

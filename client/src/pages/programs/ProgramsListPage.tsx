@@ -8,6 +8,7 @@ import {
   Select,
   Stack,
   Table,
+  Text,
   TextInput,
   Title,
 } from "@mantine/core";
@@ -149,6 +150,12 @@ export function ProgramsListPage() {
             ))}
           </Table.Tbody>
         </Table>
+      )}
+
+      {data && data.items.length === 0 && (
+        <Text c="dimmed" ta="center" py="xl">
+          No programs yet. Click "New Program" to add one.
+        </Text>
       )}
 
       <Modal opened={opened} onClose={close} title="New Program">

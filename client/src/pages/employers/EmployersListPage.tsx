@@ -154,6 +154,12 @@ export function EmployersListPage() {
         </>
       )}
 
+      {data && data.pagination.totalItems === 0 && (
+        <Text c="dimmed" ta="center" py="xl">
+          {debouncedSearch ? "No employers match your search." : "No employers yet. Click \"New Employer\" to add one."}
+        </Text>
+      )}
+
       <Modal opened={opened} onClose={close} title="New Employer">
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="md">

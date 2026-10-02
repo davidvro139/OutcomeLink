@@ -177,6 +177,12 @@ export function StudentsListPage() {
         </>
       )}
 
+      {data && data.pagination.totalItems === 0 && (
+        <Text c="dimmed" ta="center" py="xl">
+          {debouncedSearch ? "No students match your search." : "No students yet. Click \"New Student\" to add one."}
+        </Text>
+      )}
+
       <Modal opened={opened} onClose={close} title="New Student">
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="md">

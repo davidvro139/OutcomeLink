@@ -143,7 +143,8 @@ export function FollowUpQueuePage() {
       {isLoading && <Loader />}
 
       {data && (
-        <Table striped highlightOnHover>
+        <Table.ScrollContainer minWidth={900}>
+          <Table striped highlightOnHover>
           <Table.Thead>
             <Table.Tr>
               <Table.Th w={36}>
@@ -256,6 +257,7 @@ export function FollowUpQueuePage() {
             ))}
           </Table.Tbody>
         </Table>
+        </Table.ScrollContainer>
       )}
 
       {data && data.items.length === 0 && (

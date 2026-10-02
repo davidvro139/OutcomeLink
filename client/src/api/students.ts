@@ -1,6 +1,7 @@
 import type { AllowableSubtractionReason, EnrollmentStatus } from "@outcomelink/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, apiRequestPaginated } from "../lib/apiClient";
+import { DEFAULT_PAGE_SIZE } from "../lib/pagination";
 
 export interface Student {
   id: number;
@@ -62,7 +63,7 @@ export interface CreateEnrollmentInput {
 }
 
 export function useStudents(search?: string, page = 1, sort?: string, order?: "asc" | "desc") {
-  const query = new URLSearchParams({ pageSize: "50", page: String(page) });
+  const query = new URLSearchParams({ pageSize: String(DEFAULT_PAGE_SIZE), page: String(page) });
   if (search) query.set("search", search);
   if (sort) query.set("sort", sort);
   if (order) query.set("order", order);

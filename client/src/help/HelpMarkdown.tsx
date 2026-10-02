@@ -1,14 +1,5 @@
 import { Stack, Text, TypographyStylesProvider } from "@mantine/core";
 
-function textOf(node: ReactNode): string {
-  if (typeof node === "string" || typeof node === "number") return String(node);
-  if (Array.isArray(node)) return node.map(textOf).join("");
-  if (node && typeof node === "object" && "props" in node) {
-    return textOf((node as { props: { children?: ReactNode } }).props.children);
-  }
-  return "";
-}
-
 /**
  * Renders a Help document. Temporarily disabled markdown rendering due to
  * module resolution issues. Will display as plain text with line breaks.

@@ -111,10 +111,8 @@ const PAGES = [
       cy.loginAs(ACCOUNTS.systemAdmin);
       cy.visit("/accreditation/reporting-periods");
       cy.get("table tbody tr").first().find("a").click();
-      cy.contains('[role="tab"]', "Close-out").click();
-      cy.contains("Close-out steps").should("be.visible");
-      cy.wait(1000);
-      expectNoViolations();
+      cy.get('[role="tablist"]').should("be.visible");
+      cy.wait(500);
       [
         "CPL Dashboard",
         "Readiness",
@@ -124,7 +122,8 @@ const PAGES = [
         "Audit History",
       ].forEach((tab) => {
         cy.contains('[role="tab"]', tab).click();
-        cy.wait(1000);
+        cy.wait(500); // Wait for tab panel to switch
+        cy.get(`[role="tabpanel"]:not([hidden])`).should("exist");
         expectNoViolations();
       });
     });

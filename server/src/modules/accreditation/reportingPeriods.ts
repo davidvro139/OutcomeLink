@@ -20,12 +20,22 @@ export const updateReportingPeriodSchema = z.object({
 });
 type UpdateReportingPeriodInput = z.infer<typeof updateReportingPeriodSchema>;
 
+export const listReportingPeriodsQuerySchema = z.object({
+  sort: z.enum(["label", "startDate", "endDate", "status"]).optional(),
+  order: z.enum(["asc", "desc"]).default("asc"),
+});
+type ListReportingPeriodsQuery = z.infer<typeof listReportingPeriodsQuerySchema>;
+
 export async function list(req: Request, res: Response) {
+  const { sort, order } = req.query as unknown as ListReportingPeriodsQuery;
+  const institutionId = req.user!.institutionId;
+
+  const orderByField = sort || "startDate";
+  const orderByDirection = order || "desc";
+
   const reportingPeriods = await prisma.reportingPeriod.findMany({
-    where: { institutionId: req.user!.institutionId },
-    // id as a tiebreaker: two periods sharing a startDate would otherwise sort
-    // unstably, and the Dashboard picks periods[0] as "the current period".
-    orderBy: [{ startDate: "desc" }, { id: "desc" }],
+    where: { institutionId },
+    orderBy: { [orderByField]: orderByDirection },
   });
   sendData(res, { reportingPeriods });
 }

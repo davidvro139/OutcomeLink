@@ -8,6 +8,8 @@ import { useAssignFollowUp, useFollowUpQueue } from "../../api/followups";
 import { useUsers } from "../../api/users";
 import { BulkAssignModal } from "./BulkAssignModal";
 import { BulkFollowUpModal } from "./BulkFollowUpModal";
+import { SortableTableHeader } from "../../components/SortableTableHeader";
+import type { SortDirection } from "../../lib/sorting";
 
 function AssignedToCell({ studentId, assignedTo }: { studentId: number; assignedTo: { id: number; name: string } | null }) {
   const { data: staff } = useUsers();
@@ -48,10 +50,25 @@ export function FollowUpQueuePage() {
   const { canWrite } = usePermissions();
   const [needsOutcome, setNeedsOutcome] = useState(true);
   const [minDaysOverdue, setMinDaysOverdue] = useState<number | undefined>(undefined);
-  const { data, isLoading } = useFollowUpQueue({ minDaysOverdue, needsOutcome });
+  const [page, setPage] = useState(1);
+  const [sortField, setSortField] = useState<string | null>("lastName");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const { data, isLoading } = useFollowUpQueue({
+    minDaysOverdue,
+    needsOutcome,
+    page,
+    sort: sortField || undefined,
+    order: sortDirection,
+  });
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkOpened, { open: openBulk, close: closeBulk }] = useDisclosure(false);
   const [bulkAssignOpened, { open: openBulkAssign, close: closeBulkAssign }] = useDisclosure(false);
+
+  const handleSort = (field: string, direction: SortDirection) => {
+    setSortField(field);
+    setSortDirection(direction);
+    setPage(1);
+  };
 
   const rows = data?.items ?? [];
   const allSelected = rows.length > 0 && rows.every((row) => selectedIds.has(row.student.id));
@@ -137,11 +154,35 @@ export function FollowUpQueuePage() {
                   disabled={!canWrite}
                 />
               </Table.Th>
-              <Table.Th>Student</Table.Th>
-              <Table.Th>Program</Table.Th>
+              <Table.Th>
+                <SortableTableHeader
+                  field="lastName"
+                  label="Student"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                />
+              </Table.Th>
+              <Table.Th>
+                <SortableTableHeader
+                  field="programName"
+                  label="Program"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                />
+              </Table.Th>
               <Table.Th>Campus</Table.Th>
               <Table.Th>Attempts</Table.Th>
-              <Table.Th>Last Contact</Table.Th>
+              <Table.Th>
+                <SortableTableHeader
+                  field="attemptedAt"
+                  label="Last Contact"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                />
+              </Table.Th>
               <Table.Th>Last Outcome</Table.Th>
               <Table.Th>Next Follow-Up</Table.Th>
               <Table.Th>Assigned To</Table.Th>

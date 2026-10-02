@@ -38,6 +38,8 @@ export const followUpQueueQuerySchema = paginationQuerySchema.extend({
     .enum(["true", "false"])
     .optional()
     .transform((value) => value === "true"),
+  sort: z.enum(["firstName", "lastName", "programName", "attemptedAt"]).optional(),
+  order: z.enum(["asc", "desc"]).default("asc"),
 });
 type FollowUpQueueQuery = z.infer<typeof followUpQueueQuerySchema>;
 
@@ -52,6 +54,8 @@ export async function queue(req: Request, res: Response) {
     minAttempts,
     minDaysOverdue,
     needsOutcome,
+    sort,
+    order,
   } = req.query as unknown as FollowUpQueueQuery;
   const institutionId = req.user!.institutionId;
   const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
@@ -132,11 +136,47 @@ export async function queue(req: Request, res: Response) {
         nextFollowUpDate: latest?.nextFollowUpDate ?? null,
         assignedTo: student.assignedStaffUser ?? latest?.staffUser ?? null,
         daysOverdue,
+        programName: student.enrollments[0]?.program?.name ?? "",
+        attemptedAt: latest?.attemptedAt ?? new Date(0),
       };
     })
     .filter((row) => (outcomeStatus ? row.lastOutcome === outcomeStatus : true))
     .filter((row) => (minAttempts !== undefined ? row.attempts >= minAttempts : true))
     .filter((row) => (minDaysOverdue !== undefined ? row.daysOverdue >= minDaysOverdue : true));
+
+  // Apply sorting
+  if (sort) {
+    rows.sort((a, b) => {
+      let aVal: string | number | Date | null = null;
+      let bVal: string | number | Date | null = null;
+
+      if (sort === "firstName") {
+        aVal = a.student.firstName;
+        bVal = b.student.firstName;
+      } else if (sort === "lastName") {
+        aVal = a.student.lastName;
+        bVal = b.student.lastName;
+      } else if (sort === "programName") {
+        aVal = a.programName;
+        bVal = b.programName;
+      } else if (sort === "attemptedAt") {
+        aVal = a.attemptedAt;
+        bVal = b.attemptedAt;
+      }
+
+      if (aVal === null || aVal === undefined) aVal = "";
+      if (bVal === null || bVal === undefined) bVal = "";
+
+      if (typeof aVal === "string" && typeof bVal === "string") {
+        return order === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+      if (aVal instanceof Date && bVal instanceof Date) {
+        return order === "asc" ? aVal.getTime() - bVal.getTime() : bVal.getTime() - aVal.getTime();
+      }
+
+      return 0;
+    });
+  }
 
   const start = (page - 1) * pageSize;
   const pageRows = rows.slice(start, start + pageSize);

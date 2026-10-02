@@ -38,17 +38,23 @@ export interface QueueFilters {
   programId?: number;
   /** False lists every accessible student. Anything else is the unresolved-outcome worklist. */
   needsOutcome?: boolean;
+  page?: number;
+  sort?: string;
+  order?: "asc" | "desc";
 }
 
 export function useFollowUpQueue(filters: QueueFilters = {}) {
-  const query = new URLSearchParams({ pageSize: "50" });
+  const query = new URLSearchParams({ pageSize: "50", page: String(filters.page || 1) });
   if (filters.needsOutcome !== false) query.set("needsOutcome", "true");
   if (filters.minDaysOverdue) query.set("minDaysOverdue", String(filters.minDaysOverdue));
   if (filters.programId) query.set("programId", String(filters.programId));
+  if (filters.sort) query.set("sort", filters.sort);
+  if (filters.order) query.set("order", filters.order);
 
   return useQuery({
     queryKey: ["followups", "queue", filters],
     queryFn: () => apiRequestPaginated<QueueRow>(`/api/followups/queue?${query.toString()}`),
+    placeholderData: (previousData) => previousData,
   });
 }
 

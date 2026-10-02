@@ -119,14 +119,19 @@ export async function runValidationAndNotify(reportingPeriodId: number, institut
 export const listIssuesQuerySchema = z.object({
   severity: z.enum(["ERROR", "WARNING", "INFORMATION"]).optional(),
   includeResolved: z.coerce.boolean().default(false),
+  sort: z.enum(["issueType", "severity", "detectedAt", "resolvedAt"]).optional(),
+  order: z.enum(["asc", "desc"]).default("asc"),
 });
 type ListIssuesQuery = z.infer<typeof listIssuesQuerySchema>;
 
 export async function listIssues(req: Request, res: Response) {
   const reportingPeriodId = Number(req.params.id);
   await findOwnedPeriod(req.user!.institutionId, reportingPeriodId);
-  const { severity, includeResolved } = req.query as unknown as ListIssuesQuery;
+  const { severity, includeResolved, sort, order } = req.query as unknown as ListIssuesQuery;
   const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+
+  const orderByField = sort || "severity";
+  const orderByDirection = order || "asc";
 
   const issues = await prisma.validationIssue.findMany({
     where: {
@@ -139,7 +144,7 @@ export async function listIssues(req: Request, res: Response) {
       student: { select: { id: true, firstName: true, lastName: true } },
       program: { select: { id: true, name: true } },
     },
-    orderBy: [{ severity: "asc" }, { id: "asc" }],
+    orderBy: { [orderByField]: orderByDirection },
   });
   sendData(res, { issues });
 }

@@ -68,7 +68,7 @@ export function HelpPage() {
 
   return (
     <Stack p="xl" gap="lg">
-      <Title order={1} size="h2">
+      <Title order={2}>
         Help
       </Title>
 

@@ -33,6 +33,10 @@ describe("reporting-period close-out checklist", () => {
     cy.loginAs(ACCOUNTS.institutionalAdmin);
     openFirstPeriod();
 
+    // Click the Close-out tab first
+    cy.contains('[role="tab"]', "Close-out").click();
+    cy.wait(300);
+
     STEPS.forEach((title) => cy.contains(title).should("be.visible"));
 
     // Either something still needs doing (an action button), or the period is locked and shows its record.
@@ -51,6 +55,10 @@ describe("reporting-period close-out checklist", () => {
   it("shows the checklist, without any actions, to a read-only auditor", () => {
     cy.loginAs(ACCOUNTS.auditor);
     openFirstPeriod();
+
+    // Click the Close-out tab first
+    cy.contains('[role="tab"]', "Close-out").click();
+    cy.wait(300);
 
     STEPS.forEach((title) => cy.contains(title).should("be.visible"));
     cy.contains("button", "Compute now").should("not.exist");

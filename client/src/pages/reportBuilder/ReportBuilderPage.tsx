@@ -49,6 +49,7 @@ import {
 } from "../../api/reportBuilder";
 import { useQueueReportExport } from "../../api/reportExportJobs";
 import { ApiRequestError, downloadFile } from "../../lib/apiClient";
+import { usePermissions } from "../../auth/usePermissions";
 import { ExportJobsPanel } from "./ExportJobsPanel";
 
 type FilterValueMap = Record<string, string[] | number[] | boolean | undefined>;
@@ -395,6 +396,7 @@ export function ReportBuilderPage() {
   const [exporting, setExporting] = useState(false);
   const [queuedNotice, setQueuedNotice] = useState<string | null>(null);
 
+  const { canWrite } = usePermissions();
   const { data: programs } = usePrograms();
   const { data: campuses } = useCampuses();
   const { data: reportingPeriods } = useReportingPeriods();
@@ -641,14 +643,16 @@ export function ReportBuilderPage() {
             >
               Export to Excel
             </Button>
-            <Button
-              variant="light"
-              color="grape"
-              onClick={openSaveModal}
-              disabled={selectedFields.length === 0}
-            >
-              Save Report
-            </Button>
+            {canWrite && (
+              <Button
+                variant="light"
+                color="grape"
+                onClick={openSaveModal}
+                disabled={selectedFields.length === 0}
+              >
+                Save Report
+              </Button>
+            )}
           </Group>
           {queuedNotice && <Alert color="blue">{queuedNotice}</Alert>}
           <ExportJobsPanel />

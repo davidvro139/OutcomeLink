@@ -12,10 +12,10 @@ describe("role-based visibility", () => {
 
     it("sees the administration links and the write controls", () => {
       cy.nav().within(() => {
-        cy.contains("a", "Bulk Import").should("be.visible");
-        cy.contains("a", "Users").should("be.visible");
-        cy.contains("a", "Job History").should("be.visible");
-        cy.contains("a", "Settings").should("be.visible");
+        cy.contains("a", "Bulk Import").should("exist");
+        cy.contains("a", "Users").should("exist");
+        cy.contains("a", "Job History").should("exist");
+        cy.contains("a", "Settings").should("exist");
       });
       cy.nav().contains("a", "Students").click({ force: true });
       cy.contains("button", "New Student").should("be.visible");

@@ -32,6 +32,10 @@ export function StudentsListPage() {
   const [sortField, setSortField] = useState<string | null>("lastName");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
+  useEffect(() => {
+    document.title = "Students — OutcomeLink";
+  }, []);
+
   useEffect(() => setPage(1), [debouncedSearch]);
 
   const { data, isLoading } = useStudents(

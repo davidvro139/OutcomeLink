@@ -30,6 +30,10 @@ export function EmployersListPage() {
   const [sortField, setSortField] = useState<string | null>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
+  useEffect(() => {
+    document.title = "Employers — OutcomeLink";
+  }, []);
+
   useEffect(() => setPage(1), [debouncedSearch]);
   const { data, isLoading } = useEmployers(
     debouncedSearch || undefined,

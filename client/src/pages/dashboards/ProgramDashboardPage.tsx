@@ -14,7 +14,7 @@ import {
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useReportingPeriods } from "../../api/accreditation";
 import {
@@ -116,6 +116,10 @@ export function ProgramDashboardPage() {
   const { data, isLoading, isError, error } = useProgramDashboard(periodId);
   const recompute = useRecomputeDashboard();
   const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    document.title = "My Programs — OutcomeLink";
+  }, []);
 
   const canRecompute = !!user && CAN_RECOMPUTE.includes(user.role);
   const period = data?.period ?? null;

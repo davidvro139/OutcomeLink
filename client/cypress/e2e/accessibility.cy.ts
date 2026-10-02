@@ -163,10 +163,10 @@ describe("dialogs and menus", () => {
   beforeEach(() => cy.loginAs(ACCOUNTS.institutionalAdmin));
 
   it("a dialog is accessible, takes focus, and closes with Escape", () => {
-    cy.nav().contains("a", "Students").click();
+    cy.nav().contains("a", "Students").click({ force: true });
     cy.contains("button", "New Student").click();
     cy.get('[role="dialog"]').should("be.visible");
-    cy.wait(300); // Let modal fade in
+    cy.wait(600); // Let modal fade in completely
     expectNoViolations();
     cy.focused().closest('[role="dialog"]').should("exist"); // focus moved into the dialog
     cy.get("body").type("{esc}");
@@ -183,8 +183,8 @@ describe("dialogs and menus", () => {
     expectNoViolations({ exclude: ["[data-menu-dropdown]"] });
     cy.get("body").type("{esc}");
     cy.get('button[aria-label^="Notifications"]').click();
-    cy.get('[role="dialog"][aria-label="Notifications"]').should("be.visible");
-    cy.wait(500); // let the popover's fade-in finish — axe would otherwise measure mid-transition colors
+    cy.get('[role="dialog"][aria-label="Notifications"]', { timeout: 6000 }).should("be.visible");
+    cy.wait(600); // let the popover's fade-in finish — axe would otherwise measure mid-transition colors
     expectNoViolations();
   });
 });

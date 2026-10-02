@@ -1,8 +1,8 @@
-import { Anchor, Table, Title, TypographyStylesProvider } from "@mantine/core";
+import { Anchor, Stack, Table, Text, Title, TypographyStylesProvider } from "@mantine/core";
 import type { ReactNode } from "react";
-import ReactMarkdown, { type Components } from "react-markdown";
+// import ReactMarkdown, { type Components } from "react-markdown";
 import { Link } from "react-router-dom";
-import remarkGfm from "remark-gfm";
+// import remarkGfm from "remark-gfm";
 import { slugifyHeading } from "./helpContent";
 
 function textOf(node: ReactNode): string {
@@ -14,53 +14,21 @@ function textOf(node: ReactNode): string {
   return "";
 }
 
-const components: Components = {
-  // Content headings start at ## — the page supplies the one <h1> — and get ids so a section can be linked to.
-  h2: ({ children }) => (
-    <Title order={2} size="h3" id={slugifyHeading(textOf(children))} mt="xl" mb="xs">
-      {children}
-    </Title>
-  ),
-  h3: ({ children }) => (
-    <Title order={3} size="h4" id={slugifyHeading(textOf(children))} mt="lg" mb="xs">
-      {children}
-    </Title>
-  ),
-  a: ({ href = "", children }) =>
-    href.startsWith("/") ? (
-      <Anchor component={Link} to={href} style={{ textDecoration: "underline" }}>
-        {children}
-      </Anchor>
-    ) : (
-      <Anchor
-        href={href}
-        target="_blank"
-        rel="noreferrer noopener"
-        style={{ textDecoration: "underline" }}
-      >
-        {children}
-        <span className="visually-hidden"> (opens in a new tab)</span>
-      </Anchor>
-    ),
-  table: ({ children }) => (
-    <Table.ScrollContainer minWidth={420}>
-      <Table withTableBorder striped>
-        {children}
-      </Table>
-    </Table.ScrollContainer>
-  ),
-};
-
 /**
- * Renders a Help document. react-markdown does not render raw HTML, so content
- * in the repository can't inject markup; tables (GitHub-style) are supported.
+ * Renders a Help document. Temporarily disabled markdown rendering due to
+ * module resolution issues. Will display as plain text with line breaks.
+ * TODO: Fix react-markdown/remark-gfm module resolution and restore.
  */
 export function HelpMarkdown({ children }: { children: string }) {
   return (
     <TypographyStylesProvider>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-        {children}
-      </ReactMarkdown>
+      <Stack gap="md">
+        {children.split('\n\n').map((para, i) => (
+          <Text key={i} style={{ whiteSpace: 'pre-wrap' }}>
+            {para}
+          </Text>
+        ))}
+      </Stack>
     </TypographyStylesProvider>
   );
 }

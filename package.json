@@ -52,7 +52,9 @@
     ]
   },
   "dependencies": {
+    "ccount": "^2.0.1",
     "nodemailer": "^10.0.13",
-    "sharp": "^0.35.5"
+    "sharp": "^0.35.5",
+    "trim-lines": "^3.0.1"
   }
 }

@@ -4,6 +4,9 @@ import { defineConfig } from "vitest/config";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  ssr: {
+    noExternal: ["style-to-js"],
+  },
   // @outcomelink/shared is CommonJS (kept that way so the server's Jest setup
   // stays simple) and linked in via the npm workspace, so Vite's dev server
   // would otherwise serve its dist file as native ESM without going through
@@ -12,8 +15,7 @@ export default defineConfig({
   // optimizeDeps fixes that.
   optimizeDeps: {
     include: ["@outcomelink/shared"],
-    exclude: ["remark-gfm", "react-markdown", "ccount", "trim-lines"],
-    noDiscovery: true,
+    exclude: ["remark-gfm", "react-markdown", "style-to-js"],
   },
   test: {
     environment: "jsdom",

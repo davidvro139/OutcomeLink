@@ -1,23 +1,22 @@
 import { createTheme, type MantineColorsTuple } from "@mantine/core";
 
 /**
- * Brand palette sampled directly from Ogden-Weber Technical College's logo
- * (the red "T" mark, near-black wordmark, and gray ring/subtext) — the
- * institution behind the outcomes-training material in
- * docs/Outcomes and CPL slides.pdf. Only the color values are reused here,
- * not the logo mark itself.
+ * Brand palette based on Ogden-Weber Technical College's logo colors,
+ * adjusted for WCAG AA contrast requirements (4.5:1 minimum).
+ * Original: #f63831 / #f5120a; adjusted to meet accessibility standards
+ * while maintaining the brand's red appearance.
  */
 const brandRed: MantineColorsTuple = [
   "#feeceb",
   "#fdd0ce",
   "#fba09d",
   "#f86762",
-  "#f63831",
-  "#f5120a",
-  "#d71009",
-  "#ba0e08",
-  "#980b06",
-  "#6c0804",
+  "#e63c26",
+  "#cc2415",
+  "#b01d0f",
+  "#961a0c",
+  "#7d1609",
+  "#650f06",
 ];
 
 /** Neutral charcoal ramp matching the logo's gray/near-black, replacing Mantine's default cool blue-gray dark palette. */

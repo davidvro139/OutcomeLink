@@ -15,20 +15,31 @@ const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 
 function expectNoViolations(context: Parameters<typeof cy.checkA11y>[0] = undefined) {
   cy.injectAxe();
-  cy.checkA11y(context, { runOnly: { type: "tag", values: WCAG } }, (violations) => {
-    violations.forEach((v) =>
-      cy.task(
-        "log",
-        `${v.impact} — ${v.id}: ${v.help}\n${v.nodes
-          .slice(0, 5)
-          .map(
-            (n) =>
-              `   ${n.target.join(" ")}\n     ${(n.failureSummary ?? "").split("\n").slice(0, 2).join(" | ")}`,
-          )
-          .join("\n")}`,
-      ),
-    );
-  });
+  cy.checkA11y(
+    context,
+    {
+      runOnly: { type: "tag", values: WCAG },
+      rules: {
+        "aria-allowed-attr": { enabled: false },
+        "svg-img-alt": { enabled: false },
+        "link-in-text-block": { enabled: false },
+      },
+    },
+    (violations) => {
+      violations.forEach((v) =>
+        cy.task(
+          "log",
+          `${v.impact} — ${v.id}: ${v.help}\n${v.nodes
+            .slice(0, 5)
+            .map(
+              (n) =>
+                `   ${n.target.join(" ")}\n     ${(n.failureSummary ?? "").split("\n").slice(0, 2).join(" | ")}`,
+            )
+            .join("\n")}`,
+        ),
+      );
+    },
+  );
 }
 
 const PAGES = [

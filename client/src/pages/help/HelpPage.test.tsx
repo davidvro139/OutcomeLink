@@ -24,7 +24,7 @@ beforeAll(() => {
 describe("HelpPage", () => {
   it("opens About by default, with its review date and a topic list", () => {
     renderHelp("/help");
-    expect(screen.getByRole("heading", { level: 1, name: "Help" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Help" })).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { level: 2, name: "About OutcomeLink" }),
     ).toBeInTheDocument();

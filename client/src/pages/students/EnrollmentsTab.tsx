@@ -353,17 +353,20 @@ function EnrollmentDetail({
             />
             <Select
               label="Employment status"
+              description="Where the graduate is employed or their employment outcome"
               data={EMPLOYMENT_STATUSES.map((s) => ({ value: s, label: s }))}
               {...form.getInputProps("employmentStatus")}
             />
             <Checkbox
               label="Related to training"
+              description="Check if the employment is in a field related to what they trained for"
               checked={form.values.relatedToTraining ?? false}
               onChange={(e) => form.setFieldValue("relatedToTraining", e.currentTarget.checked)}
             />
             {form.values.relatedToTraining && (
               <Select
                 label="Who determined relatedness?"
+                description="Select this field when 'Related to training' is checked"
                 data={RELATED_TO_TRAINING_SOURCES.map((s) => ({
                   value: s,
                   label: s === "STUDENT_REPORTED" ? "Student reported" : "Instructor reported",
@@ -375,16 +378,19 @@ function EnrollmentDetail({
             )}
             <Select
               label="Continuing education"
+              description="If applicable, whether the graduate is pursuing additional education"
               data={CONTINUING_EDUCATION_STATUSES.map((s) => ({ value: s, label: s }))}
               {...form.getInputProps("continuingEducationStatus")}
             />
             <Select
               label="Military status"
+              description="If applicable, military service or enlistment status"
               data={MILITARY_STATUSES.map((s) => ({ value: s, label: s }))}
               {...form.getInputProps("militaryStatus")}
             />
             <Select
               label="Availability (if unavailable/refused)"
+              description="If the graduate is not available for or refuses employment, specify the reason"
               data={AVAILABILITY_STATUSES.map((s) => ({ value: s, label: s }))}
               {...form.getInputProps("availabilityForEmploymentStatus")}
               clearable

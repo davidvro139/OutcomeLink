@@ -80,6 +80,7 @@ export async function list(req: Request, res: Response) {
         skip,
         take,
         orderBy: { [orderByField]: orderByDirection },
+        include: { campus: { select: { id: true, name: true } } },
       }),
     () => prisma.program.count({ where }),
   );
@@ -87,7 +88,15 @@ export async function list(req: Request, res: Response) {
 
 export async function show(req: Request, res: Response) {
   const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
-  const program = await findOwnedProgram(req.user!.institutionId, Number(req.params.id), accessibleProgramIds);
+  const id = Number(req.params.id);
+  if (accessibleProgramIds && !accessibleProgramIds.includes(id)) {
+    throw ApiError.notFound("Program not found");
+  }
+  const program = await prisma.program.findFirst({
+    where: { id, institutionId: req.user!.institutionId },
+    include: { campus: { select: { id: true, name: true } }, department: { select: { id: true, name: true } } },
+  });
+  if (!program) throw ApiError.notFound("Program not found");
   sendData(res, { program });
 }
 

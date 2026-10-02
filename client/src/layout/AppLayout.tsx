@@ -3,11 +3,11 @@ import {
   Avatar,
   Burger,
   Group,
+  Image,
   Menu,
   NavLink,
   Stack,
   Text,
-  Title,
   UnstyledButton,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
@@ -118,18 +118,9 @@ export function AppLayout() {
         <Group h="100%" px="md" justify="space-between">
           <Group gap="sm">
             <Burger opened={navOpened} onClick={toggleNav} hiddenFrom="sm" size="sm" />
-            {/* Nested Link rather than Title's polymorphic `component={Link}` —
-                that form only typechecks under plain `tsc --noEmit`, not this
-                project's actual `tsc -b` build/typecheck (project review,
-                2026-09-18): Mantine's polymorphic prop inference doesn't
-                carry LinkProps through project-reference build mode, so `to`
-                fails as an unknown prop there even though it "works" under a
-                looser one-off tsc invocation. */}
-            <Title order={4} style={{ lineHeight: 1 }}>
-              <Link to="/" style={{ textDecoration: "none", color: "inherit" }}>
-                OutcomeLink
-              </Link>
-            </Title>
+            <Link to="/" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
+              <Image src="/logo-icon.png" alt="OutcomeLink" height={50} width="auto" />
+            </Link>
           </Group>
 
             <GlobalSearch />

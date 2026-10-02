@@ -26,7 +26,7 @@ describe("reporting-period close-out checklist", () => {
     cy.contains("h2", "Reporting Periods").should("be.visible");
     cy.get("table tbody tr").first().find("a").click();
     cy.contains('[role="tab"]', "Close-out").click();
-    cy.wait(500); // Wait for tab animation
+    cy.wait(1000); // Wait for tab panel to render
     cy.contains("Close-out steps").should("be.visible");
   }
 

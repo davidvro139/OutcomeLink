@@ -39,4 +39,15 @@ export const theme = createTheme({
     brandRed,
     dark: charcoal,
   },
+  components: {
+    Button: {
+      styles: () => ({
+        root: {
+          "&[data-variant='filled']": {
+            color: "#000",
+          },
+        },
+      }),
+    },
+  },
 });

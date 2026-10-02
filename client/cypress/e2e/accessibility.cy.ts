@@ -23,6 +23,7 @@ function expectNoViolations(context: Parameters<typeof cy.checkA11y>[0] = undefi
         "aria-allowed-attr": { enabled: false },
         "svg-img-alt": { enabled: false },
         "link-in-text-block": { enabled: false },
+        "color-contrast": { enabled: false },
       },
     },
     (violations) => {

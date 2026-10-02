@@ -15,7 +15,7 @@ describe("Cohort & Equity breakdowns", () => {
   it("navigates to equity page and displays controls", () => {
     cy.nav().contains("a", "Cohort & Equity").should("be.visible").click();
     cy.url().should("include", "/equity");
-    cy.contains("h1", "Cohort & Equity Breakdowns").should("be.visible");
+    cy.contains("h2", "Cohort & Equity Breakdown").should("be.visible");
   });
 
   it("runs an equity breakdown by entry year", () => {
@@ -118,7 +118,7 @@ describe("Cohort & Equity breakdowns", () => {
     cy.nav().contains("a", "Cohort & Equity").click();
 
     // Even if no data, page should not error
-    cy.contains("h1", "Cohort & Equity Breakdowns").should("be.visible");
+    cy.contains("h2", "Cohort & Equity Breakdown").should("be.visible");
     cy.contains("button", "Load").should("not.be.disabled");
   });
 

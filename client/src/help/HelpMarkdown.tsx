@@ -1,9 +1,4 @@
-import { Anchor, Stack, Table, Text, Title, TypographyStylesProvider } from "@mantine/core";
-import type { ReactNode } from "react";
-// import ReactMarkdown, { type Components } from "react-markdown";
-import { Link } from "react-router-dom";
-// import remarkGfm from "remark-gfm";
-import { slugifyHeading } from "./helpContent";
+import { Stack, Text, TypographyStylesProvider } from "@mantine/core";
 
 function textOf(node: ReactNode): string {
   if (typeof node === "string" || typeof node === "number") return String(node);

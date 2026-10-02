@@ -1,4 +1,3 @@
-import { ADMIN_ROLES } from "@outcomelink/shared";
 import { Router } from "express";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { OPERATIONAL_ROLES } from "../../lib/roles";

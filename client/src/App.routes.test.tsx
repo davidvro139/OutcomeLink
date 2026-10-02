@@ -39,6 +39,7 @@ function renderApp(role: Role | null, path: string) {
 describe("app routes", () => {
   beforeEach(() => {
     window.scrollTo = vi.fn();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     window.ResizeObserver = class {
       observe() {}
       unobserve() {}

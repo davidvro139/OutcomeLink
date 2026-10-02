@@ -5,14 +5,19 @@ import { getAccessibleProgramIds } from "../../lib/accessScope";
 import { sendPaginated, toPagination } from "../../lib/apiResponse";
 import { paginationQuerySchema } from "../../lib/pagination";
 import { prisma } from "../../lib/prisma";
+import { ACTIVE_REPORTING_PERIOD_STATUSES } from "../../lib/reportingPeriods";
+import { getUnresolvedOutcomeStudentIds } from "../reports/reports";
 
 /**
  * Follow-Up Queue (spec §12). "Assigned To" prefers Student.assignedStaffUserId
  * — the real ownership field added for Advanced Workflow Automation (Phase 3,
  * docs/TODO.md) — falling back to whoever logged the most recent follow-up
- * attempt for students that predate real assignment ever being set. The
- * "Reporting period" filter from the spec is deferred until the outcomes/
- * accreditation modules (a later stage) give us something to filter by.
+ * attempt for students that predate real assignment ever being set.
+ * `needsOutcome=true` limits the list to graduates in an active reporting
+ * period with no resolved outcome — the same population as
+ * getUnresolvedOutcomeStudentIds, including people already assigned. The
+ * morning auto-assign job still touches only the unassigned subset. Omit
+ * the flag and the queue stays every accessible student.
  *
  * Known limitation: `minDaysOverdue` and `minAttempts` are applied in
  * application code after the page is fetched (computing "days overdue"
@@ -29,6 +34,10 @@ export const followUpQueueQuerySchema = paginationQuerySchema.extend({
   outcomeStatus: z.enum(FOLLOW_UP_OUTCOMES).optional(),
   minAttempts: z.coerce.number().int().nonnegative().optional(),
   minDaysOverdue: z.coerce.number().int().nonnegative().optional(),
+  needsOutcome: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((value) => value === "true"),
 });
 type FollowUpQueueQuery = z.infer<typeof followUpQueueQuerySchema>;
 
@@ -42,9 +51,29 @@ export async function queue(req: Request, res: Response) {
     outcomeStatus,
     minAttempts,
     minDaysOverdue,
+    needsOutcome,
   } = req.query as unknown as FollowUpQueueQuery;
   const institutionId = req.user!.institutionId;
   const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
+
+  // Union across every active period. An empty set is an empty page: the
+  // worklist must not fall back to every student when nobody needs an outcome.
+  let unresolvedStudentIds: number[] | undefined;
+  if (needsOutcome) {
+    const periods = await prisma.reportingPeriod.findMany({
+      where: { institutionId, status: { in: [...ACTIVE_REPORTING_PERIOD_STATUSES] } },
+      select: { id: true },
+    });
+    const ids = new Set<number>();
+    for (const period of periods) {
+      for (const id of await getUnresolvedOutcomeStudentIds(institutionId, period.id)) ids.add(id);
+    }
+    if (ids.size === 0) {
+      sendPaginated(res, [], toPagination(page, pageSize, 0));
+      return;
+    }
+    unresolvedStudentIds = [...ids];
+  }
 
   // Combined via AND on the same `enrollments.some` check rather than two
   // separate top-level `enrollments` keys (which would collide — the second
@@ -58,6 +87,7 @@ export async function queue(req: Request, res: Response) {
   const students = await prisma.student.findMany({
     where: {
       institutionId,
+      ...(unresolvedStudentIds && { id: { in: unresolvedStudentIds } }),
       ...(enrollmentConditions.length > 0 && { enrollments: { some: { AND: enrollmentConditions } } }),
       ...(staffUserId && {
         OR: [{ assignedStaffUserId: staffUserId }, { followUpAttempts: { some: { staffUserId } } }],

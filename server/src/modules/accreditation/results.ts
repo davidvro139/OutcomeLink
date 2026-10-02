@@ -5,6 +5,7 @@ import { assertProgramAccessible, getAccessibleProgramIds } from "../../lib/acce
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { prisma } from "../../lib/prisma";
+import { PROVENANCE_SHEET_NAME } from "../../lib/provenance";
 import { sendXlsx } from "../../lib/xlsx";
 import { computeReportingPeriod } from "./calculators/cplCalculator";
 import { assertPeriodIsEditable } from "./reportingPeriods";
@@ -90,7 +91,7 @@ export async function exportResults(req: Request, res: Response) {
   };
 
   const provenanceSheet = {
-    name: "Provenance",
+    name: PROVENANCE_SHEET_NAME,
     columns: [
       { header: "Item", key: "item", width: 32 },
       { header: "Details", key: "value", width: 64 },

@@ -3,7 +3,7 @@ title: Program health and benchmarks
 slug: program-health
 group: Guides
 order: 3
-reviewed: 2026-09-24
+reviewed: 2026-10-01
 ---
 
 ## My Programs
@@ -21,7 +21,7 @@ reviewed: 2026-09-24
 
 These are calculated from the **last computed results**, not from live data. The page states how old they are; press **Recompute now** (Program Administrators and administrators) to refresh — it recomputes the period for the whole institution and can take several seconds, and it can't be repeated within five minutes.
 
-At risk and off-track programs are also flagged to the program's people by notification: right away for off track, and at 30 and 7 days before the **outcomes deadline** for at risk.
+At-risk and off-track programs are also flagged by a daily check, once for each kind of notice. Off track is reported on the next check. At risk is reported only when an outcomes deadline is set and it is within 30 days, and again as its own notice when it is within 7 days. Notices go to that program's administrators, or to the system and institutional administrators when the program has none.
 
 ## Benchmarks
 

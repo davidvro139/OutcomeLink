@@ -5,6 +5,7 @@ import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import { createNotification } from "../../lib/notifications";
 import { prisma } from "../../lib/prisma";
+import { PROVENANCE_SHEET_NAME } from "../../lib/provenance";
 import { sendXlsx } from "../../lib/xlsx";
 import { runValidation } from "./validators/validationEngine";
 
@@ -190,7 +191,7 @@ export async function exportIssues(req: Request, res: Response) {
   const resolvedFilter = includeResolved ? "Including resolved issues" : "Open issues only";
 
   const provenanceSheet = {
-    name: "Provenance",
+    name: PROVENANCE_SHEET_NAME,
     columns: [
       { header: "Item", key: "item", width: 32 },
       { header: "Details", key: "value", width: 64 },

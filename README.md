@@ -102,7 +102,7 @@ The server reads `server/.env`. The Docker setup takes the same values from the 
 | `DATABASE_URL` | MySQL connection string. Required. |
 | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | Sign login tokens. Required; long random values in production. |
 | `SECRETS_ENCRYPTION_KEY` | Encrypts stored connection secrets (the SIS/Dataverse client secret). Required. |
-| `CLIENT_ORIGIN` | Address the web app is served from (CORS). |
+| `CLIENT_ORIGIN` | Address the web app is served from (CORS). In development, other `localhost`, `127.0.0.1`, and `::1` ports are allowed as well, so a second Vite server (5174, 5175, …) can still sign in. Production allows only this address. |
 | `PUBLIC_APP_URL` | Base address used in emailed links. Defaults to `CLIENT_ORIGIN`. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` | Outgoing email. Email is on only when `SMTP_HOST` and `MAIL_FROM` are both set; otherwise invitations and surveys show a link to copy. |
 | `TRUST_PROXY` | Number of reverse proxies in front of the API (0 if none). Needed for correct per-address rate limiting behind a proxy. |
@@ -147,7 +147,9 @@ Then open `http://localhost:8080` and sign in. Add the rest of the staff from **
   and generated export files are kept before the nightly cleanup removes them — and **Backups**, described next.
 - **Backup status.** The app does not take backups. Run a scheduled `mysqldump` (plus a copy of the `uploads` volume) at
   the server level, set `BACKUP_CHECKIN_TOKEN`, and have the backup job report to the app so Settings → Backups shows
-  the last successful backup and System Administrators are notified if it goes stale:
+  the last successful backup and System Administrators are notified if it goes stale. The demo seed records a success
+  from a few hours earlier, and `server/.env.example` includes a development token, so that tab opens on the current
+  state. Replace the token before any real deployment:
 
   ```bash
   report() {  # usage: report SUCCESS|FAILED "note"

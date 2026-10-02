@@ -3,7 +3,7 @@ title: Reports and exports
 slug: reports
 group: Guides
 order: 5
-reviewed: 2026-09-24
+reviewed: 2026-10-01
 ---
 
 ## Report Builder
@@ -16,18 +16,18 @@ reviewed: 2026-09-24
 4. Tick the **columns** you want.
 5. **Run Report** for an on-screen preview (the first rows, with the total count), or **Export to Excel** for the full file.
 
-A very large report (more than 5,000 rows) is exported in the background: you're told when it's ready, and it appears in the export list and as a notification. With two or more periods you can also chart a metric or a category.
+**Export to Excel** downloads the workbook directly. A report of more than 5,000 rows is queued instead: the page says it is exporting in the background, **Export Jobs** lists the job, and you are notified when the file is ready. With two or more periods you can also chart a metric or a category.
 
 **Save Report** keeps a definition under a name so you can run it again; the Read-Only Auditor can run and export but not save.
 
 ## Scheduled reports
 
-**Scheduled reports** run a saved report, or a built-in one (Outcomes Summary, Unknown Outcomes, Missing Verification, Employer Report, CPL Readiness), daily, weekly, monthly, quarterly or annually. The workbook is kept for download and you're notified when it's ready — and by email, if outgoing email is on. A failed run is retried automatically a few times before you're told. **Run now** runs one on demand. Generated files are removed after the retention period set in Settings.
+**Scheduled reports** run a saved report, or a built-in one (Outcomes Summary, Missing Verification Report, Employer Report, Annual CPL Readiness Report), daily, weekly, monthly, quarterly or annually. The workbook is kept for download and you're notified when it's ready — and by email, if outgoing email is on. A failed run is retried automatically a few times before you're told. **Run now** runs one on demand. Generated files are removed after the retention period set in Settings.
 
 ## What an export contains
 
-Every export ends with a **Report Info** sheet: the report's name and type, when it was generated and by whom, the row count, the filters in plain words, each reporting period with the date its results were last computed (or "not yet computed"), and — for custom reports — which columns are **current attributes** (read from live records at the moment of export) and which are **period-based** (as recorded for that period). Read it before comparing an export with an older one.
+A custom report ends with a **Report Info** sheet: the report's name and type, when it was generated and by whom, the row count, the filters in plain words, each reporting period with the date its results were last computed (or "not yet computed"), and which columns are **current attributes** (read from live records at the moment of export) and which are **period-based** (as recorded for that period). Read it before comparing an export with an older one.
 
 ## Other exports
 
-The CPL Dashboard, the Data Validation tab, the student list and the My Programs page each export to Excel too. Exports include only what your role and program scope can see.
+The CPL Dashboard, the Data Validation tab, the student list, Cohort & Equity, and My Programs each end with a **Report Info** sheet. Exports include only what your role and program scope can see.

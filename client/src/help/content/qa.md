@@ -3,7 +3,7 @@ title: Questions and answers
 slug: qa
 group: Q&A
 order: 1
-reviewed: 2026-09-24
+reviewed: 2026-10-01
 ---
 
 ## Everyday questions
@@ -96,7 +96,7 @@ Each failed row is listed with its reason — a missing required value, an ID th
 
 ### Why can't I undo an import?
 
-An import commits only valid rows and can't be reversed as a whole. Correct individual records from the student page. Everything the import created is in the audit history.
+An import commits only valid rows and can't be reversed as a whole. Correct individual records from the student page. The import batch is in the audit history; the individual students and enrollments it created are not listed one by one.
 
 ## Security and privacy
 

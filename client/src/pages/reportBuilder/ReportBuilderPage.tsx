@@ -47,7 +47,9 @@ import {
   useSavedReports,
   useSaveReport,
 } from "../../api/reportBuilder";
-import { downloadFile } from "../../lib/apiClient";
+import { useQueueReportExport } from "../../api/reportExportJobs";
+import { ApiRequestError, downloadFile } from "../../lib/apiClient";
+import { ExportJobsPanel } from "./ExportJobsPanel";
 
 type FilterValueMap = Record<string, string[] | number[] | boolean | undefined>;
 
@@ -391,6 +393,7 @@ export function ReportBuilderPage() {
   const [saveModalOpened, { open: openSaveModal, close: closeSaveModal }] = useDisclosure(false);
   const [saveName, setSaveName] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [queuedNotice, setQueuedNotice] = useState<string | null>(null);
 
   const { data: programs } = usePrograms();
   const { data: campuses } = useCampuses();
@@ -399,6 +402,7 @@ export function ReportBuilderPage() {
   const runReport = useRunCustomReport();
   const saveReport = useSaveReport();
   const deleteSavedReport = useDeleteSavedReport();
+  const queueExport = useQueueReportExport();
 
   const fieldDefs = REPORT_FIELDS_BY_ENTITY[entityType];
   const filterDefs = REPORT_FILTERS_BY_ENTITY[entityType];
@@ -461,15 +465,41 @@ export function ReportBuilderPage() {
     }
   }
 
+  async function queueBackgroundExport() {
+    await queueExport.mutateAsync(buildDefinition());
+    setQueuedNotice(
+      "This report is exporting in the background. You'll be notified when it's ready, and it will appear under Export Jobs.",
+    );
+  }
+
   async function handleExport() {
     setExporting(true);
+    setQueuedNotice(null);
     try {
+      // Matches the server's direct-download cap in customReportBuilder.ts.
+      if ((runReport.data?.totalCount ?? 0) > 5000) {
+        await queueBackgroundExport();
+        return;
+      }
       await downloadFile(
         "/api/reports/custom/export",
         `custom-report-${entityType.toLowerCase()}.xlsx`,
         { method: "POST", body: JSON.stringify(buildDefinition()) },
       );
     } catch (err) {
+      const tooLarge = err instanceof ApiRequestError && err.message.toLowerCase().includes("too large");
+      if (tooLarge) {
+        try {
+          await queueBackgroundExport();
+          return;
+        } catch (queueErr) {
+          notifications.show({
+            message: queueErr instanceof Error ? queueErr.message : "Failed to queue export",
+            color: "red",
+          });
+          return;
+        }
+      }
       notifications.show({
         message: err instanceof Error ? err.message : "Failed to export report",
         color: "red",
@@ -620,6 +650,8 @@ export function ReportBuilderPage() {
               Save Report
             </Button>
           </Group>
+          {queuedNotice && <Alert color="blue">{queuedNotice}</Alert>}
+          <ExportJobsPanel />
         </Stack>
       </Group>
 
@@ -658,8 +690,10 @@ export function ReportBuilderPage() {
             <Title order={5}>Results ({result.totalCount})</Title>
             {result.truncated && (
               <Alert color="yellow" py={4}>
-                Showing the first {result.rows.length} of {result.totalCount} rows — export to
-                Excel for the full set.
+                Showing the first {result.rows.length} of {result.totalCount} rows —{" "}
+                {result.totalCount > 5000
+                  ? "Export to Excel prepares the full file in the background."
+                  : "export to Excel for the full set."}
               </Alert>
             )}
           </Group>

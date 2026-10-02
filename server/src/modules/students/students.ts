@@ -7,6 +7,7 @@ import { sendData } from "../../lib/apiResponse";
 import { paginatedResponse } from "../../lib/crudHelpers";
 import { paginationQuerySchema } from "../../lib/pagination";
 import { prisma } from "../../lib/prisma";
+import { PROVENANCE_SHEET_NAME } from "../../lib/provenance";
 import { sendXlsx } from "../../lib/xlsx";
 
 /**
@@ -112,7 +113,7 @@ export async function exportStudents(req: Request, res: Response) {
   };
 
   const provenanceSheet = {
-    name: "Provenance",
+    name: PROVENANCE_SHEET_NAME,
     columns: [
       { header: "Item", key: "item", width: 32 },
       { header: "Details", key: "value", width: 64 },

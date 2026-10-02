@@ -39,11 +39,11 @@ function renderApp(role: Role | null, path: string) {
 describe("app routes", () => {
   beforeEach(() => {
     window.scrollTo = vi.fn();
-    global.ResizeObserver = class {
+    window.ResizeObserver = class {
       observe() {}
       unobserve() {}
       disconnect() {}
-    };
+    } as any;
     mockedApiRequest.mockReset();
     mockedPaginated.mockReset();
     mockedPaginated.mockResolvedValue({

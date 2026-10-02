@@ -1,10 +1,15 @@
-import type { EnrollmentStatus, LicensureResultStatus, ReportingPeriodStatus, Role } from "@prisma/client";
+import { randomUUID } from "node:crypto";
+import type { EnrollmentStatus, ImprovementPlanStatus, LicensureResultStatus, ReportingPeriodStatus, Role } from "@prisma/client";
+import { CPL_METRICS, type CplMetric } from "@outcomelink/shared";
 import { faker } from "@faker-js/faker";
 import { prisma } from "../src/lib/prisma";
 import { hashPassword } from "../src/lib/password";
+import { createNotification } from "../src/lib/notifications";
 import { storage } from "../src/lib/storage";
 import { computeReportingPeriod } from "../src/modules/accreditation/calculators/cplCalculator";
 import { runValidation } from "../src/modules/accreditation/validators/validationEngine";
+import { alertAtRiskPrograms } from "../src/modules/programDashboard/atRiskJob";
+import { buildProgramDashboard, type MetricAssessment } from "../src/modules/programDashboard/programDashboard";
 
 /**
  * Synthetic demo data for Mountain West Technical College (spec §61,
@@ -276,6 +281,19 @@ const PERIODS: PeriodConfig[] = [
   { label: "2026", year: 2026, status: "OPEN" },
 ];
 
+/**
+ * Closed years use December 1, the outcomes due date from the training material.
+ * The open year is due 21 days after seeding, so the countdown, the close-out
+ * banner, and the 30-day at-risk notices are on screen whenever the demo is loaded.
+ */
+function demoOutcomesDeadline(period: PeriodConfig): Date {
+  if (period.status !== "OPEN") return new Date(`${period.year}-12-01T17:00:00.000Z`);
+  const deadline = new Date();
+  deadline.setUTCHours(17, 0, 0, 0);
+  deadline.setUTCDate(deadline.getUTCDate() + 21);
+  return deadline;
+}
+
 function randomInt(min: number, max: number): number {
   return faker.number.int({ min, max });
 }
@@ -369,6 +387,7 @@ async function main() {
         label: period.label,
         startDate: new Date(`${period.year}-01-01T00:00:00.000Z`),
         endDate: new Date(`${period.year}-12-31T23:59:59.999Z`),
+        outcomesDeadline: demoOutcomesDeadline(period),
         status: "OPEN", // set to the real target status only after data + compute + validate below
       },
     });
@@ -396,6 +415,21 @@ async function main() {
     });
     programRows.set(config.code, { id: program.id, config });
   }
+
+  // Surgical Technology's completion target sits under the 60% standard on purpose.
+  // A Commission-approved 55% rate, effective with the program's first year, is what
+  // the readiness badge and the equity benchmark line are there to show.
+  await prisma.negotiatedBenchmark.create({
+    data: {
+      programId: programRows.get("ST")!.id,
+      metric: "COMPLETION",
+      approvedPercentage: 55,
+      effectiveStartDate: new Date("2024-01-01T00:00:00.000Z"),
+      approvalReference:
+        "COE approval letter ST-CPL-2024-118: Surgical Technology completion benchmark of 55% for Mountain West Technical College, effective with the 2024 reporting year.",
+      createdBy: "Ada Administrator",
+    },
+  });
 
   console.log("Creating staff users...");
   const passwordHash = await hashPassword("password123");
@@ -463,6 +497,9 @@ async function main() {
   for (const auditor of usersByRole["READ_ONLY_AUDITOR"] ?? []) {
     await prisma.userCampusAccess.create({ data: { userId: auditor.id, campusId: mainCampus.id } });
   }
+
+  console.log("Assigning follow-up owners...");
+  await seedFollowUpOwners(institution.id, programRows);
 
   console.log("Creating employers...");
   const employers: { id: number }[] = [];
@@ -966,13 +1003,647 @@ async function main() {
     });
   }
 
+  console.log("Concentrating placements, then opening surveys and improvement plans...");
+  const partners = await seedPlacementPartners(institution.id);
+  await seedSurveys(programRows, partners);
+  const openPeriod = periodByYear.get(2026)!;
+  const openDeadline = (
+    await prisma.reportingPeriod.findUniqueOrThrow({
+      where: { id: openPeriod.id },
+      select: { outcomesDeadline: true },
+    })
+  ).outcomesDeadline;
+  const planCount = await seedImprovementPlans(institution.id, {
+    openPeriodId: openPeriod.id,
+    priorPeriodId: period2025.id,
+    openDeadline: openDeadline ?? new Date(),
+  });
+
+  // The at-risk job emails when a user allows it. Mute that for the seed so a
+  // missing mail server doesn't log a failure for every notice, then turn it back on.
+  await prisma.user.updateMany({ data: { emailNotifications: false } });
+  let atRisk = { alerts: 0, notifications: 0 };
+  try {
+    atRisk = await alertAtRiskPrograms(institution.id);
+    if (!ada) throw new Error("Seed did not create the institutional administrator");
+    await notifyDemoAdmin(institution.id, ada.id);
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  } finally {
+    await prisma.user.updateMany({ data: { emailNotifications: true } });
+  }
+
+  await seedBackupCheckin();
+
   const studentCount = await prisma.student.count();
   const employerCount = await prisma.employer.count();
-  console.log(`\nDone. ${studentCount} students, ${employerCount} employers, ${PROGRAMS.length} programs, ${PERIODS.length} reporting periods.`);
-  console.log('Demo login: ada@mwtc.edu / password123 (all seeded users share this password).');
+  console.log(
+    `\nDone. ${studentCount} students, ${employerCount} employers, ${PROGRAMS.length} programs, ${PERIODS.length} reporting periods, ${planCount} improvement plans, ${atRisk.alerts} at-risk alerts.`,
+  );
+  console.log("Demo login: ada@mwtc.edu / password123 (all seeded users share this password).");
+}
+
+const FOLLOW_UP_OWNER_EMAIL: Record<string, string> = {
+  PN: "jordan.blake@mwtc.edu",
+  MA: "jordan.blake@mwtc.edu",
+  DA: "jordan.blake@mwtc.edu",
+  ST: "jordan.blake@mwtc.edu",
+  HVAC: "casey.nguyen@mwtc.edu",
+  PLUMB: "casey.nguyen@mwtc.edu",
+  ET: "casey.nguyen@mwtc.edu",
+  WELD: "casey.nguyen@mwtc.edu",
+  AUTO: "casey.nguyen@mwtc.edu",
+  COSM: "morgan.ellis@mwtc.edu",
+  BARB: "morgan.ellis@mwtc.edu",
+  BUSAD: "morgan.ellis@mwtc.edu",
+  ITNET: "morgan.ellis@mwtc.edu",
+  ACCT: "morgan.ellis@mwtc.edu",
+};
+
+async function seedFollowUpOwners(
+  institutionId: number,
+  programRows: Map<string, { id: number; config: ProgramConfig }>,
+) {
+  const users = await prisma.user.findMany({
+    where: { email: { in: [...new Set(Object.values(FOLLOW_UP_OWNER_EMAIL))] } },
+    select: { id: true, email: true },
+  });
+  const userIdByEmail = new Map(users.map((user) => [user.email, user.id]));
+  for (const [code, email] of Object.entries(FOLLOW_UP_OWNER_EMAIL)) {
+    const program = programRows.get(code);
+    const staffUserId = userIdByEmail.get(email);
+    if (!program || !staffUserId) continue;
+    await prisma.programFollowUpOwner.create({
+      data: { institutionId, programId: program.id, staffUserId },
+    });
+  }
+}
+
+interface PlacementPartner {
+  name: string;
+  industry: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  contactName: string;
+  contactTitle: string;
+  phone: string;
+  email: string;
+  programCodes: string[];
+  /** twoOfThree puts a visible share of placements on one health-system employer. */
+  pattern: "twoOfThree" | "half";
+}
+
+const PLACEMENT_PARTNERS: PlacementPartner[] = [
+  {
+    name: "Front Range Health Partners",
+    industry: "Healthcare",
+    address: "900 Bannock St",
+    city: "Denver",
+    state: "CO",
+    zip: "80204",
+    contactName: "Alicia Romero",
+    contactTitle: "Workforce Partnerships",
+    phone: "303-555-0142",
+    email: "partnerships@frontrange.example",
+    programCodes: ["PN", "MA", "DA", "ST"],
+    pattern: "twoOfThree",
+  },
+  {
+    name: "Peak Mechanical Contractors",
+    industry: "Construction",
+    address: "4100 Brighton Blvd",
+    city: "Denver",
+    state: "CO",
+    zip: "80216",
+    contactName: "Luis Ortega",
+    contactTitle: "Hiring Manager",
+    phone: "303-555-0174",
+    email: "hiring@peakmechanical.example",
+    programCodes: ["HVAC", "PLUMB", "ET"],
+    pattern: "half",
+  },
+  {
+    name: "Wasatch Auto Group",
+    industry: "Automotive Repair",
+    address: "1800 State St",
+    city: "Salt Lake City",
+    state: "UT",
+    zip: "84111",
+    contactName: "Heather Lang",
+    contactTitle: "Service Director",
+    phone: "801-555-0138",
+    email: "service@wasatchauto.example",
+    programCodes: ["AUTO"],
+    pattern: "half",
+  },
+  {
+    name: "Alpine Salon Collective",
+    industry: "Personal Care Services",
+    address: "200 S College Ave",
+    city: "Fort Collins",
+    state: "CO",
+    zip: "80524",
+    contactName: "Nicole Peck",
+    contactTitle: "Salon Owner",
+    phone: "970-555-0160",
+    email: "studio@alpinesalon.example",
+    programCodes: ["COSM", "BARB"],
+    pattern: "half",
+  },
+  {
+    name: "High Plains Fabrication",
+    industry: "Manufacturing",
+    address: "15 Lake Ave",
+    city: "Pueblo",
+    state: "CO",
+    zip: "81003",
+    contactName: "Chris Daley",
+    contactTitle: "Shop Foreman",
+    phone: "719-555-0191",
+    email: "shop@highplainsfab.example",
+    programCodes: ["WELD"],
+    pattern: "half",
+  },
+  {
+    name: "Clear Creek Professional Group",
+    industry: "Professional Services",
+    address: "1600 Glenarm Pl",
+    city: "Denver",
+    state: "CO",
+    zip: "80202",
+    contactName: "Megan Cho",
+    contactTitle: "Office Manager",
+    phone: "303-555-0126",
+    email: "jobs@clearcreekpro.example",
+    programCodes: ["BUSAD", "ACCT", "ITNET"],
+    pattern: "half",
+  },
+];
+
+function claimsPlacement(pattern: PlacementPartner["pattern"], index: number): boolean {
+  if (pattern === "twoOfThree") return index % 3 !== 2;
+  return index % 2 === 0;
+}
+
+async function seedPlacementPartners(institutionId: number): Promise<Map<string, number>> {
+  const employerByCode = new Map<string, number>();
+  for (const partner of PLACEMENT_PARTNERS) {
+    const employer = await prisma.employer.create({
+      data: {
+        institutionId,
+        name: partner.name,
+        industry: partner.industry,
+        address: partner.address,
+        city: partner.city,
+        state: partner.state,
+        zip: partner.zip,
+        notes: "Primary placement partner for Mountain West Technical College.",
+      },
+    });
+    await prisma.employerContact.create({
+      data: {
+        employerId: employer.id,
+        name: partner.contactName,
+        title: partner.contactTitle,
+        phone: partner.phone,
+        email: partner.email,
+        isPrimaryContact: true,
+        isVerificationContact: true,
+      },
+    });
+    for (const code of partner.programCodes) employerByCode.set(code, employer.id);
+  }
+
+  const outcomes = await prisma.studentOutcomeRecord.findMany({
+    where: { employmentStatus: "EMPLOYED", employerId: { not: null } },
+    orderBy: { id: "asc" },
+    select: {
+      id: true,
+      employerId: true,
+      studentEnrollment: { select: { studentId: true, program: { select: { code: true } } } },
+    },
+  });
+
+  const seen = new Map<string, number>();
+  for (const outcome of outcomes) {
+    const code = outcome.studentEnrollment.program.code;
+    if (!code) continue;
+    const partner = PLACEMENT_PARTNERS.find((item) => item.programCodes.includes(code));
+    const employerId = employerByCode.get(code);
+    if (!partner || !employerId || outcome.employerId === null) continue;
+    const index = seen.get(code) ?? 0;
+    seen.set(code, index + 1);
+    if (!claimsPlacement(partner.pattern, index)) continue;
+    await prisma.studentOutcomeRecord.update({ where: { id: outcome.id }, data: { employerId } });
+    await prisma.employmentRecord.updateMany({
+      where: { studentId: outcome.studentEnrollment.studentId, employerId: outcome.employerId },
+      data: { employerId },
+    });
+  }
+
+  return employerByCode;
+}
+
+interface SkillProfile {
+  technical: number;
+  communication: number;
+  problemSolving: number;
+  professionalism: number;
+  note?: string;
+}
+
+const EMPLOYER_SKILL_PROFILES: Record<string, SkillProfile[]> = {
+  AUTO: [
+    {
+      technical: 2,
+      communication: 4,
+      problemSolving: 3,
+      professionalism: 4,
+      note: "Graduates can do a maintenance service, but they need more time on diagnostics before we put them on the line.",
+    },
+    {
+      technical: 3,
+      communication: 4,
+      problemSolving: 3,
+      professionalism: 4,
+      note: "ASE-style electrical diagnosis is the gap we keep hiring around.",
+    },
+    { technical: 3, communication: 5, problemSolving: 4, professionalism: 5 },
+  ],
+  PLUMB: [
+    {
+      technical: 3,
+      communication: 3,
+      problemSolving: 4,
+      professionalism: 4,
+      note: "Code knowledge is thin in the first month. They can run pipe, but they wait on someone else to read the print.",
+    },
+    { technical: 4, communication: 3, problemSolving: 3, professionalism: 4 },
+  ],
+  PN: [
+    {
+      technical: 5,
+      communication: 5,
+      problemSolving: 4,
+      professionalism: 5,
+      note: "Ready for the floor. Charting is the only thing we still coach in the first two weeks.",
+    },
+    { technical: 5, communication: 4, problemSolving: 5, professionalism: 5 },
+  ],
+  WELD: [
+    { technical: 4, communication: 4, problemSolving: 4, professionalism: 5 },
+    {
+      technical: 5,
+      communication: 3,
+      problemSolving: 4,
+      professionalism: 4,
+      note: "Blueprint reading is solid. Shop communication is what we work on.",
+    },
+  ],
+  ITNET: [
+    {
+      technical: 4,
+      communication: 3,
+      problemSolving: 3,
+      professionalism: 4,
+      note: "They can configure a switch. Ticket notes and customer updates are where new hires stall.",
+    },
+    { technical: 4, communication: 3, problemSolving: 4, professionalism: 4 },
+  ],
+  COSM: [
+    { technical: 4, communication: 5, problemSolving: 4, professionalism: 5 },
+    {
+      technical: 4,
+      communication: 4,
+      problemSolving: 3,
+      professionalism: 4,
+      note: "Sanitation and client consultation are strong. Color correction takes longer than our floor expects.",
+    },
+  ],
+};
+
+async function seedSurveys(
+  programRows: Map<string, { id: number; config: ProgramConfig }>,
+  employerByCode: Map<string, number>,
+) {
+  const beforeCloseout = new Date("2026-09-01T00:00:00.000Z");
+  for (const [code, profiles] of Object.entries(EMPLOYER_SKILL_PROFILES)) {
+    const program = programRows.get(code);
+    const employerId = employerByCode.get(code);
+    if (!program || !employerId) continue;
+    const graduates = await prisma.studentEnrollment.findMany({
+      where: {
+        programId: program.id,
+        enrollmentStatus: "GRADUATE_COMPLETER",
+        actualCompletionDate: { lt: beforeCloseout },
+      },
+      orderBy: { id: "asc" },
+      take: profiles.length,
+      select: { studentId: true, actualCompletionDate: true },
+    });
+    for (let i = 0; i < graduates.length; i++) {
+      const graduate = graduates[i]!;
+      const profile = profiles[i]!;
+      const sentAt = graduate.actualCompletionDate ?? beforeCloseout;
+      const survey = await prisma.employerSurvey.create({
+        data: {
+          employerId,
+          studentId: graduate.studentId,
+          sentAt,
+          responseToken: randomUUID(),
+        },
+      });
+      await prisma.employerSurveyResponse.create({
+        data: {
+          surveyId: survey.id,
+          employmentVerification: "CONFIRMED",
+          technicalPreparednessRating: profile.technical,
+          communicationRating: profile.communication,
+          problemSolvingRating: profile.problemSolving,
+          professionalismRating: profile.professionalism,
+          overallSatisfactionRating: Math.round((profile.technical + profile.professionalism) / 2),
+          skillsGapNotes: profile.note,
+          likelihoodToHireAgainRating: profile.technical >= 4 ? 5 : 3,
+          submittedAt: new Date(sentAt.getTime() + 5 * 24 * 60 * 60 * 1000),
+        },
+      });
+    }
+  }
+
+  const commented = await prisma.studentEnrollment.findMany({
+    where: {
+      enrollmentStatus: "GRADUATE_COMPLETER",
+      actualCompletionDate: { lt: beforeCloseout },
+      program: { code: { in: ["PN", "WELD", "AUTO"] } },
+    },
+    orderBy: { id: "asc" },
+    take: 6,
+    select: { studentId: true, actualCompletionDate: true, program: { select: { code: true } } },
+  });
+  for (const [index, graduate] of commented.entries()) {
+    const sentAt = graduate.actualCompletionDate ?? beforeCloseout;
+    const pending = index >= 4;
+    const survey = await prisma.graduateSurvey.create({
+      data: { studentId: graduate.studentId, sentAt, channel: "EMAIL", responseToken: randomUUID() },
+    });
+    if (pending) continue;
+    await prisma.graduateSurveyResponse.create({
+      data: {
+        surveyId: survey.id,
+        employmentStatus: "EMPLOYED",
+        relatedToTrainingResponse: graduate.program.code === "AUTO" ? "UNSURE" : "YES",
+        satisfactionRating: graduate.program.code === "AUTO" ? 3 : 5,
+        skillsPreparednessRating: graduate.program.code === "AUTO" ? 3 : 4,
+        comments:
+          graduate.program.code === "AUTO"
+            ? "I got hired, but I wish we had spent more lab time on electrical diagnostics."
+            : "The program lined up with the job I have now.",
+        submittedAt: new Date(sentAt.getTime() + 4 * 24 * 60 * 60 * 1000),
+      },
+    });
+  }
+}
+
+function planOwnerEmail(code: string): string {
+  if (["PN", "MA", "DA", "ST"].includes(code)) return "priya.patel@mwtc.edu";
+  if (["COSM", "BARB"].includes(code)) return "elena.ruiz@mwtc.edu";
+  if (["BUSAD", "ITNET", "ACCT"].includes(code)) return "dana.kowalski@mwtc.edu";
+  return "marcus.webb@mwtc.edu";
+}
+
+const METRIC_LABEL: Record<CplMetric, string> = {
+  COMPLETION: "Completion",
+  PLACEMENT: "Placement",
+  LICENSURE: "Licensure",
+};
+
+interface PlanStory {
+  status: ImprovementPlanStatus;
+  problemDescription: string;
+  rootCause: string;
+  updateText: string;
+  correctiveAction: string;
+}
+
+const PLAN_STORIES: Record<string, PlanStory> = {
+  "PLUMB:PLACEMENT": {
+    status: "ACTIVE",
+    problemDescription:
+      "Placement is under the 70% benchmark. Graduates are finding work, but too many of those jobs are unrelated to the trade or still unverified this late in the year.",
+    rootCause:
+      "North Campus has a short list of plumbing employers, and verification calls are stacking up behind the October close-out.",
+    updateText:
+      "Named Peak Mechanical Contractors as the primary placement partner and scheduled verification calls for graduates still marked seeking or unknown.",
+    correctiveAction: "Employer outreach and a verification blitz before the outcomes deadline.",
+  },
+  "BARB:COMPLETION": {
+    status: "MONITORING",
+    problemDescription:
+      "Completion is under 60%, and the cohort is small enough that a few early withdrawals move the rate a lot.",
+    rootCause: "Students leave in the first term when shop hours conflict with the jobs they already have.",
+    updateText: "Moved the first-term shop schedule later in the day and added a week-four check-in.",
+    correctiveAction: "Schedule change plus an early advising check-in.",
+  },
+  "AUTO:LICENSURE": {
+    status: "ACTIVE",
+    problemDescription:
+      "The ASE pass rate is under 70%, and several graduates still have no result on file.",
+    rootCause: "Students sit the exam months after the prep course, so the material is cold and the licensure queue goes stale.",
+    updateText: "Booked a November ASE prep lab and started working the licensure queue for graduates with no result.",
+    correctiveAction: "Prep lab plus a pass through the licensure queue.",
+  },
+  "ST:COMPLETION": {
+    status: "MONITORING",
+    problemDescription:
+      "COE approved a 55% completion benchmark for Surgical Technology starting with the 2024 reporting year (letter ST-CPL-2024-118). This plan watches that negotiated rate rather than the institution's 60% standard.",
+    rootCause: "The program is still new, and the first cohorts are smaller than the rest of the college.",
+    updateText: "Confirmed the negotiated benchmark is the rate readiness and validation are using for this program.",
+    correctiveAction: "Keep the approval letter on file and review the rate at close-out.",
+  },
+};
+
+async function seedImprovementPlans(
+  institutionId: number,
+  periods: { openPeriodId: number; priorPeriodId: number; openDeadline: Date },
+): Promise<number> {
+  const owners = await prisma.user.findMany({
+    where: {
+      email: {
+        in: ["priya.patel@mwtc.edu", "marcus.webb@mwtc.edu", "dana.kowalski@mwtc.edu", "elena.ruiz@mwtc.edu"],
+      },
+    },
+    select: { id: true, email: true, name: true },
+  });
+  const ownerByEmail = new Map(owners.map((user) => [user.email, user]));
+
+  async function writePlan(input: {
+    programId: number;
+    programCode: string;
+    metric: CplMetric;
+    reportingPeriodId: number;
+    assessment: MetricAssessment;
+    dueDate: Date;
+    story?: PlanStory;
+    status?: ImprovementPlanStatus;
+  }) {
+    const owner = ownerByEmail.get(planOwnerEmail(input.programCode)) ?? owners[0];
+    if (!owner) return;
+    const story = input.story;
+    const label = METRIC_LABEL[input.metric];
+    const plan = await prisma.improvementPlan.create({
+      data: {
+        programId: input.programId,
+        metric: input.metric,
+        reportingPeriodId: input.reportingPeriodId,
+        currentResult: input.assessment.percentage,
+        target: input.assessment.benchmark,
+        problemDescription:
+          story?.problemDescription ??
+          `${label} is ${input.assessment.percentage}% against ${input.assessment.benchmark}%. It can no longer reach the benchmark this period.`,
+        rootCause:
+          story?.rootCause ??
+          "Too few successful outcomes are still outstanding, and the students already counted put the rate past recovery.",
+        responsibleUserId: owner.id,
+        dueDate: input.dueDate,
+        status: input.status ?? story?.status ?? "ACTIVE",
+      },
+    });
+    await prisma.improvementPlanUpdate.create({
+      data: {
+        improvementPlanId: plan.id,
+        updateText:
+          story?.updateText ??
+          "Opened during close-out so the miss is documented before anyone signs the period.",
+        correctiveAction: story?.correctiveAction ?? "Document the miss and name a responsible person.",
+        createdBy: owner.name,
+      },
+    });
+  }
+
+  let count = 0;
+  const openDashboard = await buildProgramDashboard(institutionId, null, periods.openPeriodId);
+  for (const program of openDashboard.programs) {
+    if (!program.code) continue;
+    for (const metric of CPL_METRICS) {
+      const assessment = program.metrics[metric];
+      if (!assessment || assessment.status === "NO_DATA") continue;
+      const story = PLAN_STORIES[`${program.code}:${metric}`];
+      const negotiatedStory = story && assessment.negotiated;
+      if (assessment.status !== "OFF_TRACK" && !story) continue;
+      if (story && assessment.status === "MEETING" && !negotiatedStory) continue;
+      await writePlan({
+        programId: program.programId,
+        programCode: program.code,
+        metric,
+        reportingPeriodId: periods.openPeriodId,
+        assessment,
+        dueDate: periods.openDeadline,
+        story,
+        status: assessment.status === "OFF_TRACK" ? "ACTIVE" : story?.status,
+      });
+      count += 1;
+    }
+  }
+
+  const priorDashboard = await buildProgramDashboard(institutionId, null, periods.priorPeriodId);
+  const plumbing = priorDashboard.programs.find((program) => program.code === "PLUMB");
+  const priorPlacement = plumbing?.metrics.PLACEMENT;
+  if (plumbing?.code && priorPlacement && priorPlacement.status !== "MEETING" && priorPlacement.status !== "NO_DATA") {
+    await writePlan({
+      programId: plumbing.programId,
+      programCode: plumbing.code,
+      metric: "PLACEMENT",
+      reportingPeriodId: periods.priorPeriodId,
+      assessment: priorPlacement,
+      dueDate: new Date("2025-12-01T17:00:00.000Z"),
+      story: {
+        status: "COMPLETED",
+        problemDescription:
+          "2025 placement finished under 70%. The employer outreach in this plan is what the 2026 plan continues.",
+        rootCause: "Verification lagged the graduation dates, so related placements were still unconfirmed at the deadline.",
+        updateText: "Closed the 2025 plan after the verification pass. Peak Mechanical remains the partner to grow in 2026.",
+        correctiveAction: "Verification pass completed for the 2025 graduates.",
+      },
+      status: "COMPLETED",
+    });
+    count += 1;
+  }
+
+  return count;
+}
+
+const ALERT_LABEL: Record<CplMetric, string> = METRIC_LABEL;
+
+/** A successful report from a few hours ago, so Settings → Backups opens on the current state. The size is the figure that job would send, not a measured dump. */
+async function seedBackupCheckin() {
+  await prisma.backupCheckin.create({
+    data: {
+      status: "SUCCESS",
+      sizeMb: 48,
+      note: "nightly dump",
+      createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000),
+    },
+  });
+}
+
+/** The demo login is the institutional administrator. Program-level notices go to program administrators; she gets the worst of the open year. */
+async function notifyDemoAdmin(institutionId: number, userId: number) {
+  const periods = await prisma.reportingPeriod.findMany({
+    where: { institutionId, status: "OPEN" },
+    select: { id: true },
+  });
+  const pending: { offTrack: boolean; gap: number; message: string; periodId: number }[] = [];
+  for (const { id: periodId } of periods) {
+    const dashboard = await buildProgramDashboard(institutionId, null, periodId);
+    const daysLeft = dashboard.period?.daysUntilOutcomesDeadline ?? null;
+    const label = dashboard.period?.label ?? "this period";
+    for (const program of dashboard.programs) {
+      for (const metric of CPL_METRICS) {
+        const assessment = program.metrics[metric];
+        if (!assessment) continue;
+        if (assessment.status === "OFF_TRACK") {
+          pending.push({
+            offTrack: true,
+            gap: assessment.benchmark - assessment.percentage,
+            periodId,
+            message: `${program.name}: ${ALERT_LABEL[metric]} is ${assessment.percentage}% against a ${assessment.benchmark}% benchmark and can no longer reach it in "${label}" — the best possible is ${assessment.maxPossiblePercentage ?? assessment.percentage}%.`,
+          });
+        } else if (assessment.status === "AT_RISK" && daysLeft !== null && daysLeft >= 0 && daysLeft <= 30) {
+          pending.push({
+            offTrack: false,
+            gap: assessment.benchmark - assessment.percentage,
+            periodId,
+            message: `${program.name}: ${ALERT_LABEL[metric]} is ${assessment.percentage}% against ${assessment.benchmark}% — still ${assessment.needed ?? 0} more success${assessment.needed === 1 ? "" : "es"} needed, with ${daysLeft} day${daysLeft === 1 ? "" : "s"} to the outcomes deadline for "${label}".`,
+          });
+        }
+      }
+    }
+  }
+  pending.sort((a, b) => Number(b.offTrack) - Number(a.offTrack) || b.gap - a.gap);
+  for (const item of pending.slice(0, 6)) {
+    await createNotification({
+      userId,
+      type: "PROGRAM_AT_RISK",
+      message: item.message,
+      referenceEntityType: "ReportingPeriod",
+      referenceEntityId: item.periodId,
+    });
+  }
 }
 
 async function wipeDatabase() {
+  await prisma.atRiskAlert.deleteMany();
+  await prisma.negotiatedBenchmark.deleteMany();
+  await prisma.programFollowUpOwner.deleteMany();
+  await prisma.scheduledReportRun.deleteMany();
+  await prisma.scheduledReportSubscription.deleteMany();
+  await prisma.savedReport.deleteMany();
+  await prisma.reportExportJob.deleteMany();
+  await prisma.jobRun.deleteMany();
+  await prisma.emailDelivery.deleteMany();
+  await prisma.institutionSettings.deleteMany();
+  await prisma.backupCheckin.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.importRowError.deleteMany();
   await prisma.importBatch.deleteMany();

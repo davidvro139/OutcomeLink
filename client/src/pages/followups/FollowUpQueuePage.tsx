@@ -1,5 +1,5 @@
 import { usePermissions } from "../../auth/usePermissions";
-import { Anchor, Badge, Button, Checkbox, Group, Loader, NumberInput, Select, Stack, Table, Text, Title } from "@mantine/core";
+import { Anchor, Badge, Button, Checkbox, Group, Loader, NumberInput, Select, Stack, Switch, Table, Text, Title } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
@@ -46,8 +46,9 @@ function AssignedToCell({ studentId, assignedTo }: { studentId: number; assigned
 /** Spec §12: task-oriented follow-up queue with overdue highlighting. */
 export function FollowUpQueuePage() {
   const { canWrite } = usePermissions();
+  const [needsOutcome, setNeedsOutcome] = useState(true);
   const [minDaysOverdue, setMinDaysOverdue] = useState<number | undefined>(undefined);
-  const { data, isLoading } = useFollowUpQueue({ minDaysOverdue });
+  const { data, isLoading } = useFollowUpQueue({ minDaysOverdue, needsOutcome });
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkOpened, { open: openBulk, close: closeBulk }] = useDisclosure(false);
   const [bulkAssignOpened, { open: openBulkAssign, close: closeBulkAssign }] = useDisclosure(false);
@@ -86,16 +87,31 @@ export function FollowUpQueuePage() {
   return (
     <Stack p="xl" gap="md">
       <Title order={2}>Follow-Up Queue</Title>
+      <Text size="sm" c="dimmed">
+        Graduates in an open reporting period who still have no resolved outcome, including people already
+        assigned. Minimum days overdue narrows that list.
+      </Text>
 
-      <Group justify="space-between">
-        <NumberInput
-          label="Minimum days overdue"
-          placeholder="e.g. 7"
-          value={minDaysOverdue}
-          onChange={(value) => setMinDaysOverdue(typeof value === "number" ? value : undefined)}
-          w={220}
-          min={0}
-        />
+      <Group justify="space-between" align="flex-end">
+        <Group align="flex-end">
+          <NumberInput
+            label="Minimum days overdue"
+            placeholder="e.g. 7"
+            value={minDaysOverdue}
+            onChange={(value) => setMinDaysOverdue(typeof value === "number" ? value : undefined)}
+            w={220}
+            min={0}
+          />
+          <Switch
+            label="Only graduates who still need an outcome"
+            checked={needsOutcome}
+            onChange={(event) => {
+              setNeedsOutcome(event.currentTarget.checked);
+              setSelectedIds(new Set());
+            }}
+            mb={8}
+          />
+        </Group>
         {canWrite && selectedIds.size > 0 && (
           <Group gap="xs">
             <Button variant="light" onClick={openBulkAssign}>
@@ -179,7 +195,9 @@ export function FollowUpQueuePage() {
 
       {data && data.items.length === 0 && (
         <Text c="dimmed" ta="center" py="xl">
-          No students match this filter.
+          {needsOutcome && minDaysOverdue === undefined
+            ? "No graduates in an open reporting period still need an outcome."
+            : "No students match this filter."}
         </Text>
       )}
 

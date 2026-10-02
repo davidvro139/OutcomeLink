@@ -231,9 +231,79 @@ describe("equityBreakdown", () => {
     await prisma.studentDemographics.updateMany({ where: { student: { institutionId } }, data: { disabilityStatus: false } });
     const result = await buildEquityBreakdown(institutionId, [programId], { reportingPeriodId, metric: "COMPLETION", dimension: "disabilityStatus" });
     expect(result.groups.find((g) => g.value === "false")?.denominator).toBe(15);
+    expect(result.groups.find((g) => g.value === "false")?.label).toBe("No");
+    expect(result.groups.find((g) => g.value === "NOT_ON_FILE")?.label).toBe("Not on file");
     expect(result.groups.find((g) => g.value === "NOT_ON_FILE")?.denominator).toBe(5);
     expect(result.benchmark?.value).toBe(70);
     expect(result.trend[0]?.points.map((p) => p.label)).toEqual(result.trend[1]?.points.map((p) => p.label));
+  });
+
+  it("sums one program's groups to that program's official CPL result for each metric", async () => {
+    const enrollments = await prisma.studentEnrollment.findMany({
+      where: { programId },
+      include: { student: { select: { internalStudentId: true } } },
+    });
+    for (const enrollment of enrollments) {
+      const index = Number(enrollment.student.internalStudentId.replace("TEST-", ""));
+      for (const metric of ["PLACEMENT", "LICENSURE"] as const) {
+        await prisma.studentClassification.create({
+          data: {
+            studentEnrollmentId: enrollment.id,
+            reportingPeriodId,
+            metric,
+            classificationCode: "CODE",
+            determinedByRuleSetId: ruleSetId,
+            explanation: {
+              create: {
+                countsInDenominator: true,
+                countsInNumerator: metric === "PLACEMENT" ? index < 12 : index < 16,
+                reasonText: "Test classification",
+              },
+            },
+          },
+        });
+      }
+    }
+
+    for (const metric of ["COMPLETION", "PLACEMENT", "LICENSURE"] as const) {
+      const explanations = await prisma.cplCalculationExplanation.findMany({
+        where: { studentClassification: { reportingPeriodId, metric, studentEnrollment: { programId } } },
+        select: { countsInNumerator: true, countsInDenominator: true },
+      });
+      const numerator = explanations.filter((row) => row.countsInNumerator).length;
+      const denominator = explanations.filter((row) => row.countsInDenominator).length;
+      await prisma.cplCalculationResult.create({
+        data: {
+          programId,
+          reportingPeriodId,
+          metric,
+          numerator,
+          denominator,
+          percentage: denominator > 0 ? Math.round((numerator / denominator) * 10000) / 100 : 0,
+        },
+      });
+
+      const byYear = await buildEquityBreakdown(institutionId, [programId], {
+        reportingPeriodId,
+        metric,
+        dimension: "entryYear",
+        programId,
+      });
+      expect(byYear.groups.reduce((sum, group) => sum + group.denominator, 0)).toBe(denominator);
+      expect(byYear.groups.reduce((sum, group) => sum + (group.numerator ?? 0), 0)).toBe(numerator);
+      expect(byYear.groups.every((group) => !group.suppressed)).toBe(true);
+
+      const byGender = await buildEquityBreakdown(institutionId, [programId], {
+        reportingPeriodId,
+        metric,
+        dimension: "gender",
+        programId,
+      });
+      expect(byGender.groups.find((group) => group.value === "MALE")?.label).toBe("Male");
+      expect(byGender.groups.find((group) => group.value === "FEMALE")?.label).toBe("Female");
+      expect(byGender.groups.reduce((sum, group) => sum + group.denominator, 0)).toBe(denominator);
+      expect(byGender.groups.every((group) => group.suppressed && group.numerator === null)).toBe(true);
+    }
   });
 
   it("should throw on inaccessible program", async () => {

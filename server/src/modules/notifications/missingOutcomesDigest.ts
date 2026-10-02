@@ -13,35 +13,24 @@ export const generateDigestSchema = z.object({
 type GenerateDigestInput = z.infer<typeof generateDigestSchema>;
 
 /**
- * "Missing-outcomes digest" (docs/TODO.md deferred items): a pushed summary
- * to staff, vs. today's pull-based Validation tab / Unknown Outcomes report.
- * Reuses the same getUnresolvedOutcomeStudentIds() population as P8's report
- * and the graduate outreach campaign, so all three can never disagree about
- * who counts as "unresolved."
- *
- * Manually triggered rather than actually time-scheduled, same honesty as
- * the graduate campaign — no job-scheduler infrastructure exists anywhere in
- * this app yet. Sent to every operational-role user at the institution
- * (everyone who'd act on it); per-program targeting via UserProgramAccess is
- * a reasonable future refinement, not attempted here.
+ * "Missing-outcomes digest": one summary per active reporting period, sent
+ * to every operational-role user at the institution. The morning job and
+ * the Data Quality button both call this, so they notify the same people
+ * about the same unresolved population as the Unknown Outcomes report and
+ * the graduate outreach campaign. Per-program targeting is not attempted.
+ * Zero unresolved students sends nothing.
  */
-export async function generateMissingOutcomesDigest(
-  req: Request<Record<string, never>, unknown, GenerateDigestInput>,
-  res: Response,
-) {
-  const institutionId = req.user!.institutionId;
-  const { reportingPeriodId } = req.body;
-
+export async function sendMissingOutcomesDigest(
+  institutionId: number,
+  reportingPeriodId: number,
+): Promise<{ recipientCount: number; unresolvedCount: number } | null> {
   const period = await prisma.reportingPeriod.findFirst({
     where: { id: reportingPeriodId, institutionId },
   });
-  if (!period) throw ApiError.notFound("Reporting period not found");
+  if (!period) return null;
 
   const unresolvedIds = await getUnresolvedOutcomeStudentIds(institutionId, reportingPeriodId);
-  if (unresolvedIds.length === 0) {
-    sendData(res, { recipientCount: 0, unresolvedCount: 0 });
-    return;
-  }
+  if (unresolvedIds.length === 0) return { recipientCount: 0, unresolvedCount: 0 };
 
   const recipients = await prisma.user.findMany({
     where: { institutionId, role: { in: [...OPERATIONAL_ROLES] } },
@@ -62,5 +51,14 @@ export async function generateMissingOutcomesDigest(
     ),
   );
 
-  sendData(res, { recipientCount: recipients.length, unresolvedCount: unresolvedIds.length }, 201);
+  return { recipientCount: recipients.length, unresolvedCount: unresolvedIds.length };
+}
+
+export async function generateMissingOutcomesDigest(
+  req: Request<Record<string, never>, unknown, GenerateDigestInput>,
+  res: Response,
+) {
+  const result = await sendMissingOutcomesDigest(req.user!.institutionId, req.body.reportingPeriodId);
+  if (!result) throw ApiError.notFound("Reporting period not found");
+  sendData(res, result, result.unresolvedCount === 0 ? 200 : 201);
 }

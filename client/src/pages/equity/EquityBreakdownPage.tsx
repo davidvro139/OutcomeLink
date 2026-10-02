@@ -18,6 +18,19 @@ import { downloadEquityBreakdown, useEquityBreakdown, type EquityBreakdownParams
 import { usePrograms } from "../../api/programs";
 import { notifications } from "@mantine/notifications";
 
+const STATUS_LABELS: Record<string, string> = {
+  MEETING: "Meeting benchmark",
+  BELOW_BENCHMARK: "Below benchmark",
+  SUPPRESSED: "Suppressed",
+  NO_DATA: "No data",
+};
+
+function percentageText(group: { suppressed: boolean; percentage: number | null }): string {
+  if (group.suppressed) return "Suppressed (n<10)";
+  if (group.percentage != null) return `${group.percentage}%`;
+  return "N/A";
+}
+
 const METRICS = ["COMPLETION", "PLACEMENT", "LICENSURE"] as const;
 const METRIC_LABELS: Record<CplMetric, string> = {
   COMPLETION: "Completion",
@@ -133,10 +146,8 @@ export function EquityBreakdownPage() {
                   <Table.Td>{g.label}</Table.Td>
                   <Table.Td ta="right">{g.denominator}</Table.Td>
                   <Table.Td ta="right">{g.suppressed ? "Suppressed" : g.numerator}</Table.Td>
-                  <Table.Td ta="right">
-                    {g.suppressed ? "Suppressed (n<10)" : g.percentage ?? "N/A"}%
-                  </Table.Td>
-                  <Table.Td>{g.status}</Table.Td>
+                  <Table.Td ta="right">{percentageText(g)}</Table.Td>
+                  <Table.Td>{STATUS_LABELS[g.status] ?? g.status}</Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>

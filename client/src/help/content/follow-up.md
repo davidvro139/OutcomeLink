@@ -3,16 +3,16 @@ title: Following up with graduates
 slug: follow-up
 group: Guides
 order: 2
-reviewed: 2026-09-24
+reviewed: 2026-10-01
 ---
 
 Placement and licensure rates depend on knowing what happened to each graduate. This guide covers finding graduates who still need an outcome, recording it, and contacting people.
 
 ## Find who needs attention
 
-The **Follow-Up Queue** lists graduates with no recorded outcome, or still "seeking" or unknown, with how long since anyone last tried to reach them. Rows past their follow-up date are highlighted. You can assign a student to a staff member from the queue (if your role allows), and select several students to assign them, or log the same follow-up for all of them at once.
+The **Follow-Up Queue** opens on graduates in an open reporting period who still have no resolved outcome, including people who are already assigned. Each row shows the program, how many attempts have been logged, the last contact, the outcome of that last attempt, the next follow-up date, who it is assigned to, and how many days past that date it is. A row whose next follow-up date has passed is highlighted. **Minimum days overdue** narrows that list. **Only graduates who still need an outcome** is on by default; turn it off to see every student you can access. If your role can change records, you can assign a student from the queue, and select several students to assign them or log the same follow-up for all of them at once.
 
-Programs can have a **follow-up owner** (Program → follow-up owner), and new work is assigned to that person automatically each morning. Overdue follow-ups notify the assigned person.
+Programs can have a **follow-up owner**, set by an administrator on the program. Each morning, graduates in an open period who still have no resolved outcome and no assignee are assigned to that owner, and the owner is notified. The queue itself keeps showing graduates who are already assigned. Overdue follow-ups notify the assigned person. Each morning, every operational staff member is also notified how many graduates in each open period still have no resolved outcome, unless that count is zero.
 
 ## Record what you learned
 
@@ -23,7 +23,7 @@ Open a student and use their tabs:
 - **Enrollments & Outcomes** — an enrollment's status, and for each reporting period an **outcome record** (employed, continuing education, military, unavailable, refused, seeking…). "Related to training" needs a short justification.
 - **Licensure** — record each exam attempt and its result when the program requires a license.
 
-A graduate with **no outcome record** counts as _seeking or unknown_ for placement — that is why the queue exists.
+A graduate with **no outcome record** counts as _seeking or unknown_ for placement. That is the same population the queue opens on, and the population the morning assignment draws from when it picks someone who is not yet assigned.
 
 ## Surveys
 

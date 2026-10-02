@@ -3,7 +3,7 @@ title: Cohort and equity breakdowns
 slug: equity
 group: Guides
 order: 4
-reviewed: 2026-09-24
+reviewed: 2026-10-01
 ---
 
 ## What it is
@@ -34,7 +34,7 @@ A dimension is how you split the data:
 
 - **Entry Year** — based on enrollment start date (e.g., 2023, 2024)
 - **Gender** — Male, Female, Nonbinary, Prefer Not to Say, or Not on File
-- **Race/Ethnicity** — IPEDS categories (White, Black/African American, Hispanic/Latino, Asian, Native Hawaiian/Pacific Islander, American Indian/Alaska Native, Two or More Races, Nonresident Alien), or Not on File
+- **Race/Ethnicity** — IPEDS categories (White, Black/African American, Hispanic/Latino, Asian, Native Hawaiian/Pacific Islander, American Indian/Alaska Native, Two or More Races, Nonresident Alien, Unknown or Not Reported), or Not on File when the field was never recorded
 - **Economically Disadvantaged** — Yes, No, or Not on File
 - **First-Generation Student** — Yes, No, or Not on File
 - **Disability Status** — Yes, No, or Not on File
@@ -59,7 +59,7 @@ Example: 10 female students enrolled; 8 passed licensure → 80% (8 ÷ 10).
 Groups with **fewer than 10 students have their numerator and percentage hidden** to protect privacy. You can't infer individual outcomes from tiny groups.
 
 - The **denominator remains visible** so you see the group exists and is small
-- **"Not on File" groups are never suppressed** — they show full data to ensure transparency about coverage
+- **"Not on file" is suppressed the same way** when fewer than 10 students are in it. It is not exempt.
 
 Why 10? It's a standard threshold in higher-education reporting to balance privacy and transparency.
 
@@ -82,11 +82,11 @@ Go to **Cohort & Equity** in the left nav (under Accreditation) to open the brea
 ### The results
 
 **Current Period Results** table shows:
-- **Group** — the value of the dimension (e.g. a year, gender, or "Not on file" for students with no demographic field recorded).
+- **Group** — a plain-language name: a year such as 2024, Male, Female, Yes, No, or "Not on file" when that field was never recorded.
 - **Denominator** — the count of students in that group.
-- **Numerator** — how many counted as successful (or "Suppressed" if fewer than 10 students).
-- **Percentage** — their success rate (or "Suppressed" if below the threshold).
-- **Status** — Meeting Benchmark, Below Benchmark, Suppressed, or No Data.
+- **Numerator** — how many counted as successful, or "Suppressed" when fewer than 10 students are in the group.
+- **Percentage** — their success rate, written with a percent sign, or "Suppressed (n<10)" with no percent sign when the group is below the threshold. An empty group shows "N/A".
+- **Status** — Meeting benchmark, Below benchmark, Suppressed, or No data. Meeting and Below benchmark appear when one program is selected, so there is a benchmark to compare with.
 
 **Trend over periods** shows how each group's rate changed across your recent reporting periods (one line per group). When a single program is selected, a benchmark line appears.
 
@@ -147,7 +147,7 @@ Be careful when summing. If you see 100 total denominator, 70 Female, 20 Male, 1
 
 ### Historical Data
 
-The report always shows current outcomes. If you re-run validation, outcomes can change, and breakdowns will reflect the new values on the next view.
+The breakdown reads the last **computed** classifications and groups them with the demographics on file now, so a demographic edit shows up the next time you open the page. Who counts in the rate changes when results are computed again, not when validation is re-run.
 
 ## Common workflows
 
@@ -156,7 +156,7 @@ The report always shows current outcomes. If you re-run validation, outcomes can
 1. Run Completion by Gender
 2. Notice Female students are at 60%, Male at 85%
 3. Click **Export to Excel** to share with leadership
-4. Use the provenance sheet to explain suppression thresholds
+4. Use the Report Info sheet to explain suppression thresholds
 
 ### Track Progress Over Time
 
@@ -174,11 +174,11 @@ The report always shows current outcomes. If you re-run validation, outcomes can
 
 1. Run all three metrics (Completion, Placement, Licensure) by the demographic categories your accreditor asks about
 2. Export each to Excel
-3. Share the provenance sheet — it documents your methodology for reviewers
+3. Share the Report Info sheet — it documents your methodology for reviewers
 
 ## When demographic fields are incomplete
 
-Demographic data is optional: not every SIS export includes it. If a field is rarely recorded, the "Not on file" group may be large. You can add or update demographics for individual students on their **Demographics** tab (requires Student Manager role or higher).
+Demographic data is optional: not every SIS export includes it. If a field is rarely recorded, the "Not on file" group may be large. System Administrators, Institutional Administrators and Program Administrators can add or update demographics on a student's **Demographics** tab.
 
 ## Known limits
 
@@ -187,5 +187,5 @@ Demographic data is optional: not every SIS export includes it. If a field is ra
 - Demographic fields are collected from your SIS or entered by hand; they are not validated against external data.
 - Benchmarks apply at the program level, not per demographic group.
 - No drill-down to students — the breakdown is aggregate only.
-- Suppressed groups don't trend — if a group falls below 10 in some periods, those periods don't appear on the trend line.
+- A suppressed group has no rate for that period on the trend. The period itself still appears.
 - Coverage is only shown for demographic dimensions — all students have an entry year.

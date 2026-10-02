@@ -3,7 +3,7 @@ title: Security and privacy
 slug: security
 group: Security
 order: 1
-reviewed: 2026-09-24
+reviewed: 2026-10-01
 public: true
 ---
 
@@ -26,7 +26,7 @@ This page describes what OutcomeLink does to protect student and institutional d
 
 ## A record of every change
 
-Every create, update and delete made by a signed-in person is written to the **audit history**: who, what, when, and the previous and new values. It appears on the record's Audit History tab (students, programs, reporting periods and others). Sign-offs, override reasons and reopened periods are in it. Changes made by the system itself (scheduled jobs, the seeding script) can't be attributed to a person and are not listed against one. Audit history is never removed by the data-retention cleanup.
+Single-record creates, updates, deletes and upserts made by a signed-in person are written to the **audit history**: who, what, when, and the previous and new values. Bulk writes are not. A bulk import creates its students and enrollments that way, so those rows are not listed one by one. The history appears on the record's Audit History tab (students, programs, reporting periods and others). Sign-offs, override reasons and reopened periods are in it. Changes made by the system itself (scheduled jobs, the seeding script) can't be attributed to a person and are not listed against one. Recomputed classifications are not logged either; they are derived from records that are. Audit history is never removed by the data-retention cleanup.
 
 ## Protecting stored data
 

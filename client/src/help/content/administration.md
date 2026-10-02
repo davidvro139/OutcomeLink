@@ -3,7 +3,7 @@ title: Administration
 slug: administration
 group: Guides
 order: 7
-reviewed: 2026-09-24
+reviewed: 2026-10-01
 ---
 
 For System and Institutional Administrators.
@@ -18,11 +18,13 @@ For System and Institutional Administrators.
 
 - **Email.** Each institution can set its own outgoing mail server (host, port, login, "send from" address) — a System Administrator edits it; Institutional Administrators can view it. **Send test email to me** confirms it works. If an institution sets nothing, the server's own settings are used; if there are none, invitations and surveys show a link to copy instead. The password is stored encrypted and never shown again.
 - **Data retention.** How long to keep job history and run records (default 180 days), the email log (180), read notifications (90) and generated export files (30). A cleanup runs every night; **Run cleanup now** does it on demand. Student, enrollment and outcome records and the audit history are never removed.
-- **Backups.** The application does not take backups; whoever runs the server should schedule them. This tab shows whether the backup job has reported in and warns if the last success is too old (36 hours by default). System Administrators are notified once a day while it stays stale.
+- **Backups.** The application does not take backups; whoever runs the server should schedule them. Until a check-in token is set, this tab explains how to have the backup job report in, and it does not claim backups are failing. Once reports arrive, the tab shows the last success and warns if that success is too old (36 hours by default) or the latest report failed. A job that has never reported is not treated as stale. System Administrators are notified once a day while a reported backup stays stale.
 
 ## Job History
 
-**Job History** lists everything that ran in the background — scheduled reports, nightly validation, follow-up automation, outreach campaigns, cleanups — with its status and how many attempts it took. A scheduled job that fails is retried automatically; a manual one that fails has a **Retry** button. The **Email log** tab shows every email the application tried to send and whether it worked.
+**Job History** lists everything that ran in the background — scheduled reports, nightly validation, follow-up automation, the missing-outcomes digest, outreach campaigns, cleanups — with its status and how many attempts it took. A scheduled job that fails is retried automatically; a manual one that fails has a **Retry** button. The **Email log** tab shows every email the application tried to send and whether it worked.
+
+Each morning the missing-outcomes digest notifies every operational staff member how many graduates in each open period still have no resolved outcome. If that count is zero, nothing is sent. An administrator can also send the digest for one period from the Dashboard's **Data Quality** tab.
 
 ## Programs and campuses
 

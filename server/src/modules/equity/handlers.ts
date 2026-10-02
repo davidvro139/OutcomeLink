@@ -5,8 +5,16 @@ import { z } from "zod";
 import { getAccessibleProgramIds } from "../../lib/accessScope";
 import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
+import { PROVENANCE_SHEET_NAME } from "../../lib/provenance";
 import { sendXlsx } from "../../lib/xlsx";
 import { buildEquityBreakdown } from "./equityBreakdown";
+
+const STATUS_LABELS = {
+  MEETING: "Meeting benchmark",
+  BELOW_BENCHMARK: "Below benchmark",
+  SUPPRESSED: "Suppressed",
+  NO_DATA: "No data",
+} as const;
 
 export const breakdownQuerySchema = z.object({
   reportingPeriodId: z.coerce.number().int().positive().optional(),
@@ -57,14 +65,14 @@ export async function exportBreakdown(req: Request, res: Response) {
           { header: "Denominator", key: "denominator", width: 14 },
           { header: "Numerator", key: "numerator", width: 14 },
           { header: "Percentage", key: "percentage", width: 14 },
-          { header: "Status", key: "status", width: 16 },
+          { header: "Status", key: "status", width: 22 },
         ],
         rows: breakdown.groups.map((g) => ({
           label: g.label,
           denominator: g.denominator,
           numerator: g.numerator ?? "—",
           percentage: g.percentage !== null ? `${g.percentage}%` : "—",
-          status: g.suppressed ? "Suppressed" : g.status === "NO_DATA" ? "No Data" : "Reported",
+          status: STATUS_LABELS[g.status],
         })),
       },
       {
@@ -88,7 +96,7 @@ export async function exportBreakdown(req: Request, res: Response) {
         })),
       },
       {
-        name: "Provenance",
+        name: PROVENANCE_SHEET_NAME,
         columns: [
           { header: "Item", key: "item", width: 32 },
           { header: "Value", key: "value", width: 48 },

@@ -234,6 +234,14 @@ describe("program/campus access scoping (integration)", () => {
       );
     });
 
+    it("needsOutcome is an empty worklist when nobody in an open period is unresolved", async () => {
+      const res = await request(app)
+        .get("/api/followups/queue?needsOutcome=true")
+        .set("Authorization", `Bearer ${sysAdminToken}`);
+      expect(res.status).toBe(200);
+      expect(res.body.data).toEqual([]);
+    });
+
     it("404s logging a follow-up attempt for an out-of-scope student", async () => {
       const res = await request(app)
         .post(`/api/students/${studentBId}/follow-up-attempts`)

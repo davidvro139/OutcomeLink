@@ -17,6 +17,7 @@ import { ApiError } from "../../lib/apiError";
 import { sendData } from "../../lib/apiResponse";
 import type { AccessTokenPayload } from "../../lib/jwt";
 import { prisma } from "../../lib/prisma";
+import { PROVENANCE_SHEET_NAME } from "../../lib/provenance";
 import { sendXlsx, type XlsxSheet } from "../../lib/xlsx";
 
 /**
@@ -635,7 +636,7 @@ async function buildProvenanceSheet(
   );
 
   return {
-    name: "Provenance",
+    name: PROVENANCE_SHEET_NAME,
     columns: [
       { header: "Item", key: "item", width: 32 },
       { header: "Details", key: "value", width: 64 },

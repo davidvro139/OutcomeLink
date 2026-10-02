@@ -36,10 +36,13 @@ export interface CreateFollowUpAttemptInput {
 export interface QueueFilters {
   minDaysOverdue?: number;
   programId?: number;
+  /** False lists every accessible student. Anything else is the unresolved-outcome worklist. */
+  needsOutcome?: boolean;
 }
 
 export function useFollowUpQueue(filters: QueueFilters = {}) {
   const query = new URLSearchParams({ pageSize: "50" });
+  if (filters.needsOutcome !== false) query.set("needsOutcome", "true");
   if (filters.minDaysOverdue) query.set("minDaysOverdue", String(filters.minDaysOverdue));
   if (filters.programId) query.set("programId", String(filters.programId));
 

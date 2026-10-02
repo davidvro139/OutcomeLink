@@ -3,7 +3,7 @@ title: Importing from your student information system
 slug: importing
 group: Guides
 order: 4
-reviewed: 2026-09-24
+reviewed: 2026-10-01
 ---
 
 **Bulk Import** (Administration → Bulk Import) brings students, and optionally their enrollments, in from a CSV or Excel export. Administrators and Program Administrators can import.
@@ -26,4 +26,4 @@ Re-running the same or an overlapping file is safe: rows already imported are re
 
 - Program codes must match a program that already exists — the import never creates programs.
 - An import can't be undone as a whole; correct individual records afterwards from the student page, or ask an administrator.
-- Everything an import creates appears in the audit history under the person who ran it.
+- The import batch is recorded in the audit history under the person who ran it. The students and enrollments it creates are written in bulk and are not listed one by one.

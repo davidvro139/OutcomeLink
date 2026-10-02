@@ -1,7 +1,24 @@
-import { CplMetric } from "@outcomelink/shared";
-import type { EquityDimension } from "@outcomelink/shared";
+import { GENDER_LABELS, RACE_ETHNICITY_LABELS } from "@outcomelink/shared";
+import type { CplMetric, EquityDimension } from "@outcomelink/shared";
 import { prisma } from "../../lib/prisma";
 import { getEffectiveBenchmark } from "../accreditation/benchmarks/negotiatedBenchmarks";
+
+const BOOLEAN_LABELS: Record<string, string> = { true: "Yes", false: "No" };
+
+/** Plain-language group name. The stored `value` stays the code so callers can still match on it. */
+export function equityGroupLabel(dimension: EquityDimension, value: string): string {
+  if (value === "NOT_ON_FILE") return "Not on file";
+  if (dimension === "gender") return GENDER_LABELS[value as keyof typeof GENDER_LABELS] ?? value;
+  if (dimension === "raceEthnicity") return RACE_ETHNICITY_LABELS[value as keyof typeof RACE_ETHNICITY_LABELS] ?? value;
+  if (
+    dimension === "economicallyDisadvantaged" ||
+    dimension === "firstGenerationStudent" ||
+    dimension === "disabilityStatus"
+  ) {
+    return BOOLEAN_LABELS[value] ?? value;
+  }
+  return value;
+}
 
 const SUPPRESSION_THRESHOLD = 10;
 
@@ -181,7 +198,7 @@ export async function buildEquityBreakdown(
 
       return {
         value,
-        label: value === "NOT_ON_FILE" ? "Not on file" : value,
+        label: equityGroupLabel(params.dimension, value),
         denominator: counts.denominator,
         numerator: suppressed ? null : counts.numerator,
         percentage,

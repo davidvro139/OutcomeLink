@@ -142,7 +142,13 @@ export async function apiRequestBlob(path: string, init?: RequestInit): Promise<
   }));
 
   if (!response.ok) {
-    throw new ApiRequestError(response.status, response.statusText);
+    let message = response.statusText;
+    const contentType = response.headers.get("content-type") ?? "";
+    if (contentType.includes("json")) {
+      const body = (await response.json().catch(() => null)) as { error?: { message?: string } } | null;
+      if (body?.error?.message) message = body.error.message;
+    }
+    throw new ApiRequestError(response.status, message);
   }
 
   return response.blob();

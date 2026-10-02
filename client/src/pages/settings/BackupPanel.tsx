@@ -19,11 +19,26 @@ export function BackupPanel() {
       </Text>
 
       {!data.configured ? (
-        <Alert color="yellow" title="Backup reporting is not set up">
-          Set <Code>BACKUP_CHECKIN_TOKEN</Code> (16 or more characters) in the server environment
-          and add a report step to your backup job, as shown below. Until then this page can't say
-          whether backups are happening.
-        </Alert>
+        <>
+          <Alert color="yellow" title="Backup reporting is not set up">
+            Set <Code>BACKUP_CHECKIN_TOKEN</Code> (16 or more characters) in the server environment
+            and add a report step to your backup job, as shown below. Until then this page can't say
+            whether backups are happening.
+          </Alert>
+          <Stack gap={4}>
+            <Text size="sm" fw={500}>
+              Reporting from your backup job
+            </Text>
+            <Code block>{`# after the backup finishes (example):
+curl -fsS -X POST https://YOUR-APP/api/system/backup-checkin \\
+  -H "Authorization: Bearer $BACKUP_CHECKIN_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{"status":"SUCCESS","sizeMb":512,"note":"nightly dump"}'`}</Code>
+            <Text size="xs" c="dimmed">
+              Send <Code>{'"status":"FAILED"'}</Code> with a note when the backup fails.
+            </Text>
+          </Stack>
+        </>
       ) : (
         <>
           <Group>
@@ -62,20 +77,6 @@ export function BackupPanel() {
           </Stack>
         </>
       )}
-
-      <Stack gap={4}>
-        <Text size="sm" fw={500}>
-          Reporting from your backup job
-        </Text>
-        <Code block>{`# after the backup finishes (example):
-curl -fsS -X POST https://YOUR-APP/api/system/backup-checkin \\
-  -H "Authorization: Bearer $BACKUP_CHECKIN_TOKEN" \\
-  -H "Content-Type: application/json" \\
-  -d '{"status":"SUCCESS","sizeMb":512,"note":"nightly dump"}'`}</Code>
-        <Text size="xs" c="dimmed">
-          Send <Code>"status":"FAILED"</Code> with a note when the backup fails.
-        </Text>
-      </Stack>
     </Stack>
   );
 }

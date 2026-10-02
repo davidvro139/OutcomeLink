@@ -14,9 +14,7 @@ async function handleDownloadRun(runId: number) {
   try {
     await downloadScheduledReportRun(runId);
   } catch (err) {
-    // apiRequestBlob throws with the raw HTTP status text ("Not Found"), not the server's JSON
-    // error message — a 404 here specifically means the run (or its file) no longer exists, so
-    // say that plainly rather than surfacing the unhelpful status text verbatim.
+    // A 404 means the run or its file is gone. Say that plainly instead of the server's wording.
     const message =
       err instanceof ApiRequestError && err.status === 404
         ? "This report is no longer available."

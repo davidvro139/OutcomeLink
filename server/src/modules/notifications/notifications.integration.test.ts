@@ -1,5 +1,6 @@
 import request from "supertest";
 import { createApp } from "../../app";
+import { runJob } from "../../lib/jobRunner";
 import { computeReportingPeriod } from "../accreditation/calculators/cplCalculator";
 import { runValidation } from "../accreditation/validators/validationEngine";
 import { hashPassword } from "../../lib/password";
@@ -197,6 +198,16 @@ describe("missing-outcomes digest + notifications (integration)", () => {
 
     const notificationCount = await prisma.notification.count({ where: { userId: { in: [userId, careerServicesUserId, auditorUserId] } } });
     // Still just the 2 from the earlier digest (1 already read, 1 marked all-read) -- no new ones added.
+    expect(notificationCount).toBe(2);
+  });
+
+  it("the morning job sends nothing when the open period has no unresolved outcomes", async () => {
+    const run = await runJob("MISSING_OUTCOMES_DIGEST", { institutionId, trigger: "MANUAL" });
+    expect(run.status).toBe("SUCCESS");
+    expect(run.result).toMatchObject({ periodsChecked: 1, digestsSent: 0 });
+    const notificationCount = await prisma.notification.count({
+      where: { userId: { in: [userId, careerServicesUserId, auditorUserId] } },
+    });
     expect(notificationCount).toBe(2);
   });
 });

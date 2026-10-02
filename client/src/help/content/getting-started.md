@@ -3,7 +3,7 @@ title: Getting started
 slug: getting-started
 group: Guides
 order: 1
-reviewed: 2026-09-24
+reviewed: 2026-10-01
 ---
 
 ## Signing in
@@ -14,9 +14,9 @@ Your administrator invites you by email. Follow the link in the message, choose 
 
 The left-hand menu is grouped by what you're doing:
 
-- **Dashboard** and **My Programs** — where things stand right now.
-- **Students & Outcomes** — programs, students, employers, and the two work queues: the **Follow-Up Queue** (graduates whose outcome isn't known yet) and the **Licensure Queue** (graduates waiting on an exam result).
-- **Accreditation** — reporting periods, trends and the **Report Builder**.
+- **Dashboard** and **My Programs** — where things stand right now. Dashboard is the current reporting period: Program Health for everyone, and, for administrators, an Executive summary and a Data Quality tab. My Programs is one card per program.
+- **Students & Outcomes** — programs, students, employers, and the two work queues: the **Follow-Up Queue** (graduates in an open period who still need an outcome, with overdue follow-ups highlighted) and the **Licensure Queue** (graduates waiting on an exam result).
+- **Accreditation** — reporting periods, trends, **Cohort & Equity**, and the **Report Builder**.
 - **Administration** — bulk import, users, job history and settings. You only see the entries your role can use.
 
 The search box at the top finds students, employers, programs and contacts. The bell shows notifications, such as a scheduled report being ready or a program falling behind. The **Help** entry at the bottom of the menu is this guide.

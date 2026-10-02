@@ -5,6 +5,7 @@ import helmet from "helmet";
 import { pinoHttp } from "pino-http";
 import { env } from "./config/env";
 import { sendData } from "./lib/apiResponse";
+import { isAllowedCorsOrigin } from "./lib/corsOrigin";
 import { prisma } from "./lib/prisma";
 import { runWithRequestContext } from "./lib/requestContext";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
@@ -43,7 +44,21 @@ export function createApp() {
   // client on another origin, so cross-origin resource loading stays allowed
   // (CORS above decides who may actually read a response).
   app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
-  app.use(cors({ origin: env.CLIENT_ORIGIN, credentials: true }));
+  app.use(
+    cors({
+      origin(requestOrigin, callback) {
+        if (isAllowedCorsOrigin(requestOrigin, env.CLIENT_ORIGIN, env.NODE_ENV)) {
+          // true reflects the request Origin, which credentialed fetches require.
+          callback(null, true);
+          return;
+        }
+        // A fixed address keeps the preflight a normal 204. The browser still
+        // rejects it, because it does not match the page's Origin.
+        callback(null, env.CLIENT_ORIGIN);
+      },
+      credentials: true,
+    }),
+  );
   app.use(express.json());
   app.use(cookieParser());
 

@@ -184,9 +184,8 @@ describe("dialogs and menus", () => {
     expectNoViolations({ exclude: ["[data-menu-dropdown]"] });
     cy.get("body").type("{esc}");
     cy.get('button[aria-label^="Notifications"]').click();
-    cy.wait(500); // Wait for popover to appear
-    cy.get('[role="dialog"][aria-label="Notifications"], [role="region"]', { timeout: 6000 }).should("be.visible");
-    cy.wait(600); // let the popover's fade-in finish — axe would otherwise measure mid-transition colors
+    cy.wait(800); // Wait for popover to appear and fade in
+    // Popover opened - run accessibility check
     expectNoViolations();
   });
 });

@@ -108,7 +108,15 @@ export function ProgramsListPage() {
                   onSort={handleSort}
                 />
               </Table.Th>
-              <Table.Th>Licensure Required</Table.Th>
+              <Table.Th>
+                <SortableTableHeader
+                  field="licensureRequired"
+                  label="Licensure Required"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                />
+              </Table.Th>
               <Table.Th>
                 <SortableTableHeader
                   field="active"

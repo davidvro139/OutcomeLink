@@ -119,7 +119,7 @@ export async function runValidationAndNotify(reportingPeriodId: number, institut
 export const listIssuesQuerySchema = z.object({
   severity: z.enum(["ERROR", "WARNING", "INFORMATION"]).optional(),
   includeResolved: z.coerce.boolean().default(false),
-  sort: z.enum(["issueType", "severity", "detectedAt", "resolvedAt"]).optional(),
+  sort: z.enum(["issueType", "severity", "detectedAt", "resolvedAt", "id", "studentId"]).optional(),
   order: z.enum(["asc", "desc"]).default("asc"),
 });
 type ListIssuesQuery = z.infer<typeof listIssuesQuerySchema>;

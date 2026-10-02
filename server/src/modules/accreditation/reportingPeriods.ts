@@ -21,7 +21,7 @@ export const updateReportingPeriodSchema = z.object({
 type UpdateReportingPeriodInput = z.infer<typeof updateReportingPeriodSchema>;
 
 export const listReportingPeriodsQuerySchema = z.object({
-  sort: z.enum(["label", "startDate", "endDate", "status"]).optional(),
+  sort: z.enum(["label", "startDate", "endDate", "status", "id", "outcomesDeadline"]).optional(),
   order: z.enum(["asc", "desc"]).default("asc"),
 });
 type ListReportingPeriodsQuery = z.infer<typeof listReportingPeriodsQuerySchema>;

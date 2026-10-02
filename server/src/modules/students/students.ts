@@ -45,7 +45,7 @@ type UpdateStudentInput = z.infer<typeof updateStudentSchema>;
 
 export const listStudentsQuerySchema = paginationQuerySchema.extend({
   search: z.string().trim().min(1).max(200).optional(),
-  sort: z.enum(["firstName", "lastName", "internalStudentId", "email"]).optional(),
+  sort: z.enum(["firstName", "lastName", "internalStudentId", "email", "phone", "preferredName", "createdAt"]).optional(),
   order: z.enum(["asc", "desc"]).default("asc"),
 });
 type ListStudentsQuery = z.infer<typeof listStudentsQuerySchema>;

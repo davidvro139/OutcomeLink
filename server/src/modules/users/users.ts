@@ -22,7 +22,7 @@ const PASSWORD_SET_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
  */
 export const listUsersQuerySchema = z.object({
   includeInactive: z.coerce.boolean().default(false),
-  sort: z.enum(["name", "email", "role", "active"]).optional(),
+  sort: z.enum(["name", "email", "role", "active", "id"]).optional(),
   order: z.enum(["asc", "desc"]).default("asc"),
 });
 type ListUsersQuery = z.infer<typeof listUsersQuerySchema>;

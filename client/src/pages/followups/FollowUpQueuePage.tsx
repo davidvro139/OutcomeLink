@@ -183,10 +183,35 @@ export function FollowUpQueuePage() {
                   onSort={handleSort}
                 />
               </Table.Th>
-              <Table.Th>Last Outcome</Table.Th>
-              <Table.Th>Next Follow-Up</Table.Th>
+              <Table.Th>
+                <SortableTableHeader
+                  field="lastOutcome"
+                  label="Last Outcome"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                />
+              </Table.Th>
+              <Table.Th>
+                <SortableTableHeader
+                  field="nextFollowUpDate"
+                  label="Next Follow-Up"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                />
+              </Table.Th>
               <Table.Th>Assigned To</Table.Th>
-              <Table.Th>Days Overdue</Table.Th>
+              <Table.Th>
+                <SortableTableHeader
+                  field="daysOverdue"
+                  label="Days Overdue"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                  align="right"
+                />
+              </Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>

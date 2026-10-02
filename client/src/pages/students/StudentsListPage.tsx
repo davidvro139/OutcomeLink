@@ -143,6 +143,15 @@ export function StudentsListPage() {
                     onSort={handleSort}
                   />
                 </Table.Th>
+                <Table.Th>
+                  <SortableTableHeader
+                    field="phone"
+                    label="Phone"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                </Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -155,6 +164,7 @@ export function StudentsListPage() {
                   </Table.Td>
                   <Table.Td>{student.internalStudentId}</Table.Td>
                   <Table.Td>{student.email ?? "—"}</Table.Td>
+                  <Table.Td>{student.phone ?? "—"}</Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>

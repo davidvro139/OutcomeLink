@@ -38,7 +38,7 @@ export const followUpQueueQuerySchema = paginationQuerySchema.extend({
     .enum(["true", "false"])
     .optional()
     .transform((value) => value === "true"),
-  sort: z.enum(["firstName", "lastName", "programName", "attemptedAt"]).optional(),
+  sort: z.enum(["firstName", "lastName", "programName", "attemptedAt", "lastOutcome", "daysOverdue", "nextFollowUpDate", "attempts"]).optional(),
   order: z.enum(["asc", "desc"]).default("asc"),
 });
 type FollowUpQueueQuery = z.infer<typeof followUpQueueQuerySchema>;
@@ -150,18 +150,39 @@ export async function queue(req: Request, res: Response) {
       let aVal: string | number | Date | null = null;
       let bVal: string | number | Date | null = null;
 
-      if (sort === "firstName") {
-        aVal = a.student.firstName;
-        bVal = b.student.firstName;
-      } else if (sort === "lastName") {
-        aVal = a.student.lastName;
-        bVal = b.student.lastName;
-      } else if (sort === "programName") {
-        aVal = a.programName;
-        bVal = b.programName;
-      } else if (sort === "attemptedAt") {
-        aVal = a.attemptedAt;
-        bVal = b.attemptedAt;
+      switch (sort) {
+        case "firstName":
+          aVal = a.student.firstName;
+          bVal = b.student.firstName;
+          break;
+        case "lastName":
+          aVal = a.student.lastName;
+          bVal = b.student.lastName;
+          break;
+        case "programName":
+          aVal = a.programName;
+          bVal = b.programName;
+          break;
+        case "attemptedAt":
+          aVal = a.attemptedAt;
+          bVal = b.attemptedAt;
+          break;
+        case "lastOutcome":
+          aVal = a.lastOutcome ?? "";
+          bVal = b.lastOutcome ?? "";
+          break;
+        case "daysOverdue":
+          aVal = a.daysOverdue;
+          bVal = b.daysOverdue;
+          break;
+        case "nextFollowUpDate":
+          aVal = a.nextFollowUpDate ?? new Date(0);
+          bVal = b.nextFollowUpDate ?? new Date(0);
+          break;
+        case "attempts":
+          aVal = a.attempts;
+          bVal = b.attempts;
+          break;
       }
 
       if (aVal === null || aVal === undefined) aVal = "";
@@ -169,6 +190,9 @@ export async function queue(req: Request, res: Response) {
 
       if (typeof aVal === "string" && typeof bVal === "string") {
         return order === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        return order === "asc" ? aVal - bVal : bVal - aVal;
       }
       if (aVal instanceof Date && bVal instanceof Date) {
         return order === "asc" ? aVal.getTime() - bVal.getTime() : bVal.getTime() - aVal.getTime();

@@ -111,7 +111,24 @@ export function EmployersListPage() {
                     onSort={handleSort}
                   />
                 </Table.Th>
-                <Table.Th>City/State</Table.Th>
+                <Table.Th>
+                  <SortableTableHeader
+                    field="city"
+                    label="City"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                </Table.Th>
+                <Table.Th>
+                  <SortableTableHeader
+                    field="state"
+                    label="State"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                </Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -123,10 +140,8 @@ export function EmployersListPage() {
                     </Anchor>
                   </Table.Td>
                   <Table.Td>{employer.industry ?? "—"}</Table.Td>
-                  <Table.Td>
-                    {employer.city ?? "—"}
-                    {employer.state ? `, ${employer.state}` : ""}
-                  </Table.Td>
+                  <Table.Td>{employer.city ?? "—"}</Table.Td>
+                  <Table.Td>{employer.state ?? "—"}</Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>

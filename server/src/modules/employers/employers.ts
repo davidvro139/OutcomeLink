@@ -26,7 +26,7 @@ type UpdateEmployerInput = z.infer<typeof updateEmployerSchema>;
 export const listEmployersQuerySchema = paginationQuerySchema.extend({
   search: z.string().trim().min(1).max(200).optional(),
   active: z.coerce.boolean().optional(),
-  sort: z.enum(["name", "industry", "active"]).optional(),
+  sort: z.enum(["name", "industry", "active", "naicsCode", "city", "state", "website"]).optional(),
   order: z.enum(["asc", "desc"]).default("asc"),
 });
 type ListEmployersQuery = z.infer<typeof listEmployersQuerySchema>;

@@ -32,7 +32,7 @@ export const listProgramsQuerySchema = paginationQuerySchema.extend({
   campusId: z.coerce.number().int().positive().optional(),
   departmentId: z.coerce.number().int().positive().optional(),
   active: z.coerce.boolean().optional(),
-  sort: z.enum(["name", "code", "credentialType", "active"]).optional(),
+  sort: z.enum(["name", "code", "credentialType", "active", "cipCode", "programLength", "licensureRequired"]).optional(),
   order: z.enum(["asc", "desc"]).default("asc"),
 });
 type ListProgramsQuery = z.infer<typeof listProgramsQuerySchema>;

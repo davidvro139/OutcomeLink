@@ -33,9 +33,10 @@ describe("reporting-period close-out checklist", () => {
     cy.loginAs(ACCOUNTS.institutionalAdmin);
     openFirstPeriod();
 
-    // Click the Close-out tab first
+    // Click the Close-out tab first and wait for it to be visible
     cy.contains('[role="tab"]', "Close-out").click();
-    cy.wait(300);
+    cy.get('[role="tabpanel"]').should("exist");
+    cy.wait(500);
 
     STEPS.forEach((title) => cy.contains(title).should("be.visible"));
 
@@ -56,9 +57,10 @@ describe("reporting-period close-out checklist", () => {
     cy.loginAs(ACCOUNTS.auditor);
     openFirstPeriod();
 
-    // Click the Close-out tab first
+    // Click the Close-out tab first and wait for it to be visible
     cy.contains('[role="tab"]', "Close-out").click();
-    cy.wait(300);
+    cy.get('[role="tabpanel"]').should("exist");
+    cy.wait(500);
 
     STEPS.forEach((title) => cy.contains(title).should("be.visible"));
     cy.contains("button", "Compute now").should("not.exist");

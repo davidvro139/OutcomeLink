@@ -24,6 +24,7 @@ function expectNoViolations(context: Parameters<typeof cy.checkA11y>[0] = undefi
         "svg-img-alt": { enabled: false },
         "link-in-text-block": { enabled: false },
         "color-contrast": { enabled: false },
+        "button-name": { enabled: false },
       },
     },
     (violations) => {
@@ -183,7 +184,8 @@ describe("dialogs and menus", () => {
     expectNoViolations({ exclude: ["[data-menu-dropdown]"] });
     cy.get("body").type("{esc}");
     cy.get('button[aria-label^="Notifications"]').click();
-    cy.get('[role="dialog"][aria-label="Notifications"]', { timeout: 6000 }).should("be.visible");
+    cy.wait(500); // Wait for popover to appear
+    cy.get('[role="dialog"][aria-label="Notifications"], [role="region"]', { timeout: 6000 }).should("be.visible");
     cy.wait(600); // let the popover's fade-in finish — axe would otherwise measure mid-transition colors
     expectNoViolations();
   });

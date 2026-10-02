@@ -5,5 +5,13 @@ export default defineConfig({
     baseUrl: "http://localhost:5173",
     specPattern: "cypress/e2e/**/*.cy.ts",
     supportFile: "cypress/support/e2e.ts",
+    setupNodeEvents(on) {
+      on("task", {
+        log(message: string) {
+          console.log(message);
+          return null;
+        },
+      });
+    },
   },
 });

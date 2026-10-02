@@ -110,7 +110,28 @@ export function AppLayout() {
 
   return (
     <>
-      <a href="#main-content" className="skip-link" style={{ position: "absolute", top: "-40px", left: 0, backgroundColor: "#000", color: "#fff", padding: "8px", textDecoration: "none", zIndex: 100 }} onFocus={(e) => (e.currentTarget.style.top = "0")} onBlur={(e) => (e.currentTarget.style.top = "-40px")}>
+      <a
+        href="#main-content"
+        className="skip-link"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          padding: "8px 16px",
+          backgroundColor: "#000",
+          color: "#fff",
+          textDecoration: "none",
+          zIndex: 9999,
+          transform: "translateY(-100%)",
+          transition: "transform 0.2s",
+        }}
+        onFocus={(e) => {
+          e.currentTarget.style.transform = "translateY(0)";
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.transform = "translateY(-100%)";
+        }}
+      >
         Skip to main content
       </a>
       <AppShell

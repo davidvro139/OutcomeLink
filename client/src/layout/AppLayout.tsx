@@ -1,6 +1,7 @@
 import {
   AppShell,
   Avatar,
+  Box,
   Burger,
   Group,
   Image,
@@ -119,7 +120,9 @@ export function AppLayout() {
           <Group gap="sm">
             <Burger opened={navOpened} onClick={toggleNav} hiddenFrom="sm" size="sm" />
             <Link to="/" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
-              <Image src="/logo-icon.png" alt="OutcomeLink" height={50} width="auto" />
+              <Box bg="white" p={4} style={{ borderRadius: 6 }}>
+                <Image src="/logo-icon.png" alt="OutcomeLink" height={45} width="auto" />
+              </Box>
             </Link>
           </Group>
 

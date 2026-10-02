@@ -1,248 +1,257 @@
 # OutcomeLink
 
-**An outcomes management system for career and technical colleges — built with TypeScript, React, Express, MySQL, and a focus on accessibility and user experience.**
+**An outcomes management system for career and technical colleges built with TypeScript, React, Express, and MySQL.**
 
-OutcomeLink helps institutions track student outcomes (employment, licensure, further education) and calculates accreditation metrics (COE Completion, Placement, and Licensure rates) with full transparency. Every rate on screen drills down to individual students, each with plain-language explanations of why they count or don't.
-
----
-
-## 🎯 What Makes This Project Notable
-
-### **User Experience & Accessibility**
-- **Comprehensive UX Improvements**: Recently addressed 14+ critical user experience issues including timezone-aware date formatting, destructive action confirmations, complex form validation feedback, and pagination context preservation
-- **Accessible Design**: WCAG 2.1 AA aligned; status badges include text alongside colors (colorblind users), date inputs have proper labels, forms include inline guidance
-- **Data Integrity First**: Two-step confirmations on bulk operations, explicit save buttons on sensitive changes, no silent data loss
-
-### **Technical Architecture**
-- **Full TypeScript Codebase**: Type-safe across Express server, React client, and shared types (0 type errors)
-- **Scalable Design Patterns**: 
-  - Reusable React components (SortableTableHeader, DateFormatters)
-  - Consistent API patterns with Zod validation
-  - Database relationships properly modeled with Prisma
-- **Optimized Performance**: 
-  - Paginated lists (50 items per page, standardized)
-  - API endpoints batch-load related data to reduce N+1 queries
-  - Debounced search with context preservation
-- **Security-First Approach**:
-  - Role-based access control (5 roles with granular scopes)
-  - Encrypted credential storage for SIS connections
-  - JWT token management with refresh rotation
-  - SQL injection prevention via Prisma parameterization
-  - Request rate limiting per IP address
-
-### **Code Quality**
-- **Rigorous Checks**: Lint, typecheck, unit/integration/E2E tests on every push
-- **Comprehensive Testing**: Cypress end-to-end specs covering all user roles and critical workflows
-- **Clean Architecture**: Separation of concerns (API, client, shared), dependency injection, reusable utilities
-- **Documentation**: Inline comments explain *why* (constraints, workarounds), not *what*
+OutcomeLink tracks student outcomes (employment, licensure, continuing education) and calculates Council on Occupational Education (COE) Completion, Placement, and Licensure (CPL) rates for accreditation reporting. Every rate drills down to individual students with plain-language explanations of why each student is counted or excluded.
 
 ---
 
-## 📊 Project Overview
+## Overview
 
-**What it does:**
-1. **Student Records** — Capture enrollments, employment outcomes, licensure results, follow-up attempts
-2. **Accreditation Dashboards** — Track CPL rates per program, drill down to student-level detail
-3. **Equity Reporting** — Disaggregate outcomes by entry year and demographic group (race, gender, economic status, disability status, first-generation)
-4. **Follow-Up Queue** — Manage outreach to graduates still needing outcomes, track assignment and attempts
-5. **Bulk Import** — Import student and enrollment data from SIS (Dataverse/OneWorld) or Excel, with validation and preview
-6. **Role-Based Access** — 5 roles (System Admin, Institutional Admin, Program Admin, Career Services, Instructor) with proper scoping
+### Core Capabilities
 
-**The interface:**
-- **My Programs** — At-a-glance view of program performance vs. benchmark
-- **Accreditation Dashboard** — Full CPL metrics, risk status, underlying data
-- **Follow-Up Queue** — Actionable worklist for staff; bulk assign, log attempts
-- **Cohort & Equity Reports** — Same rates split by entry year or demographic group (suppressed when n<10)
-- **Reports** — Custom reports with Excel export, scheduled email delivery
-- **Administration** — User management, data retention settings, connection management
+**Student Outcomes Tracking**
+- Enrollment management (program, campus, start/end dates, status)
+- Employment outcome recording with job title, employer, related training indicator
+- Licensure exam results and scheduling
+- Continuing education tracking
+- Follow-up attempts and outcomes
 
-For a quick tour, see **A two-minute look** below.
+**Accreditation Metrics**
+- Completion, Placement, and Licensure rate calculation
+- Configurable COE rule sets with negotiated benchmarks per program
+- Reporting period management and closeout workflows
+- Risk status indicators for rates trending below target
+
+**Equity and Cohort Analysis**
+- Outcomes disaggregated by entry year and demographic group
+- Groups under 10 students suppressed to protect privacy
+- Trend analysis across six-period windows
+- Coverage metrics showing percentage of population with demographic data
+
+**Administrative Functions**
+- Multi-institution support with institution-scoped data
+- 5-level role-based access control (System Admin, Institutional Admin, Program Admin, Career Services, Instructor, Read-Only Auditor)
+- User management and program assignment
+- Bulk data import from SIS (Dataverse/OneWorld) or Excel with validation and preview
+- Scheduled report delivery via email
+- Evidence document collection and linking
 
 ---
 
-## 🚀 Quick Start
+## Technology Stack
 
-You'll need **Node.js 24** and **MySQL 8**.
+**Backend**
+- **Node.js 24** with Express for HTTP API
+- **Prisma ORM** for type-safe database access
+- **MySQL 8** for persistent data
+- **Zod** for schema validation and security
+- **JWT** for stateless authentication with refresh rotation
+- **Winston** for structured logging
+
+**Frontend**
+- **React 19** with hooks and context for state management
+- **TanStack Query** for server state and caching
+- **Mantine UI** for component library (accessible, consistent design)
+- **TypeScript** for compile-time type safety
+- **Vite** for fast development and optimized builds
+
+**Testing & Quality**
+- **Jest** for unit and integration tests
+- **Cypress** for end-to-end browser testing
+- **ESLint** and **TypeScript** for linting and type checking
+- **GitHub Actions** for CI/CD automation
+
+**Deployment**
+- **Docker** for containerization
+- **Docker Compose** for local development and simple production deployments
+- **nginx** as reverse proxy
+
+---
+
+## Quick Start
+
+**Requirements:** Node.js 24, MySQL 8
 
 ```bash
 npm install
 
-# 1. Create two empty databases in MySQL:
-#    - outcomelink (development)
-#    - outcomelink_test (for tests)
+# Set up databases
+# CREATE DATABASE outcomelink;           -- development
+# CREATE DATABASE outcomelink_test;     -- tests
 
-# 2. Configure the server
-cp server/.env.example server/.env           # Set DATABASE_URL and secrets
-cp server/.env.test.example server/.env.test # Point to outcomelink_test
+cp server/.env.example server/.env
+cp server/.env.test.example server/.env.test
+# Edit both files to set DATABASE_URL and required secrets
 
-# 3. Build, migrate, seed
 npm run build:shared
 cd server
 npx prisma migrate deploy
-npm run prisma:seed  # Demo college: Mountain West Technical College
+npm run prisma:seed
 cd ..
 
-# 4. Start dev servers (two terminals)
-npm run dev:server           # API on http://localhost:4000
-npm run dev:client           # Web app on http://localhost:5173
+npm run dev:server    # API on http://localhost:4000
+npm run dev:client    # Web on http://localhost:5173
 ```
 
-**Demo login:**
-- System Administrator: `sam@mwtc.edu` / `password123`
-- Institutional Administrator: `ada@mwtc.edu` / `password123`
-- Other roles listed on login page
+**Demo credentials:**
+- System Admin: `sam@mwtc.edu` / `password123`
+- Institutional Admin: `ada@mwtc.edu` / `password123`
 
 ---
 
-## 📖 A Two-Minute Tour
+## Project Structure
 
-With demo data loaded, sign in as Ada and explore:
-
-1. **My Programs** — Each program vs. its benchmark; red flags show where outcomes are missing
-2. **Accreditation → Reporting Periods** — Open the current period, view the CPL dashboard
-3. **Open a rate** (e.g., "Placement: 87%") → See the 30 graduates behind it
-4. **Click a student** → Read why they're included in Placement (employed full-time in related field)
-5. **Follow-Up Queue** — Graduates still needing an outcome; bulk assign to staff, log attempts
-6. **Cohort & Equity** — Same rates, split by entry year or demographic group
-7. **Help** — In-app user guide; tap the ? icon in the sidebar
-
-**Admin menu** (visible to Sam or Ada):
-- **Users** — Manage staff and their role/program access
-- **Settings** — Email config, data retention, backup status
-- **Job History** — Background jobs (validations, scheduled reports, nightly cleanup)
-- **Bulk Import** — Upload and import student/enrollment data from SIS or Excel
-
----
-
-## 📁 Repository Structure
-
-| Folder | Purpose |
+| Directory | Purpose |
 | --- | --- |
-| `server/` | Express API with Prisma ORM, accreditation engine, background jobs |
-| `client/` | React web app with Mantine UI, TanStack Query data fetching |
-| `shared/` | TypeScript types, constants, validation schemas (roles, report fields, job types, etc.) |
-| `docker/` | Dockerfile and nginx config for containerized deployment |
-| `docs/` | Technical documentation, data model, COE rule matrix |
-| `.github/workflows/` | CI/CD pipeline: lint, typecheck, tests, E2E, Docker build |
-
-**npm workspace** — One `npm install` at the root sets up all packages.
+| `server/` | Express API, Prisma schema, background jobs, business logic |
+| `client/` | React application, UI components, data fetching |
+| `shared/` | TypeScript types, constants, validation schemas |
+| `docker/` | Containerization configuration |
+| `docs/` | Technical documentation and design decisions |
 
 ---
 
-## 🧪 Testing & Quality Assurance
+## Testing & Quality Assurance
 
 ```bash
-# Code quality
-npm run lint              # ESLint on client and server
-npm run typecheck         # TypeScript across all workspaces
-
-# Tests
-npm test --workspace client              # Jest unit tests (React, utils)
-npm test --workspace server              # Jest unit tests (utilities, middleware)
-npm run test:integration --workspace server  # Prisma integration tests (resets test DB)
-npm run e2e --workspace client           # Cypress E2E specs (needs both dev servers + demo data)
+npm run lint                          # ESLint
+npm run typecheck                     # TypeScript
+npm test --workspace client           # Unit tests
+npm test --workspace server           # Unit tests
+npm run test:integration --workspace server  # Integration tests
+npm run e2e --workspace client        # Cypress E2E
 ```
 
-**CI/CD** — Every push and PR triggers:
-- Lint + typecheck
-- Unit and integration tests
-- Cypress E2E specs (against a fresh seed)
-- Docker build and smoke test
-- (All in `.github/workflows/ci.yml`)
-
-**Cypress specs** sign in as each role and verify:
-- Role-based UI visibility
-- Report builder functionality
-- Bulk import wizard validation
-- Reporting period close-out checklist
-- (Never finalize data, so tests are re-runnable)
+All checks run automatically on pull requests and merges via GitHub Actions.
 
 ---
 
-## 🐳 Docker Deployment
-
-Three-container stack: MySQL, API, and nginx (reverse proxy).
+## Docker Deployment
 
 ```bash
-cp .env.docker.example .env  # Fill in passwords, secrets, SMTP details
+cp .env.docker.example .env
 docker compose up -d --build
 
-# Create the first System Administrator (registration is off in production)
 docker compose exec api node dist/scripts/bootstrapAdmin.js \
-  --institution "Your College" --name "Your Name" --email you@college.edu --password '<strong password>'
+  --institution "College Name" --name "Admin Name" --email admin@college.edu --password '<password>'
 ```
 
-**Before production use:**
-- Enable HTTPS (TLS terminating proxy / load balancer)
-- Back up MySQL data and the `uploads` volume
-- Verify `.env` secrets are secure
-- (Run only one API instance; scheduled jobs and rate-limit counters are in-memory)
+Open `http://localhost:8080` to sign in.
+
+**Production requirements:**
+- HTTPS with TLS termination (set `PUBLIC_URL` to `https://` address)
+- Backup strategy for MySQL data and `uploads` volume
+- Single API instance (scheduled jobs and rate-limit counters are in-process)
+- Email configuration (optional; can be set per-institution in Settings)
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
-The server reads `server/.env`. Docker takes values from root `.env` (see `.env.docker.example`).
+The server reads `server/.env`. Docker uses root `.env` (see `.env.docker.example`).
 
 | Variable | Purpose |
 | --- | --- |
-| `DATABASE_URL` | MySQL connection string. Required. |
-| `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | Sign login tokens. Long random values in production. |
-| `SECRETS_ENCRYPTION_KEY` | Encrypt stored SIS connection secrets. Required. |
-| `CLIENT_ORIGIN` | Web app address (CORS). In dev, other localhost ports are allowed. |
-| `PUBLIC_APP_URL` | Base URL for emailed links. Defaults to `CLIENT_ORIGIN`. |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` | Email (optional). Off if `SMTP_HOST` and `MAIL_FROM` are unset. |
-| `TRUST_PROXY` | Number of reverse proxies in front (for correct rate-limit IP detection). |
-| `RATE_LIMIT_ENABLED` | Disable for E2E tests. Enabled by default. |
-| `ALLOW_REGISTRATION` | New institutions can self-register. Off in production unless set. |
-| `BACKUP_CHECKIN_TOKEN`, `BACKUP_STALE_HOURS` | Backup job reporting (optional). |
-| `UPLOADS_DIR` | Evidence files, imports, exports. Defaults to `./uploads`. |
-| `PORT` | API port. Defaults to 4000. |
+| `DATABASE_URL` | MySQL connection string |
+| `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | Login token signing keys |
+| `SECRETS_ENCRYPTION_KEY` | Encrypt stored SIS connection credentials |
+| `CLIENT_ORIGIN` | Web app address for CORS |
+| `PUBLIC_APP_URL` | Base URL for email links (defaults to `CLIENT_ORIGIN`) |
+| `SMTP_*`, `MAIL_FROM` | Email configuration (optional) |
+| `TRUST_PROXY` | Reverse proxy count (for accurate rate-limit IP detection) |
+| `RATE_LIMIT_ENABLED` | Request rate limiting (disable for E2E tests only) |
+| `ALLOW_REGISTRATION` | Allow new institutions to self-register (off in production) |
+| `BACKUP_CHECKIN_TOKEN`, `BACKUP_STALE_HOURS` | Backup job reporting (optional) |
+| `UPLOADS_DIR` | File storage path for evidence and exports (default: `./uploads`) |
+| `PORT` | API port (default: 4000) |
 
 ---
 
-## 📚 Documentation
+## Architecture & Design Decisions
 
-- **[docs/DATA_MODEL.md](docs/DATA_MODEL.md)** — Database schema, relationships, constraints
-- **[docs/TECH_STACK.md](docs/TECH_STACK.md)** — Technology choices and reasoning
-- **[docs/COE_RULE_MATRIX.md](docs/COE_RULE_MATRIX.md)** — Classification logic for CPL metrics
-- **[docs/TODO.md](docs/TODO.md)** — Build diary, design decisions, remaining work
-- **[OutcomeLink_Project_Specification.md](OutcomeLink_Project_Specification.md)** — Full requirements
-- **[client/src/help/content/](client/src/help/content/)** — In-app help (Markdown, reviewed with code)
+### Data Model
+- **Multi-tenant design** — Each institution has independent data, users, and configuration
+- **Audit trail** — All data changes are logged for compliance and debugging
+- **Soft deletes** — Data is marked deleted but retained for reporting consistency
+- See [docs/DATA_MODEL.md](docs/DATA_MODEL.md) for schema details
 
----
+### Security
+- **Role-based access control** with program-level scoping
+- **JWT tokens** with short-lived access and refresh rotation
+- **Encrypted credential storage** for SIS connections (AES-256-GCM)
+- **SQL injection prevention** via Prisma parameterization
+- **Rate limiting** per IP address with configurable thresholds
+- **CORS configuration** with configurable allowed origins
+- **HTTPS-only cookies** in production
 
-## ✨ Recent Improvements (Portfolio Highlights)
+### API Design
+- **RESTful endpoints** with standard HTTP methods and status codes
+- **Paginated responses** with metadata (total count, page info)
+- **Consistent error format** with descriptive messages
+- **Request validation** via Zod schemas at all entry points
+- **Idempotent operations** where possible (e.g., bulk imports)
 
-### User Experience & Data Integrity
-- **Timezone-Aware Dates** — Fixed 13 instances of dates appearing one day off in certain timezones
-- **Destructive Action Confirmations** — All delete operations now show impact preview (connections, cleanup jobs)
-- **Bulk Operation Safety** — Two-step review + confirm flow for bulk follow-up logging and staff assignment
-- **Form Validation Feedback** — Complex forms now include inline descriptions (e.g., "Check if employment is related to training field")
-
-### Performance & API Optimization
-- **Pagination Standardization** — Unified 50-item page size across all list views; foundation for user preferences
-- **Reduced API Calls** — Programs endpoint now includes campus/department inline (eliminates N+1 queries)
-- **Empty State Guidance** — List pages show contextual messages ("No students match search" vs. "No students yet")
-
-### Accessibility & Navigation
-- **Mobile-Friendly Tables** — Wide tables (10+ columns) now scroll horizontally without breaking layout
-- **Search Context Preservation** — Clear search button + page indicator (e.g., "Page 2 of 5") help users navigate filtered results
-- **Status Accessibility** — Color-coded badges paired with text labels for colorblind users
-
-All changes maintain **100% TypeScript type safety** and pass comprehensive test suite.
-
----
-
-## 🤝 Contributing
-
-When you change code:
-- **Help content** — If your change affects user-facing behavior (especially security, roles, signing in, tokens, encryption, logging), update the matching file in `client/src/help/content/` and set the `reviewed` date in the same commit
-- **Shared types** — Changes to `shared/` require `npm run build:shared` and often a client restart (`npm run dev:client -- --force`)
-- **Migrations** — Run `npx prisma migrate dev --name <description>` after schema changes; commit the generated migration file
+### UI/UX
+- **Accessible design** (WCAG 2.1 AA compliance)
+- **Consistent component library** (Mantine) across all pages
+- **Responsive layouts** that work on mobile, tablet, and desktop
+- **Clear data visualization** with contextual help and documentation
+- **Progressive enhancement** for long-running operations (bulk imports, report generation)
 
 ---
 
-## 📝 License
+## Documentation
+
+- **[docs/DATA_MODEL.md](docs/DATA_MODEL.md)** — Database schema and relationships
+- **[docs/TECH_STACK.md](docs/TECH_STACK.md)** — Technology choices and trade-offs
+- **[docs/COE_RULE_MATRIX.md](docs/COE_RULE_MATRIX.md)** — CPL classification logic
+- **[docs/TODO.md](docs/TODO.md)** — Build log, design decisions, and roadmap
+- **[OutcomeLink_Project_Specification.md](OutcomeLink_Project_Specification.md)** — Full functional specification
+- **[client/src/help/content/](client/src/help/content/)** — In-app user documentation (Markdown)
+
+---
+
+## User Interface Tour
+
+**Dashboard & Reports**
+- **My Programs** — Program performance vs. benchmark with risk indicators
+- **Accreditation** — Full CPL metrics with drill-down to student detail
+- **Cohort & Equity** — Outcomes disaggregated by entry year and demographic group
+- **Custom Reports** — Flexible reporting with export to Excel and scheduled delivery
+
+**Operations**
+- **Follow-Up Queue** — Actionable list of graduates needing outcomes with staff assignment and bulk operations
+- **Students** — Student records, enrollment history, outcomes, and follow-up tracking
+- **Bulk Import** — Upload and validate student/enrollment data with preview before commit
+
+**Administration** (for System/Institutional Administrators)
+- **Users** — Staff management with role and program assignment
+- **Settings** — Email configuration, data retention policy, backup status
+- **Job History** — Scheduled reports, nightly validations, background job logs
+- **Connections** — SIS/Dataverse connection configuration for live data sync
+
+---
+
+## Contributing
+
+**Code changes:**
+- Run `npm run typecheck` and `npm run lint` before committing
+- Ensure tests pass: `npm test`
+- Update help documentation in `client/src/help/content/` if user-visible behavior changes
+- Changes to `shared/` require `npm run build:shared` and often a client restart
+
+**Database changes:**
+- Use `npx prisma migrate dev --name <description>` to generate migrations
+- Commit the generated migration file with your changes
+
+**Documentation:**
+- Update `docs/TODO.md` when design decisions change
+- Keep security-related content in `client/src/help/content/security.md` accurate
+- Add `reviewed` date stamps to help files after updates
+
+---
+
+## License
 
 See [LICENSE](LICENSE) file for details.

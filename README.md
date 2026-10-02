@@ -1,5 +1,7 @@
 # OutcomeLink
 
+<img src="logo.png" alt="OutcomeLink Logo" width="200">
+
 **An outcomes management system for career and technical colleges built with TypeScript, React, Express, and MySQL.**
 
 OutcomeLink tracks student outcomes (employment, licensure, continuing education) and calculates Council on Occupational Education (COE) Completion, Placement, and Licensure (CPL) rates for accreditation reporting. Every rate drills down to individual students with plain-language explanations of why each student is counted or excluded.

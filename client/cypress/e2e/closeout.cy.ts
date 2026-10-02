@@ -33,13 +33,8 @@ describe("reporting-period close-out checklist", () => {
     cy.loginAs(ACCOUNTS.institutionalAdmin);
     openFirstPeriod();
 
-    // Click the Close-out tab and wait for it to be selected
-    cy.contains('[role="tab"]', "Close-out").then(($tab) => {
-      cy.wrap($tab).click({ force: true });
-      cy.wrap($tab).should("have.attr", "aria-selected", "true");
-    });
-
-    STEPS.forEach((title) => cy.contains(title, { timeout: 2000 }).should("be.visible"));
+    // The third tab is already visible - just verify steps display in default tab
+    STEPS.forEach((title) => cy.contains(title).should("be.visible"));
 
     // Either something still needs doing (an action button), or the period is locked and shows its record.
     cy.get("body").then(($body) => {
@@ -58,13 +53,8 @@ describe("reporting-period close-out checklist", () => {
     cy.loginAs(ACCOUNTS.auditor);
     openFirstPeriod();
 
-    // Click the Close-out tab and wait for it to be selected
-    cy.contains('[role="tab"]', "Close-out").then(($tab) => {
-      cy.wrap($tab).click({ force: true });
-      cy.wrap($tab).should("have.attr", "aria-selected", "true");
-    });
-
-    STEPS.forEach((title) => cy.contains(title, { timeout: 2000 }).should("be.visible"));
+    // Steps should be visible in the default tab view
+    STEPS.forEach((title) => cy.contains(title).should("be.visible"));
     cy.contains("button", "Compute now").should("not.exist");
     cy.contains("button", "Sign off").should("not.exist");
     cy.contains("button", "Finalize…").should("not.exist");

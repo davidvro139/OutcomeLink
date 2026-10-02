@@ -26,6 +26,8 @@ type UpdateEmployerInput = z.infer<typeof updateEmployerSchema>;
 export const listEmployersQuerySchema = paginationQuerySchema.extend({
   search: z.string().trim().min(1).max(200).optional(),
   active: z.coerce.boolean().optional(),
+  sort: z.enum(["name", "industry", "active"]).optional(),
+  order: z.enum(["asc", "desc"]).default("asc"),
 });
 type ListEmployersQuery = z.infer<typeof listEmployersQuerySchema>;
 
@@ -36,7 +38,7 @@ async function findOwnedEmployer(institutionId: number, id: number) {
 }
 
 export async function list(req: Request, res: Response) {
-  const { page, pageSize, search, active } = req.query as unknown as ListEmployersQuery;
+  const { page, pageSize, search, active, sort, order } = req.query as unknown as ListEmployersQuery;
   const institutionId = req.user!.institutionId;
   const where = {
     institutionId,
@@ -44,11 +46,20 @@ export async function list(req: Request, res: Response) {
     ...(search && { name: { contains: search } }),
   };
 
+  const orderByField = sort || "name";
+  const orderByDirection = order || "asc";
+
   await paginatedResponse(
     res,
     page,
     pageSize,
-    (skip, take) => prisma.employer.findMany({ where, skip, take, orderBy: { name: "asc" } }),
+    (skip, take) =>
+      prisma.employer.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { [orderByField]: orderByDirection },
+      }),
     () => prisma.employer.count({ where }),
   );
 }

@@ -18,11 +18,25 @@ export interface PasswordLinkResult {
   emailReason?: string;
 }
 
-export function useUsers(options: { includeInactive?: boolean } = {}) {
-  const query = options.includeInactive ? "?includeInactive=true" : "";
+export function useUsers(
+  options: {
+    includeInactive?: boolean;
+    sort?: string;
+    order?: "asc" | "desc";
+  } = {},
+) {
+  const query = new URLSearchParams();
+  if (options.includeInactive) query.set("includeInactive", "true");
+  if (options.sort) query.set("sort", options.sort);
+  if (options.order) query.set("order", options.order);
+
+  const queryString = query.toString();
   return useQuery({
     queryKey: ["users", options],
-    queryFn: () => apiRequest<{ users: StaffUser[] }>(`/api/users${query}`).then((r) => r.users),
+    queryFn: () =>
+      apiRequest<{ users: StaffUser[] }>(`/api/users${queryString ? `?${queryString}` : ""}`).then(
+        (r) => r.users,
+      ),
   });
 }
 

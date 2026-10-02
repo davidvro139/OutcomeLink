@@ -3,6 +3,8 @@ import { Badge, Button, Group, Loader, Modal, MultiSelect, Select, Stack, Table,
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
+import { SortableTableHeader } from "../../components/SortableTableHeader";
+import type { SortDirection } from "../../lib/sorting";
 import { useCampuses, usePrograms } from "../../api/programs";
 import {
   type InviteUserInput,
@@ -186,10 +188,21 @@ function UserFormModal({
 export function UsersPage() {
   const { user } = useAuth();
   const canManage = !!user && CAN_MANAGE_USERS.includes(user.role);
-  const { data: users, isLoading } = useUsers({ includeInactive: true });
+  const [sortField, setSortField] = useState<string | null>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const { data: users, isLoading } = useUsers({
+    includeInactive: true,
+    sort: sortField || undefined,
+    order: sortDirection,
+  });
 
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure(false);
   const [editingUser, setEditingUser] = useState<StaffUser | null>(null);
+
+  const handleSort = (field: string, direction: SortDirection) => {
+    setSortField(field);
+    setSortDirection(direction);
+  };
 
   if (!canManage) {
     return (
@@ -222,10 +235,42 @@ export function UsersPage() {
         <Table striped highlightOnHover>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Name</Table.Th>
-              <Table.Th>Email</Table.Th>
-              <Table.Th>Role</Table.Th>
-              <Table.Th>Status</Table.Th>
+              <Table.Th>
+                <SortableTableHeader
+                  field="name"
+                  label="Name"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                />
+              </Table.Th>
+              <Table.Th>
+                <SortableTableHeader
+                  field="email"
+                  label="Email"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                />
+              </Table.Th>
+              <Table.Th>
+                <SortableTableHeader
+                  field="role"
+                  label="Role"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                />
+              </Table.Th>
+              <Table.Th>
+                <SortableTableHeader
+                  field="active"
+                  label="Status"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                />
+              </Table.Th>
               <Table.Th>Actions</Table.Th>
             </Table.Tr>
           </Table.Thead>

@@ -15,6 +15,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useDisclosure } from "@mantine/hooks";
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import {
   type CreateProgramInput,
   useCampuses,
@@ -22,16 +23,25 @@ import {
   usePrograms,
 } from "../../api/programs";
 import { useAuth } from "../../auth/AuthContext";
+import { SortableTableHeader } from "../../components/SortableTableHeader";
+import type { SortDirection } from "../../lib/sorting";
 
 const CAN_MANAGE = ["SYSTEM_ADMINISTRATOR"];
 
 export function ProgramsListPage() {
   const { user } = useAuth();
-  const { data, isLoading } = usePrograms();
+  const [sortField, setSortField] = useState<string | null>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const { data, isLoading } = usePrograms({ sort: sortField || undefined, order: sortDirection });
   const { data: campuses } = useCampuses();
   const [opened, { open, close }] = useDisclosure(false);
   const createProgram = useCreateProgram();
   const campusNameById = new Map(campuses?.items.map((c) => [c.id, c.name]) ?? []);
+
+  const handleSort = (field: string, direction: SortDirection) => {
+    setSortField(field);
+    setSortDirection(direction);
+  };
 
   const form = useForm<CreateProgramInput>({
     initialValues: { campusId: 0, name: "", code: "", credentialType: "" },
@@ -70,12 +80,44 @@ export function ProgramsListPage() {
         <Table striped highlightOnHover>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Name</Table.Th>
+              <Table.Th>
+                <SortableTableHeader
+                  field="name"
+                  label="Name"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                />
+              </Table.Th>
               <Table.Th>Campus</Table.Th>
-              <Table.Th>Code</Table.Th>
-              <Table.Th>Credential</Table.Th>
+              <Table.Th>
+                <SortableTableHeader
+                  field="code"
+                  label="Code"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                />
+              </Table.Th>
+              <Table.Th>
+                <SortableTableHeader
+                  field="credentialType"
+                  label="Credential"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                />
+              </Table.Th>
               <Table.Th>Licensure Required</Table.Th>
-              <Table.Th>Status</Table.Th>
+              <Table.Th>
+                <SortableTableHeader
+                  field="active"
+                  label="Status"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                />
+              </Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>

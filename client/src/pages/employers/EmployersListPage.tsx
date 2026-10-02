@@ -18,16 +18,32 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { type CreateEmployerInput, useCreateEmployer, useEmployers } from "../../api/employers";
 import { usePermissions } from "../../auth/usePermissions";
+import { SortableTableHeader } from "../../components/SortableTableHeader";
+import type { SortDirection } from "../../lib/sorting";
 
 export function EmployersListPage() {
   const { canManageEmployers } = usePermissions();
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebouncedValue(search, 300);
   const [page, setPage] = useState(1);
+  const [sortField, setSortField] = useState<string | null>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
   useEffect(() => setPage(1), [debouncedSearch]);
-  const { data, isLoading } = useEmployers(debouncedSearch || undefined, page);
+  const { data, isLoading } = useEmployers(
+    debouncedSearch || undefined,
+    page,
+    sortField || undefined,
+    sortDirection,
+  );
   const [opened, { open, close }] = useDisclosure(false);
   const createEmployer = useCreateEmployer();
+
+  const handleSort = (field: string, direction: SortDirection) => {
+    setSortField(field);
+    setSortDirection(direction);
+    setPage(1);
+  };
 
   const form = useForm<CreateEmployerInput>({
     initialValues: { name: "", industry: "", city: "", state: "" },
@@ -77,8 +93,24 @@ export function EmployersListPage() {
           <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Name</Table.Th>
-                <Table.Th>Industry</Table.Th>
+                <Table.Th>
+                  <SortableTableHeader
+                    field="name"
+                    label="Name"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                </Table.Th>
+                <Table.Th>
+                  <SortableTableHeader
+                    field="industry"
+                    label="Industry"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                </Table.Th>
                 <Table.Th>City/State</Table.Th>
               </Table.Tr>
             </Table.Thead>

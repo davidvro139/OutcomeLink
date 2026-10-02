@@ -42,12 +42,19 @@ export interface CreateContactInput {
   isVerificationContact?: boolean;
 }
 
-export function useEmployers(search?: string, page = 1) {
+export function useEmployers(
+  search?: string,
+  page = 1,
+  sort?: string,
+  order?: "asc" | "desc",
+) {
   const query = new URLSearchParams({ pageSize: "50", page: String(page) });
   if (search) query.set("search", search);
+  if (sort) query.set("sort", sort);
+  if (order) query.set("order", order);
 
   return useQuery({
-    queryKey: ["employers", search, page],
+    queryKey: ["employers", search, page, sort, order],
     queryFn: () => apiRequestPaginated<Employer>(`/api/employers?${query.toString()}`),
     placeholderData: (previousData) => previousData,
   });

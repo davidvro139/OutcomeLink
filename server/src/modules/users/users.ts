@@ -22,15 +22,20 @@ const PASSWORD_SET_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
  */
 export const listUsersQuerySchema = z.object({
   includeInactive: z.coerce.boolean().default(false),
+  sort: z.enum(["name", "email", "role", "active"]).optional(),
+  order: z.enum(["asc", "desc"]).default("asc"),
 });
 type ListUsersQuery = z.infer<typeof listUsersQuerySchema>;
 
 const CAN_MANAGE_USERS = ["SYSTEM_ADMINISTRATOR", "INSTITUTIONAL_ADMINISTRATOR"];
 
 export async function list(req: Request, res: Response) {
-  const { includeInactive } = req.query as unknown as ListUsersQuery;
+  const { includeInactive, sort, order } = req.query as unknown as ListUsersQuery;
   const institutionId = req.user!.institutionId;
   const honorIncludeInactive = includeInactive && CAN_MANAGE_USERS.includes(req.user!.role);
+
+  const orderByField = sort || "name";
+  const orderByDirection = order || "asc";
 
   const users = await prisma.user.findMany({
     where: { institutionId, ...(honorIncludeInactive ? {} : { active: true }) },
@@ -43,7 +48,7 @@ export async function list(req: Request, res: Response) {
       programAccess: { select: { programId: true } },
       campusAccess: { select: { campusId: true } },
     },
-    orderBy: { name: "asc" },
+    orderBy: { [orderByField]: orderByDirection },
   });
   sendData(res, {
     users: users.map(({ programAccess, campusAccess, ...u }) => ({

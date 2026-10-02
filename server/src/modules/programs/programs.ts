@@ -32,6 +32,8 @@ export const listProgramsQuerySchema = paginationQuerySchema.extend({
   campusId: z.coerce.number().int().positive().optional(),
   departmentId: z.coerce.number().int().positive().optional(),
   active: z.coerce.boolean().optional(),
+  sort: z.enum(["name", "code", "credentialType", "active"]).optional(),
+  order: z.enum(["asc", "desc"]).default("asc"),
 });
 type ListProgramsQuery = z.infer<typeof listProgramsQuerySchema>;
 
@@ -53,7 +55,7 @@ async function findOwnedProgram(
 }
 
 export async function list(req: Request, res: Response) {
-  const { page, pageSize, campusId, departmentId, active } =
+  const { page, pageSize, campusId, departmentId, active, sort, order } =
     req.query as unknown as ListProgramsQuery;
   const institutionId = req.user!.institutionId;
   const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
@@ -65,11 +67,20 @@ export async function list(req: Request, res: Response) {
     ...(accessibleProgramIds && { id: { in: accessibleProgramIds } }),
   };
 
+  const orderByField = sort || "name";
+  const orderByDirection = order || "asc";
+
   await paginatedResponse(
     res,
     page,
     pageSize,
-    (skip, take) => prisma.program.findMany({ where, skip, take, orderBy: { name: "asc" } }),
+    (skip, take) =>
+      prisma.program.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { [orderByField]: orderByDirection },
+      }),
     () => prisma.program.count({ where }),
   );
 }

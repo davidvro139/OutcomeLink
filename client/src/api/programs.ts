@@ -59,10 +59,20 @@ export function useDepartments() {
   });
 }
 
-export function usePrograms(params: { campusId?: number; active?: boolean } = {}) {
-  const query = new URLSearchParams({ pageSize: "100" });
+export function usePrograms(
+  params: {
+    campusId?: number;
+    active?: boolean;
+    page?: number;
+    sort?: string;
+    order?: "asc" | "desc";
+  } = {},
+) {
+  const query = new URLSearchParams({ pageSize: "100", page: String(params.page || 1) });
   if (params.campusId) query.set("campusId", String(params.campusId));
   if (params.active !== undefined) query.set("active", String(params.active));
+  if (params.sort) query.set("sort", params.sort);
+  if (params.order) query.set("order", params.order);
 
   return useQuery({
     queryKey: ["programs", params],

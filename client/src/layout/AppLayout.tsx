@@ -119,7 +119,7 @@ export function AppLayout() {
           <Group gap="sm">
             <Burger opened={navOpened} onClick={toggleNav} hiddenFrom="sm" size="sm" />
             <Link to="/" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
-              <Image src="/logo-dark-xl-clean-md.png" alt="OutcomeLink" height={45} width="auto" />
+              <Image src="/logo-clean-md.png" alt="OutcomeLink" height={45} width="auto" />
             </Link>
           </Group>
 

@@ -166,6 +166,7 @@ describe("dialogs and menus", () => {
     cy.nav().contains("a", "Students").click();
     cy.contains("button", "New Student").click();
     cy.get('[role="dialog"]').should("be.visible");
+    cy.wait(300); // Let modal fade in
     expectNoViolations();
     cy.focused().closest('[role="dialog"]').should("exist"); // focus moved into the dialog
     cy.get("body").type("{esc}");
@@ -174,6 +175,7 @@ describe("dialogs and menus", () => {
 
   it("the user menu and the notification menu are accessible", () => {
     cy.contains("button", "Ada Administrator").click();
+    cy.wait(200); // Let menu fade in
     cy.contains('[role="menuitem"]', "Sign out").should("be.visible");
     // Mantine's menu puts an empty focus-sentinel <div> inside its role="menu" element, which axe reports as
     // aria-required-children — a known library quirk with no app-level fix, so the menu container is left out;

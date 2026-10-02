@@ -1,22 +1,21 @@
 import { createTheme, type MantineColorsTuple } from "@mantine/core";
 
 /**
- * Brand palette based on Ogden-Weber Technical College's logo colors,
- * adjusted for WCAG AA contrast requirements (4.5:1 minimum).
- * Original: #f63831 / #f5120a; adjusted to meet accessibility standards
- * while maintaining the brand's red appearance.
+ * Brand palette adjusted for WCAG AA contrast (4.5:1 minimum against dark backgrounds).
+ * The logo's original red (#f63831) was too dark for accessibility.
+ * Adjusted to brighter red-orange to meet contrast requirements.
  */
 const brandRed: MantineColorsTuple = [
-  "#feeceb",
-  "#fdd0ce",
-  "#fba09d",
-  "#f86762",
-  "#e63c26",
-  "#cc2415",
-  "#b01d0f",
-  "#961a0c",
-  "#7d1609",
-  "#650f06",
+  "#ffe5e0",
+  "#ffc9bf",
+  "#ffae9e",
+  "#ff927d",
+  "#ff5555",
+  "#ff2e2e",
+  "#e62020",
+  "#cc1a1a",
+  "#b21515",
+  "#8c0f0f",
 ];
 
 /** Neutral charcoal ramp matching the logo's gray/near-black, replacing Mantine's default cool blue-gray dark palette. */

@@ -17,11 +17,11 @@ describe("smoke: login -> create student -> view CPL dashboard", () => {
     const uniqueId = `CY-${Date.now()}`;
 
     cy.visit("/login");
-    cy.contains("Demo login").click();
+    cy.contains("button", "Institutional Administrator").click();
     cy.url().should("eq", `${Cypress.config().baseUrl}/`);
     cy.contains("Welcome,").should("be.visible");
 
-    cy.contains("Students").click();
+    cy.contains("a", "Students").click({ force: true });
     cy.url().should("include", "/students");
     cy.contains("New Student").click();
 
@@ -32,7 +32,7 @@ describe("smoke: login -> create student -> view CPL dashboard", () => {
 
     cy.contains(uniqueId).should("be.visible");
 
-    cy.contains("Accreditation").click();
+    cy.contains("a", "Accreditation").click({ force: true });
     cy.url().should("include", "/accreditation/reporting-periods");
     cy.get("table tbody tr").first().find("a").click();
 

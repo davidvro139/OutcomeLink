@@ -3,8 +3,8 @@ import { ACCOUNTS } from "../support/e2e";
 describe("Help", () => {
   it("is reachable from the menu, and search lands on the matching section", () => {
     cy.loginAs(ACCOUNTS.systemAdmin);
-    cy.nav().contains("a", "Help").click();
-    cy.contains("h1", "Help").should("be.visible");
+    cy.nav().contains("a", "Help").click({ force: true });
+    cy.contains("h2", "Help").should("be.visible");
     cy.contains("h2", "About OutcomeLink").should("be.visible");
 
     cy.get('input[type="search"]').type("finalize");

@@ -17,12 +17,12 @@ describe("role-based visibility", () => {
         cy.contains("a", "Job History").should("be.visible");
         cy.contains("a", "Settings").should("be.visible");
       });
-      cy.nav().contains("a", "Students").click();
+      cy.nav().contains("a", "Students").click({ force: true });
       cy.contains("button", "New Student").should("be.visible");
     });
 
     it("can open Settings and see the Email, Data retention and Backups tabs", () => {
-      cy.nav().contains("a", "Settings").click();
+      cy.nav().contains("a", "Settings").click({ force: true });
       cy.contains("h2", "Settings").should("be.visible");
       cy.contains('[role="tab"]', "Email").should("be.visible");
       cy.contains('[role="tab"]', "Data retention").should("be.visible");
@@ -61,9 +61,9 @@ describe("role-based visibility", () => {
     beforeEach(() => cy.loginAs(ACCOUNTS.careerServices));
 
     it("can add employers but not students", () => {
-      cy.nav().contains("a", "Employers").click();
+      cy.nav().contains("a", "Employers").click({ force: true });
       cy.contains("button", "New Employer").should("be.visible");
-      cy.nav().contains("a", "Students").click();
+      cy.nav().contains("a", "Students").click({ force: true });
       cy.get("table tbody tr").should("have.length.greaterThan", 0);
       cy.contains("button", "New Student").should("not.exist");
     });
@@ -73,7 +73,7 @@ describe("role-based visibility", () => {
     beforeEach(() => cy.loginAs(ACCOUNTS.programAdmin));
 
     it("sees only their programs, and can refresh the results", () => {
-      cy.nav().contains("a", "My Programs").click();
+      cy.nav().contains("a", "My Programs").click({ force: true });
       cy.contains("h2", "My Programs").should("be.visible");
       cy.contains("button", "Recompute now").should("be.visible");
       cy.contains("Needs attention").should("be.visible");

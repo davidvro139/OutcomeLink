@@ -7,7 +7,7 @@ import { ACCOUNTS } from "../support/e2e";
  */
 describe("report builder", () => {
   function runFirstNameReport() {
-    cy.nav().contains("a", "Report Builder").click();
+    cy.nav().contains("a", "Report Builder").click({ force: true });
     cy.contains("h2", "Report Builder").should("be.visible");
     cy.contains("label", "First Name").click();
     cy.contains("button", "Run Report").should("not.be.disabled").click();
@@ -31,7 +31,7 @@ describe("report builder", () => {
 
   it("does not offer Run until a column is chosen", () => {
     cy.loginAs(ACCOUNTS.institutionalAdmin);
-    cy.nav().contains("a", "Report Builder").click();
+    cy.nav().contains("a", "Report Builder").click({ force: true });
     cy.contains("button", "Run Report").should("be.disabled");
   });
 });

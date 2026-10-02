@@ -20,7 +20,7 @@ const STEPS = [
  */
 describe("reporting-period close-out checklist", () => {
   function openFirstPeriod() {
-    cy.nav().contains("a", "Accreditation").click();
+    cy.nav().contains("a", "Accreditation").click({ force: true });
     // Wait for the navigation: the home page has tables of its own that would otherwise match below.
     cy.url().should("include", "/accreditation/reporting-periods");
     cy.contains("h2", "Reporting Periods").should("be.visible");

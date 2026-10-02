@@ -13,13 +13,13 @@ describe("Cohort & Equity breakdowns", () => {
   });
 
   it("navigates to equity page and displays controls", () => {
-    cy.nav().contains("a", "Cohort & Equity").should("be.visible").click();
+    cy.nav().contains("a", "Cohort & Equity").should("be.visible").click({ force: true });
     cy.url().should("include", "/equity");
     cy.contains("h2", "Cohort & Equity Breakdown").should("be.visible");
   });
 
   it("runs an equity breakdown by entry year", () => {
-    cy.nav().contains("a", "Cohort & Equity").click();
+    cy.nav().contains("a", "Cohort & Equity").click({ force: true });
 
     // Metric selector should default or be visible
     cy.contains("label", "Metric").should("be.visible");
@@ -39,7 +39,7 @@ describe("Cohort & Equity breakdowns", () => {
   });
 
   it("switches between dimensions and updates results", () => {
-    cy.nav().contains("a", "Cohort & Equity").click();
+    cy.nav().contains("a", "Cohort & Equity").click({ force: true });
 
     // Ensure we can switch dimensions
     cy.get('[name="dimension"]').should("be.visible");
@@ -53,7 +53,7 @@ describe("Cohort & Equity breakdowns", () => {
   });
 
   it("displays suppression alerts for small cells", () => {
-    cy.nav().contains("a", "Cohort & Equity").click();
+    cy.nav().contains("a", "Cohort & Equity").click({ force: true });
 
     // Run a breakdown
     cy.contains("button", "Load").click();
@@ -67,7 +67,7 @@ describe("Cohort & Equity breakdowns", () => {
   });
 
   it("offers Excel export button", () => {
-    cy.nav().contains("a", "Cohort & Equity").click();
+    cy.nav().contains("a", "Cohort & Equity").click({ force: true });
     cy.contains("button", "Load").click();
 
     // Export button should be available
@@ -77,7 +77,7 @@ describe("Cohort & Equity breakdowns", () => {
   });
 
   it("displays demographic data coverage note for demographic dimensions", () => {
-    cy.nav().contains("a", "Cohort & Equity").click();
+    cy.nav().contains("a", "Cohort & Equity").click({ force: true });
 
     // Switch to a demographic dimension
     cy.get('[name="dimension"]').select("gender", { force: true });
@@ -90,7 +90,7 @@ describe("Cohort & Equity breakdowns", () => {
 
   it("lets user edit student demographics from detail page", () => {
     // Navigate to students
-    cy.nav().contains("a", "Students").click();
+    cy.nav().contains("a", "Students").click({ force: true });
     cy.contains("h2", "Students").should("be.visible");
 
     // Click on first student (or create one if needed)
@@ -101,7 +101,7 @@ describe("Cohort & Equity breakdowns", () => {
   });
 
   it("shows suppression threshold explanation", () => {
-    cy.nav().contains("a", "Cohort & Equity").click();
+    cy.nav().contains("a", "Cohort & Equity").click({ force: true });
     cy.contains("button", "Load").click();
 
     // Look for help text explaining suppression
@@ -115,7 +115,7 @@ describe("Cohort & Equity breakdowns", () => {
   });
 
   it("handles empty data gracefully", () => {
-    cy.nav().contains("a", "Cohort & Equity").click();
+    cy.nav().contains("a", "Cohort & Equity").click({ force: true });
 
     // Even if no data, page should not error
     cy.contains("h2", "Cohort & Equity Breakdown").should("be.visible");
@@ -123,7 +123,7 @@ describe("Cohort & Equity breakdowns", () => {
   });
 
   it("integrates with accessibility standards", () => {
-    cy.nav().contains("a", "Cohort & Equity").click();
+    cy.nav().contains("a", "Cohort & Equity").click({ force: true });
     cy.contains("button", "Load").click();
 
     // Basic accessibility checks

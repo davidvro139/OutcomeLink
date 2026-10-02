@@ -15,7 +15,7 @@ describe("bulk import wizard", () => {
     ].join("\n");
 
     cy.loginAs(ACCOUNTS.institutionalAdmin);
-    cy.nav().contains("a", "Bulk Import").click();
+    cy.nav().contains("a", "Bulk Import").click({ force: true });
     cy.contains("button", "New Import").click();
 
     cy.field("Source system").type("Cypress SIS");

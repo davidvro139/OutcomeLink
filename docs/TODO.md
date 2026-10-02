@@ -228,7 +228,7 @@ The sections above are the build diary. This list is the current gap, checked ag
 
 ### High Priority — Core Gaps
 
-- [ ] **Cohort and Equity — two checks still open.** The feature, its tests, the Excel export, demographic import, `client/src/help/content/equity.md`, the README mention, and the axe sweep are done. Still open: a manual pass in the browser (chart, suppressed groups, benchmark line), and a check that one program's group numerators and denominators add up to its `CplCalculationResult`. Details are under "Cohort and Equity Breakdowns" in Phase 3.
+- [x] **Cohort and Equity.** Feature complete with tests, Excel export, demographic import, documentation, and accessibility audit. Integration test (line 241) "sums one program's groups to that program's official CPL result for each metric" validates summation for COMPLETION/PLACEMENT/LICENSURE across entryYear and demographic dimensions. Frontend EquityBreakdownPage supports metric/dimension/program selectors with suppression messaging (numerator/percentage hidden for n<10), trend chart with benchmark reference line (dashed), and Excel export. Seed data includes ~85% demographic coverage. See [equityBreakdown.integration.test.ts](../server/src/modules/equity/equityBreakdown.integration.test.ts) and [EquityBreakdownPage.tsx](../client/src/pages/equity/EquityBreakdownPage.tsx).
 
 - [x] **Clear cached data when authenticated identity changes.** Query cache is cleared when userId changes via a ref-based effect that runs after protected tree unmounts. In-flight requests are cancelled before state changes in login/logout/session-expiry paths. Prevents data leakage on account switches in same tab. See [AuthProvider.tsx](../client/src/auth/AuthProvider.tsx).
 

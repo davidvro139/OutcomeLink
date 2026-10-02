@@ -1,6 +1,7 @@
 import { Anchor, Badge, Loader, Stack, Table, Text, Title } from "@mantine/core";
 import { Link } from "react-router-dom";
 import { useLicensureQueue } from "../../api/licensure";
+import { formatDateOnly } from "../../lib/dates";
 
 const RESULT_COLORS: Record<string, string> = {
   WAITING: "yellow",
@@ -44,7 +45,7 @@ export function LicensureQueuePage() {
                 </Table.Td>
                 <Table.Td>{row.program.name}</Table.Td>
                 <Table.Td>
-                  {row.completionDate ? new Date(row.completionDate).toLocaleDateString() : "—"}
+                  {row.completionDate ? formatDateOnly(row.completionDate) : "—"}
                 </Table.Td>
                 <Table.Td>{row.latestResult?.examName ?? "—"}</Table.Td>
                 <Table.Td>{row.latestResult?.attemptNumber ?? "—"}</Table.Td>

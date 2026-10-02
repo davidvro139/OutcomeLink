@@ -19,6 +19,7 @@ import {
 import { downloadEquityBreakdown, useEquityBreakdown, type EquityBreakdownParams } from "../../api/equity";
 import { usePrograms } from "../../api/programs";
 import { notifications } from "@mantine/notifications";
+import { formatDateOnly } from "../../lib/dates";
 
 const STATUS_LABELS: Record<string, string> = {
   MEETING: "Meeting benchmark",
@@ -145,7 +146,7 @@ export function EquityBreakdownPage() {
       {/* Freshness note */}
       {breakdown.period && (
         <Text size="xs" c="dimmed">
-          Results computed on {new Date(breakdown.period.endDate).toLocaleDateString()}
+          Results computed on {formatDateOnly(breakdown.period.endDate)}
         </Text>
       )}
 

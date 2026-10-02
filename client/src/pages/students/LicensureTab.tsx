@@ -11,6 +11,7 @@ import {
 } from "../../api/licensure";
 import { usePermissions } from "../../auth/usePermissions";
 import { usePrograms } from "../../api/programs";
+import { formatDateOnly } from "../../lib/dates";
 
 const RESULT_COLORS: Record<string, string> = {
   PASSED: "green",
@@ -97,6 +98,7 @@ export function LicensureTab({ studentId }: { studentId: number }) {
                   type="date"
                   {...form.getInputProps("scheduledDate")}
                   style={{ padding: 8, width: "100%" }}
+                  placeholder="YYYY-MM-DD"
                 />
               </div>
               <div>
@@ -107,6 +109,7 @@ export function LicensureTab({ studentId }: { studentId: number }) {
                   type="date"
                   {...form.getInputProps("examDate")}
                   style={{ padding: 8, width: "100%" }}
+                  placeholder="YYYY-MM-DD"
                 />
               </div>
             </Group>
@@ -142,12 +145,8 @@ export function LicensureTab({ studentId }: { studentId: number }) {
               <Table.Td>{result.program?.name ?? result.programId}</Table.Td>
               <Table.Td>{result.examName}</Table.Td>
               <Table.Td>{result.attemptNumber}</Table.Td>
-              <Table.Td>
-                {result.scheduledDate ? new Date(result.scheduledDate).toLocaleDateString() : "—"}
-              </Table.Td>
-              <Table.Td>
-                {result.examDate ? new Date(result.examDate).toLocaleDateString() : "—"}
-              </Table.Td>
+              <Table.Td>{result.scheduledDate ? formatDateOnly(result.scheduledDate) : "—"}</Table.Td>
+              <Table.Td>{result.examDate ? formatDateOnly(result.examDate) : "—"}</Table.Td>
               <Table.Td>
                 <Select
                   size="xs"

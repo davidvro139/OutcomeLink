@@ -123,6 +123,9 @@ export function DataConnectionsPage() {
   const fetchBatch = useFetchImportBatch();
 
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure(false);
+  const [deleteConfirmOpened, { open: openDeleteConfirm, close: closeDeleteConfirm }] = useDisclosure(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  const [deleteTargetName, setDeleteTargetName] = useState<string>("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<ConnectionInput>(EMPTY_FORM);
 
@@ -173,10 +176,18 @@ export function DataConnectionsPage() {
     }
   }
 
-  async function handleDelete(id: number) {
+  function openDeleteConfirmDialog(id: number, name: string) {
+    setDeleteTargetId(id);
+    setDeleteTargetName(name);
+    openDeleteConfirm();
+  }
+
+  async function confirmDelete() {
+    if (!deleteTargetId) return;
     try {
-      await deleteConnection.mutateAsync(id);
+      await deleteConnection.mutateAsync(deleteTargetId);
       notifications.show({ message: "Connection deleted", color: "green" });
+      closeDeleteConfirm();
     } catch (err) {
       notifications.show({
         message: err instanceof Error ? err.message : "Failed to delete connection",
@@ -298,7 +309,7 @@ export function DataConnectionsPage() {
                     <Button size="xs" variant="subtle" onClick={() => openEditModal(c)}>
                       Edit
                     </Button>
-                    <Button size="xs" variant="subtle" color="red" onClick={() => handleDelete(c.id)}>
+                    <Button size="xs" variant="subtle" color="red" onClick={() => openDeleteConfirmDialog(c.id, c.name)}>
                       Delete
                     </Button>
                   </Group>
@@ -319,6 +330,22 @@ export function DataConnectionsPage() {
           >
             Save
           </Button>
+        </Stack>
+      </Modal>
+
+      <Modal opened={deleteConfirmOpened} onClose={closeDeleteConfirm} title="Delete Connection" centered>
+        <Stack gap="md">
+          <Text>
+            Are you sure you want to delete the connection <strong>{deleteTargetName}</strong>? Any pending data fetches using this connection will fail, and it cannot be undone.
+          </Text>
+          <Group justify="flex-end">
+            <Button variant="light" onClick={closeDeleteConfirm}>
+              Cancel
+            </Button>
+            <Button color="red" onClick={confirmDelete} loading={deleteConnection.isPending}>
+              Delete
+            </Button>
+          </Group>
         </Stack>
       </Modal>
     </Stack>

@@ -16,6 +16,7 @@ import {
 } from "../../api/placements";
 import { EvidencePanel } from "../../components/EvidencePanel";
 import { usePermissions } from "../../auth/usePermissions";
+import { formatDateOnly } from "../../lib/dates";
 
 export function EmploymentTab({ studentId }: { studentId: number }) {
   const { canWrite, canManageEmployers } = usePermissions();
@@ -121,7 +122,10 @@ export function EmploymentTab({ studentId }: { studentId: number }) {
               </Button>
             </Group>
             <TextInput label="Job title" required {...form.getInputProps("jobTitle")} />
-            <input type="date" {...form.getInputProps("startDate")} style={{ padding: 8 }} />
+            <div>
+              <Text size="sm" fw={500} mb={4}>Start date</Text>
+              <input type="date" {...form.getInputProps("startDate")} required style={{ padding: 8, width: "100%" }} />
+            </div>
             <Checkbox
               label="Full-time"
               checked={form.values.fullTime}
@@ -161,7 +165,7 @@ export function EmploymentTab({ studentId }: { studentId: number }) {
             >
               <Table.Td>{record.employer?.name ?? record.employerId}</Table.Td>
               <Table.Td>{record.jobTitle}</Table.Td>
-              <Table.Td>{new Date(record.startDate).toLocaleDateString()}</Table.Td>
+              <Table.Td>{formatDateOnly(record.startDate)}</Table.Td>
               <Table.Td>{record.relatedToTraining ? "Yes" : "No"}</Table.Td>
               <Table.Td>{record.verificationStatus ?? "Unverified"}</Table.Td>
             </Table.Tr>

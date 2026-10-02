@@ -11,3 +11,18 @@ export function formatDateOnly(dateOnlyIsoString: string): string {
   const [year, month, day] = dateOnlyIsoString.slice(0, 10).split("-").map(Number);
   return new Date(year!, month! - 1, day!).toLocaleDateString();
 }
+
+/**
+ * Formats a datetime value for display with both date and time.
+ * Handles full ISO 8601 timestamps while preserving the intended time.
+ */
+export function formatDateTime(isoString: string): string {
+  const date = new Date(isoString);
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}

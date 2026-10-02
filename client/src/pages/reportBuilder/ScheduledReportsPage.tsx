@@ -40,6 +40,7 @@ import {
   useUpdateScheduledReportSubscription,
 } from "../../api/scheduledReports";
 import { useAuth } from "../../auth/AuthContext";
+import { formatDateOnly } from "../../lib/dates";
 
 // Matches server/src/lib/roles.ts's OPERATIONAL_ROLES (spec §4: Read-Only/Auditor cannot modify data).
 const CAN_MANAGE_SUBSCRIPTIONS = [
@@ -318,7 +319,7 @@ export function ScheduledReportsPage() {
                 <Table.Td>
                   {s.runs[0] ? (
                     <Badge color={s.runs[0].status === "SUCCESS" ? "green" : "red"} size="sm">
-                      {new Date(s.runs[0].runAt).toLocaleDateString()}
+                      {formatDateOnly(s.runs[0].runAt)}
                     </Badge>
                   ) : (
                     <Text size="xs" c="dimmed">

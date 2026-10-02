@@ -25,6 +25,7 @@ import {
 } from "../../api/programs";
 import { AuditHistory } from "../../components/AuditHistory";
 import { FollowUpOwnerPanel } from "./FollowUpOwnerPanel";
+import { formatDateOnly } from "../../lib/dates";
 
 const CAN_MANAGE = ["SYSTEM_ADMINISTRATOR"];
 
@@ -190,8 +191,8 @@ export function ProgramDetailPage() {
                 <Table.Td>{nb.metric}</Table.Td>
                 <Table.Td>{nb.approvedPercentage}%</Table.Td>
                 <Table.Td>
-                  {new Date(nb.effectiveStartDate).toLocaleDateString()} –{" "}
-                  {nb.effectiveEndDate ? new Date(nb.effectiveEndDate).toLocaleDateString() : "ongoing"}
+                  {formatDateOnly(nb.effectiveStartDate)} –{" "}
+                  {nb.effectiveEndDate ? formatDateOnly(nb.effectiveEndDate) : "ongoing"}
                 </Table.Td>
                 <Table.Td>{nb.approvalReference}</Table.Td>
               </Table.Tr>

@@ -1,4 +1,4 @@
-import { Alert, Button, List, Modal, Select, Stack, Text } from "@mantine/core";
+import { Alert, Button, Group, List, Modal, Select, Stack, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
 import { useBulkAssignFollowUp } from "../../api/followups";
@@ -19,8 +19,14 @@ export function BulkAssignModal({
   const { data: staff } = useUsers();
   const bulkAssign = useBulkAssignFollowUp();
   const [staffUserId, setStaffUserId] = useState<string | null>(null);
+  const [reviewMode, setReviewMode] = useState(false);
 
-  async function handleSubmit() {
+  function handleSubmit() {
+    if (!staffUserId) return;
+    setReviewMode(true);
+  }
+
+  async function confirmSubmit() {
     if (!staffUserId) return;
     try {
       const result = await bulkAssign.mutateAsync({ studentIds, staffUserId: Number(staffUserId) });
@@ -32,6 +38,7 @@ export function BulkAssignModal({
         color: result.skipped.length > 0 ? "yellow" : "green",
       });
       setStaffUserId(null);
+      setReviewMode(false);
       onClose();
     } catch (err) {
       notifications.show({
@@ -45,33 +52,59 @@ export function BulkAssignModal({
     .filter((u) => u.role !== "READ_ONLY_AUDITOR")
     .map((u) => ({ value: String(u.id), label: u.name }));
 
-  return (
-    <Modal opened={opened} onClose={onClose} title={`Assign ${studentIds.length} Students`}>
-      <Stack gap="md">
-        <Alert color="blue" variant="light">
-          <Text size="sm" fw={500} mb={4}>
-            Selected students
-          </Text>
-          <List size="sm" spacing={2}>
-            {studentIds.slice(0, 8).map((id) => (
-              <List.Item key={id}>{studentLabels.get(id) ?? `Student #${id}`}</List.Item>
-            ))}
-            {studentIds.length > 8 && <List.Item>and {studentIds.length - 8} more…</List.Item>}
-          </List>
-        </Alert>
+  const selectedStaffName = staffOptions.find((s) => s.value === staffUserId)?.label ?? "Unknown";
 
-        <Select
-          label="Assign to"
-          placeholder="Choose a staff member…"
-          data={staffOptions}
-          value={staffUserId}
-          onChange={setStaffUserId}
-          searchable
-        />
-        <Button onClick={handleSubmit} loading={bulkAssign.isPending} disabled={!staffUserId}>
-          Assign {studentIds.length} Students
-        </Button>
-      </Stack>
+  return (
+    <Modal opened={opened} onClose={() => { setReviewMode(false); onClose(); }} title={`Assign ${studentIds.length} Students`}>
+      {!reviewMode ? (
+        <Stack gap="md">
+          <Alert color="blue" variant="light">
+            <Text size="sm" fw={500} mb={4}>
+              Selected students
+            </Text>
+            <List size="sm" spacing={2}>
+              {studentIds.slice(0, 8).map((id) => (
+                <List.Item key={id}>{studentLabels.get(id) ?? `Student #${id}`}</List.Item>
+              ))}
+              {studentIds.length > 8 && <List.Item>and {studentIds.length - 8} more…</List.Item>}
+            </List>
+          </Alert>
+
+          <Select
+            label="Assign to"
+            placeholder="Choose a staff member…"
+            data={staffOptions}
+            value={staffUserId}
+            onChange={setStaffUserId}
+            searchable
+          />
+          <Button onClick={handleSubmit} disabled={!staffUserId}>
+            Review and Confirm
+          </Button>
+        </Stack>
+      ) : (
+        <Stack gap="md">
+          <Alert color="yellow" variant="light">
+            <Text fw={500} mb={4}>Confirm bulk assignment</Text>
+            <Text size="sm">You are about to assign the following {studentIds.length} student{studentIds.length !== 1 ? "s" : ""} to <strong>{selectedStaffName}</strong>:</Text>
+            <List size="sm" spacing={2} mt="sm">
+              {studentIds.slice(0, 8).map((id) => (
+                <List.Item key={id}>{studentLabels.get(id) ?? `Student #${id}`}</List.Item>
+              ))}
+              {studentIds.length > 8 && <List.Item>and {studentIds.length - 8} more…</List.Item>}
+            </List>
+          </Alert>
+
+          <Group justify="flex-end">
+            <Button variant="light" onClick={() => setReviewMode(false)}>
+              Back
+            </Button>
+            <Button onClick={confirmSubmit} loading={bulkAssign.isPending}>
+              Yes, assign to {selectedStaffName}
+            </Button>
+          </Group>
+        </Stack>
+      )}
     </Modal>
   );
 }

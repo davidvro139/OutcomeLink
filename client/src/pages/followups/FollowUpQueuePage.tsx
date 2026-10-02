@@ -10,6 +10,7 @@ import { BulkAssignModal } from "./BulkAssignModal";
 import { BulkFollowUpModal } from "./BulkFollowUpModal";
 import { SortableTableHeader } from "../../components/SortableTableHeader";
 import type { SortDirection } from "../../lib/sorting";
+import { formatDateOnly } from "../../lib/dates";
 
 function AssignedToCell({ studentId, assignedTo }: { studentId: number; assignedTo: { id: number; name: string } | null }) {
   const { data: staff } = useUsers();
@@ -237,12 +238,10 @@ export function FollowUpQueuePage() {
                 <Table.Td>{row.campus?.name ?? "—"}</Table.Td>
                 <Table.Td>{row.attempts}</Table.Td>
                 <Table.Td>
-                  {row.lastContact ? new Date(row.lastContact).toLocaleDateString() : "Never"}
+                  {row.lastContact ? formatDateOnly(row.lastContact.toString().split('T')[0]) : "Never"}
                 </Table.Td>
                 <Table.Td>{row.lastOutcome ?? "—"}</Table.Td>
-                <Table.Td>
-                  {row.nextFollowUpDate ? new Date(row.nextFollowUpDate).toLocaleDateString() : "—"}
-                </Table.Td>
+                <Table.Td>{row.nextFollowUpDate ? formatDateOnly(row.nextFollowUpDate) : "—"}</Table.Td>
                 <Table.Td>
                   {canWrite ? <AssignedToCell studentId={row.student.id} assignedTo={row.assignedTo} /> : row.assignedTo?.name ?? "Unassigned"}
                 </Table.Td>

@@ -13,6 +13,7 @@ import {
   useSendEmployerSurvey,
   useSendGraduateSurvey,
 } from "../../api/surveys";
+import { formatDateOnly } from "../../lib/dates";
 
 const CHANNEL_OPTIONS = ["EMAIL", "SMS", "MAIL", "PHONE"];
 
@@ -90,7 +91,7 @@ function GraduateSurveysSection({ studentId }: { studentId: number }) {
                 onClick={() => survey.response && setExpandedId(expandedId === survey.id ? null : survey.id)}
                 style={{ cursor: survey.response ? "pointer" : undefined }}
               >
-                <Table.Td>{new Date(survey.sentAt).toLocaleDateString()}</Table.Td>
+                <Table.Td>{formatDateOnly(survey.sentAt)}</Table.Td>
                 <Table.Td>{survey.channel ?? "—"}</Table.Td>
                 <Table.Td>
                   <Badge color={survey.response ? "teal" : "gray"}>
@@ -237,7 +238,7 @@ function EmployerSurveysSection({ studentId }: { studentId: number }) {
                 style={{ cursor: survey.response ? "pointer" : undefined }}
               >
                 <Table.Td>{survey.employer.name}</Table.Td>
-                <Table.Td>{new Date(survey.sentAt).toLocaleDateString()}</Table.Td>
+                <Table.Td>{formatDateOnly(survey.sentAt)}</Table.Td>
                 <Table.Td>
                   <Badge color={survey.response ? "teal" : "gray"}>
                     {survey.response ? "Responded" : "Awaiting response"}

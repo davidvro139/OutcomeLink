@@ -1,5 +1,6 @@
 import { RETENTION_LABELS, type RetentionSettings } from "@outcomelink/shared";
-import { Alert, Button, Group, Loader, NumberInput, Stack, Text } from "@mantine/core";
+import { Alert, Button, Group, Loader, Modal, NumberInput, Stack, Text } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { useEffect, useState } from "react";
 import { describeSaveError } from "../../lib/formErrors";
@@ -31,6 +32,7 @@ export function RetentionPanel() {
   const { data, isLoading } = useRetentionSettings();
   const save = useSaveRetentionSettings();
   const runNow = useRunRetentionNow();
+  const [cleanupConfirmOpened, { open: openCleanupConfirm, close: closeCleanupConfirm }] = useDisclosure(false);
   const [values, setValues] = useState<Record<keyof RetentionSettings, number | string> | null>(
     null,
   );
@@ -57,7 +59,7 @@ export function RetentionPanel() {
     }
   }
 
-  async function handleRun() {
+  async function confirmCleanup() {
     try {
       const { result } = await runNow.mutateAsync();
       const total =
@@ -70,6 +72,7 @@ export function RetentionPanel() {
         message: `Cleanup finished: ${total} record${total === 1 ? "" : "s"} and ${result.filesRemoved} file${result.filesRemoved === 1 ? "" : "s"} removed.`,
         color: "green",
       });
+      closeCleanupConfirm();
     } catch (err) {
       notifications.show({
         message: err instanceof Error ? err.message : "Cleanup failed",
@@ -111,10 +114,26 @@ export function RetentionPanel() {
         <Button onClick={handleSave} loading={save.isPending}>
           Save
         </Button>
-        <Button variant="light" onClick={handleRun} loading={runNow.isPending}>
+        <Button variant="light" onClick={openCleanupConfirm} loading={runNow.isPending}>
           Run cleanup now
         </Button>
       </Group>
+
+      <Modal opened={cleanupConfirmOpened} onClose={closeCleanupConfirm} title="Confirm Cleanup" centered>
+        <Stack gap="md">
+          <Text>
+            This will permanently delete operational records (email logs, scheduled report runs, notifications) older than the configured limits. Student records, enrollment history, and audit logs are never deleted. This cannot be undone.
+          </Text>
+          <Group justify="flex-end">
+            <Button variant="light" onClick={closeCleanupConfirm}>
+              Cancel
+            </Button>
+            <Button onClick={confirmCleanup} loading={runNow.isPending}>
+              Run cleanup
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }

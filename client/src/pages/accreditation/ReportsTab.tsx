@@ -16,6 +16,7 @@ import {
 } from "../../api/reports";
 import { useStartGraduateCampaign } from "../../api/surveys";
 import { GeographicPlacementsPanel } from "./GeographicPlacementsPanel";
+import { formatDateOnly } from "../../lib/dates";
 
 const CAN_START_CAMPAIGN = [
   "SYSTEM_ADMINISTRATOR",
@@ -459,7 +460,7 @@ function SkillsGapAnalysisPanel() {
                         <Paper key={i} withBorder p="xs" radius="sm">
                           <Text size="sm">{note.note}</Text>
                           <Text size="xs" c="dimmed">
-                            {note.employerName} — {new Date(note.submittedAt).toLocaleDateString()}
+                            {note.employerName} — {formatDateOnly(note.submittedAt)}
                           </Text>
                         </Paper>
                       ))}

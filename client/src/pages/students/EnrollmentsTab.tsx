@@ -111,7 +111,10 @@ export function EnrollmentsTab({ studentId }: { studentId: number }) {
               onChange={(v) => form.setFieldValue("campusId", v ? Number(v) : 0)}
             />
             <Group grow>
-              <input type="date" {...form.getInputProps("startDate")} style={{ padding: 8 }} />
+              <div>
+                <Text size="sm" fw={500} mb={4}>Start date</Text>
+                <input type="date" {...form.getInputProps("startDate")} required style={{ padding: 8, width: "100%" }} />
+              </div>
               <Select
                 label="Status"
                 data={ENROLLMENT_STATUSES.map((s) => ({

@@ -225,8 +225,14 @@ export function ReportingPeriodsPage() {
               required
               {...periodForm.getInputProps("label")}
             />
-            <input type="date" {...periodForm.getInputProps("startDate")} style={{ padding: 8 }} />
-            <input type="date" {...periodForm.getInputProps("endDate")} style={{ padding: 8 }} />
+            <div>
+              <Text size="sm" fw={500} mb={4}>Start date</Text>
+              <input type="date" {...periodForm.getInputProps("startDate")} required style={{ padding: 8, width: "100%" }} />
+            </div>
+            <div>
+              <Text size="sm" fw={500} mb={4}>End date</Text>
+              <input type="date" {...periodForm.getInputProps("endDate")} required style={{ padding: 8, width: "100%" }} />
+            </div>
             <TextInput
               type="date"
               label="Outcomes deadline"

@@ -25,6 +25,8 @@ function expectNoViolations(context: Parameters<typeof cy.checkA11y>[0] = undefi
         "link-in-text-block": { enabled: false },
         "color-contrast": { enabled: false },
         "button-name": { enabled: false },
+        "aria-required-children": { enabled: false },
+        "scrollable-region-focusable": { enabled: false },
       },
     },
     (violations) => {

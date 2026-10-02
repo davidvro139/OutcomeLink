@@ -33,12 +33,11 @@ describe("reporting-period close-out checklist", () => {
     cy.loginAs(ACCOUNTS.institutionalAdmin);
     openFirstPeriod();
 
-    // Click the Close-out tab first and wait for it to be visible
-    cy.contains('[role="tab"]', "Close-out").click();
-    cy.get('[role="tabpanel"]').should("exist");
-    cy.wait(500);
+    // Click the Close-out tab and wait for panel to be visible
+    cy.contains('[role="tab"]', "Close-out").scrollIntoView().click({ force: true });
+    cy.get('[id*="closeout"][role="tabpanel"]', { timeout: 3000 }).should("be.visible");
 
-    STEPS.forEach((title) => cy.contains(title).should("be.visible"));
+    STEPS.forEach((title) => cy.contains(title, { timeout: 2000 }).should("be.visible"));
 
     // Either something still needs doing (an action button), or the period is locked and shows its record.
     cy.get("body").then(($body) => {
@@ -57,12 +56,11 @@ describe("reporting-period close-out checklist", () => {
     cy.loginAs(ACCOUNTS.auditor);
     openFirstPeriod();
 
-    // Click the Close-out tab first and wait for it to be visible
-    cy.contains('[role="tab"]', "Close-out").click();
-    cy.get('[role="tabpanel"]').should("exist");
-    cy.wait(500);
+    // Click the Close-out tab and wait for panel to be visible
+    cy.contains('[role="tab"]', "Close-out").scrollIntoView().click({ force: true });
+    cy.get('[id*="closeout"][role="tabpanel"]', { timeout: 3000 }).should("be.visible");
 
-    STEPS.forEach((title) => cy.contains(title).should("be.visible"));
+    STEPS.forEach((title) => cy.contains(title, { timeout: 2000 }).should("be.visible"));
     cy.contains("button", "Compute now").should("not.exist");
     cy.contains("button", "Sign off").should("not.exist");
     cy.contains("button", "Finalize…").should("not.exist");

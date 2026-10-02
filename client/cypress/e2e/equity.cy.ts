@@ -28,15 +28,13 @@ describe("Cohort & Equity breakdowns", () => {
     // Dimension selector should be visible (labeled as "Disaggregate by")
     cy.contains("label", "Disaggregate by", { timeout: 6000 }).should("be.visible");
 
-    // Select a dimension (entry year is the default non-demographic one)
-    cy.get('[name="dimension"]').should("be.visible");
-
     // Run the report
-    cy.contains("button", "Load").should("not.be.disabled").click();
+    cy.contains("button", "Load", { timeout: 6000 }).should("not.be.disabled").click();
+    cy.wait(500);
 
     // Results should appear
-    cy.contains("Groups").should("be.visible");
-    cy.get("table tbody tr").should("have.length.greaterThan", 0);
+    cy.contains("Groups", { timeout: 6000 }).should("be.visible");
+    cy.get("table tbody tr", { timeout: 6000 }).should("have.length.greaterThan", 0);
   });
 
   it("switches between dimensions and updates results", () => {

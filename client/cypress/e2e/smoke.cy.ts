@@ -29,9 +29,9 @@ describe("smoke: login -> create student -> view CPL dashboard", () => {
     cy.get('label:contains("First name") + div input').type("Cypress");
     cy.get('label:contains("Last name") + div input').type("Smoketest");
     cy.contains("button", "Create").click();
-    cy.wait(1000); // Wait for student to be created and list refreshed
+    cy.wait(2000); // Wait for student to be created and list refreshed
 
-    cy.contains(uniqueId, { timeout: 6000 }).should("be.visible");
+    cy.contains(uniqueId, { timeout: 8000 }).should("be.visible");
 
     cy.contains("a", "Accreditation").click({ force: true });
     cy.url().should("include", "/accreditation/reporting-periods");

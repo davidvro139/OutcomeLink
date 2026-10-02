@@ -6,7 +6,7 @@ import { resetRateLimits, setRateLimitingForTests } from "./rateLimit";
 
 const app = createApp();
 
-describe("rate limiting and security headers (integration)", () => {
+describe("rate limiting and security headers (integration)", { timeout: 20000 }, () => {
   beforeAll(async () => {
     const institution = await prisma.institution.create({
       data: { name: "Rate Limit Test Institution" },

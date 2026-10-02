@@ -109,94 +109,99 @@ export function AppLayout() {
   }
 
   return (
-    <AppShell
-      header={{ height: 60 }}
-      navbar={{ width: 220, breakpoint: "sm", collapsed: { mobile: !navOpened } }}
-      padding="md"
-    >
-      <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between">
-          <Group gap="sm">
-            <Burger opened={navOpened} onClick={toggleNav} hiddenFrom="sm" size="sm" />
-            <Link to="/" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
-              <Image src="/logo-clean-md.png" alt="OutcomeLink" height={45} width="auto" />
-            </Link>
+    <>
+      <a href="#main-content" className="skip-link" style={{ position: "absolute", top: "-40px", left: 0, backgroundColor: "#000", color: "#fff", padding: "8px", textDecoration: "none", zIndex: 100 }} onFocus={(e) => (e.currentTarget.style.top = "0")} onBlur={(e) => (e.currentTarget.style.top = "-40px")}>
+        Skip to main content
+      </a>
+      <AppShell
+        header={{ height: 60 }}
+        navbar={{ width: 220, breakpoint: "sm", collapsed: { mobile: !navOpened } }}
+        padding="md"
+      >
+        <AppShell.Header>
+          <Group h="100%" px="md" justify="space-between">
+            <Group gap="sm">
+              <Burger opened={navOpened} onClick={toggleNav} hiddenFrom="sm" size="sm" />
+              <Link to="/" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
+                <Image src="/logo-clean-md.png" alt="OutcomeLink" height={45} width="auto" />
+              </Link>
+            </Group>
+
+              <GlobalSearch />
+
+            {user && <NotificationBell />}
+
+            {user && (
+              <Menu position="bottom-end" shadow="md" width={220}>
+                <Menu.Target>
+                  <UnstyledButton aria-label={user.name}>
+                    <Group gap={8}>
+                      <Avatar radius="xl" size="sm">
+                        {user.name
+                          .split(" ")
+                          .map((part) => part[0])
+                          .join("")
+                          .slice(0, 2)}
+                      </Avatar>
+                      <div>
+                        <Text size="sm" fw={500} lh={1.1}>
+                          {user.name}
+                        </Text>
+                        <Text size="xs" c="dimmed" lh={1.1}>
+                          {ROLE_LABELS[user.role]}
+                        </Text>
+                      </div>
+                      <IconChevronDown size={14} />
+                    </Group>
+                  </UnstyledButton>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item leftSection={<IconLogout size={14} />} onClick={handleLogout}>
+                    Sign out
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+            )}
           </Group>
+        </AppShell.Header>
 
-            <GlobalSearch />
+        <AppShell.Navbar p="md" aria-label="Main">
+          <Stack gap="lg">
+            {navSections.map((section) => {
+              const items = section.items.filter((item) => item.show);
+              if (items.length === 0) return null;
+              return (
+                <Stack key={section.label ?? items[0]!.to} gap={4}>
+                  {section.label && (
+                    <Text size="xs" fw={700} c="dimmed" tt="uppercase" px={8}>
+                      {section.label}
+                    </Text>
+                  )}
+                  {items.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      component={Link}
+                      to={item.to}
+                      label={item.label}
+                      leftSection={<item.icon size={18} />}
+                      active={
+                        item.to === "/"
+                          ? location.pathname === "/"
+                          : location.pathname.startsWith(item.to)
+                      }
+                      onClick={closeNav}
+                    />
+                  ))}
+                </Stack>
+              );
+            })}
+          </Stack>
+        </AppShell.Navbar>
 
-          {user && <NotificationBell />}
-
-          {user && (
-            <Menu position="bottom-end" shadow="md" width={220}>
-              <Menu.Target>
-                <UnstyledButton>
-                  <Group gap={8}>
-                    <Avatar radius="xl" size="sm">
-                      {user.name
-                        .split(" ")
-                        .map((part) => part[0])
-                        .join("")
-                        .slice(0, 2)}
-                    </Avatar>
-                    <div>
-                      <Text size="sm" fw={500} lh={1.1}>
-                        {user.name}
-                      </Text>
-                      <Text size="xs" c="dimmed" lh={1.1}>
-                        {ROLE_LABELS[user.role]}
-                      </Text>
-                    </div>
-                    <IconChevronDown size={14} />
-                  </Group>
-                </UnstyledButton>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Item leftSection={<IconLogout size={14} />} onClick={handleLogout}>
-                  Sign out
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
-          )}
-        </Group>
-      </AppShell.Header>
-
-      <AppShell.Navbar p="md" aria-label="Main">
-        <Stack gap="lg">
-          {navSections.map((section) => {
-            const items = section.items.filter((item) => item.show);
-            if (items.length === 0) return null;
-            return (
-              <Stack key={section.label ?? items[0]!.to} gap={4}>
-                {section.label && (
-                  <Text size="xs" fw={700} c="dimmed" tt="uppercase" px={8}>
-                    {section.label}
-                  </Text>
-                )}
-                {items.map((item) => (
-                  <NavLink
-                    key={item.to}
-                    component={Link}
-                    to={item.to}
-                    label={item.label}
-                    leftSection={<item.icon size={18} />}
-                    active={
-                      item.to === "/"
-                        ? location.pathname === "/"
-                        : location.pathname.startsWith(item.to)
-                    }
-                    onClick={closeNav}
-                  />
-                ))}
-              </Stack>
-            );
-          })}
-        </Stack>
-      </AppShell.Navbar>
-
-      <AppShell.Main id="main-content" tabIndex={-1} style={{ outline: "none" }}>
-        <Outlet />
-      </AppShell.Main>
-    </AppShell>
+        <AppShell.Main id="main-content" tabIndex={-1} style={{ outline: "none" }}>
+          <Outlet />
+        </AppShell.Main>
+      </AppShell>
+    </>
   );
 }

@@ -25,6 +25,7 @@ describe("reporting-period close-out checklist", () => {
     cy.url().should("include", "/accreditation/reporting-periods");
     cy.contains("h2", "Reporting Periods").should("be.visible");
     cy.get("table tbody tr").first().find("a").click();
+    cy.contains('[role="tab"]', "Close-out").click();
     cy.contains("Close-out steps").should("be.visible");
   }
 

@@ -102,7 +102,7 @@ export function EquityBreakdownPage() {
   return (
     <Stack p="xl" gap="lg">
       <div>
-        <Title order={1} size="h2">Cohort & Equity Breakdown</Title>
+        <Title order={2}>Cohort & Equity Breakdown</Title>
         <Text size="sm" c="dimmed">Compare outcomes across student groups</Text>
       </div>
 

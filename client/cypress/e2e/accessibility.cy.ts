@@ -99,7 +99,9 @@ const PAGES = [
       cy.loginAs(ACCOUNTS.systemAdmin);
       cy.visit("/accreditation/reporting-periods");
       cy.get("table tbody tr").first().find("a").click();
+      cy.contains('[role="tab"]', "Close-out").click();
       cy.contains("Close-out steps").should("be.visible");
+      cy.wait(1000);
       expectNoViolations();
       [
         "CPL Dashboard",

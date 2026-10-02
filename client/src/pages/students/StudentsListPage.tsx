@@ -4,7 +4,6 @@ import {
   Group,
   Loader,
   Modal,
-  Pagination,
   Stack,
   Table,
   Text,
@@ -18,6 +17,7 @@ import { notifications } from "@mantine/notifications";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { type CreateStudentInput, useCreateStudent, useStudents } from "../../api/students";
+import { Pager } from "../../components/Pager";
 import { downloadFile } from "../../lib/apiClient";
 import { stripEmptyStrings } from "../../lib/forms";
 import { usePermissions } from "../../auth/usePermissions";
@@ -185,7 +185,7 @@ export function StudentsListPage() {
           </Table>
           {data.pagination.totalPages > 1 && (
             <Group justify="center" align="center" gap="xl">
-              <Pagination total={data.pagination.totalPages} value={page} onChange={setPage} />
+              <Pager total={data.pagination.totalPages} value={page} onChange={setPage} />
               <Text size="sm" c="dimmed">
                 Page {page} of {data.pagination.totalPages}
               </Text>

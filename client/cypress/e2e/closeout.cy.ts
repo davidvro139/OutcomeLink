@@ -33,9 +33,11 @@ describe("reporting-period close-out checklist", () => {
     cy.loginAs(ACCOUNTS.institutionalAdmin);
     openFirstPeriod();
 
-    // Click the Close-out tab and wait for panel to be visible
-    cy.contains('[role="tab"]', "Close-out").scrollIntoView().click({ force: true });
-    cy.get('[id*="closeout"][role="tabpanel"]', { timeout: 3000 }).should("be.visible");
+    // Click the Close-out tab and wait for it to be selected
+    cy.contains('[role="tab"]', "Close-out").then(($tab) => {
+      cy.wrap($tab).click({ force: true });
+      cy.wrap($tab).should("have.attr", "aria-selected", "true");
+    });
 
     STEPS.forEach((title) => cy.contains(title, { timeout: 2000 }).should("be.visible"));
 
@@ -56,9 +58,11 @@ describe("reporting-period close-out checklist", () => {
     cy.loginAs(ACCOUNTS.auditor);
     openFirstPeriod();
 
-    // Click the Close-out tab and wait for panel to be visible
-    cy.contains('[role="tab"]', "Close-out").scrollIntoView().click({ force: true });
-    cy.get('[id*="closeout"][role="tabpanel"]', { timeout: 3000 }).should("be.visible");
+    // Click the Close-out tab and wait for it to be selected
+    cy.contains('[role="tab"]', "Close-out").then(($tab) => {
+      cy.wrap($tab).click({ force: true });
+      cy.wrap($tab).should("have.attr", "aria-selected", "true");
+    });
 
     STEPS.forEach((title) => cy.contains(title, { timeout: 2000 }).should("be.visible"));
     cy.contains("button", "Compute now").should("not.exist");

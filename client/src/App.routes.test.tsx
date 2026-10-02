@@ -39,12 +39,13 @@ function renderApp(role: Role | null, path: string) {
 describe("app routes", () => {
   beforeEach(() => {
     window.scrollTo = vi.fn();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    window.ResizeObserver = class {
+    const ResizeObserverClass = class {
       observe() {}
       unobserve() {}
       disconnect() {}
-    } as any;
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    window.ResizeObserver = ResizeObserverClass as any;
     mockedApiRequest.mockReset();
     mockedPaginated.mockReset();
     mockedPaginated.mockResolvedValue({

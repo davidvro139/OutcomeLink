@@ -61,12 +61,14 @@ export interface CreateEnrollmentInput {
   reportableForAccreditation?: boolean;
 }
 
-export function useStudents(search?: string, page = 1) {
+export function useStudents(search?: string, page = 1, sort?: string, order?: "asc" | "desc") {
   const query = new URLSearchParams({ pageSize: "50", page: String(page) });
   if (search) query.set("search", search);
+  if (sort) query.set("sort", sort);
+  if (order) query.set("order", order);
 
   return useQuery({
-    queryKey: ["students", search, page],
+    queryKey: ["students", search, page, sort, order],
     queryFn: () => apiRequestPaginated<Student>(`/api/students?${query.toString()}`),
     placeholderData: (previousData) => previousData,
   });

@@ -3,6 +3,8 @@ import { IconDownload } from "@tabler/icons-react";
 import { EQUITY_DIMENSION_LABELS, EQUITY_DIMENSIONS } from "@outcomelink/shared";
 import type { CplMetric, EquityDimension } from "@outcomelink/shared";
 import { useMemo, useState } from "react";
+import { SortableTableHeader } from "../../components/SortableTableHeader";
+import type { SortDirection } from "../../lib/sorting";
 import {
   LineChart,
   Line,
@@ -42,6 +44,8 @@ export function EquityBreakdownPage() {
   const [metric, setMetric] = useState<CplMetric>("COMPLETION");
   const [dimension, setDimension] = useState<EquityDimension>("entryYear");
   const [programId, setProgramId] = useState<number | null>(null);
+  const [sortField, setSortField] = useState<string | null>("label");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const { data: programData } = usePrograms();
   const programs = programData?.items ?? [];
 
@@ -50,6 +54,35 @@ export function EquityBreakdownPage() {
   }, [metric, dimension, programId]);
 
   const { data: breakdown, isLoading } = useEquityBreakdown(params);
+
+  const handleSort = (field: string, direction: SortDirection) => {
+    setSortField(field);
+    setSortDirection(direction);
+  };
+
+  const sortedGroups = useMemo(() => {
+    if (!breakdown?.groups) return [];
+    const groups = [...breakdown.groups];
+    if (!sortField) return groups;
+
+    return groups.sort((a, b) => {
+      let aVal = a[sortField as keyof typeof a];
+      let bVal = b[sortField as keyof typeof b];
+
+      if (aVal === null || aVal === undefined) aVal = "";
+      if (bVal === null || bVal === undefined) bVal = "";
+
+      if (typeof aVal === "string" && typeof bVal === "string") {
+        return sortDirection === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        return sortDirection === "asc" ? aVal - bVal : bVal - aVal;
+      }
+
+      return 0;
+    });
+  }, [breakdown?.groups, sortField, sortDirection]);
 
   if (isLoading) return <Text>Loading...</Text>;
 
@@ -133,15 +166,58 @@ export function EquityBreakdownPage() {
           <Table striped>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Group</Table.Th>
-                <Table.Th ta="right">Denominator</Table.Th>
-                <Table.Th ta="right">Numerator</Table.Th>
-                <Table.Th ta="right">Percentage</Table.Th>
-                <Table.Th>Status</Table.Th>
+                <Table.Th>
+                  <SortableTableHeader
+                    field="label"
+                    label="Group"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                </Table.Th>
+                <Table.Th ta="right">
+                  <SortableTableHeader
+                    field="denominator"
+                    label="Denominator"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="right"
+                  />
+                </Table.Th>
+                <Table.Th ta="right">
+                  <SortableTableHeader
+                    field="numerator"
+                    label="Numerator"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="right"
+                  />
+                </Table.Th>
+                <Table.Th ta="right">
+                  <SortableTableHeader
+                    field="percentage"
+                    label="Percentage"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="right"
+                  />
+                </Table.Th>
+                <Table.Th>
+                  <SortableTableHeader
+                    field="status"
+                    label="Status"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                </Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {breakdown.groups.map((g) => (
+              {sortedGroups.map((g) => (
                 <Table.Tr key={g.value}>
                   <Table.Td>{g.label}</Table.Td>
                   <Table.Td ta="right">{g.denominator}</Table.Td>

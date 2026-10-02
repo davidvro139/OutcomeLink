@@ -45,6 +45,8 @@ type UpdateStudentInput = z.infer<typeof updateStudentSchema>;
 
 export const listStudentsQuerySchema = paginationQuerySchema.extend({
   search: z.string().trim().min(1).max(200).optional(),
+  sort: z.enum(["firstName", "lastName", "internalStudentId", "email"]).optional(),
+  order: z.enum(["asc", "desc"]).default("asc"),
 });
 type ListStudentsQuery = z.infer<typeof listStudentsQuerySchema>;
 
@@ -57,7 +59,7 @@ async function findOwnedStudent(institutionId: number, id: number, accessiblePro
 }
 
 export async function list(req: Request, res: Response) {
-  const { page, pageSize, search } = req.query as unknown as ListStudentsQuery;
+  const { page, pageSize, search, sort, order } = req.query as unknown as ListStudentsQuery;
   const institutionId = req.user!.institutionId;
   const accessibleProgramIds = await getAccessibleProgramIds(req.user!);
 
@@ -67,11 +69,20 @@ export async function list(req: Request, res: Response) {
     ...studentProgramScopeFilter(accessibleProgramIds),
   };
 
+  const orderByField = sort || "lastName";
+  const orderByDirection = order || "asc";
+
   await paginatedResponse(
     res,
     page,
     pageSize,
-    (skip, take) => prisma.student.findMany({ where, skip, take, orderBy: { lastName: "asc" } }),
+    (skip, take) =>
+      prisma.student.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { [orderByField]: orderByDirection },
+      }),
     () => prisma.student.count({ where }),
   );
 }

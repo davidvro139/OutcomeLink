@@ -20,17 +20,34 @@ import { type CreateStudentInput, useCreateStudent, useStudents } from "../../ap
 import { downloadFile } from "../../lib/apiClient";
 import { stripEmptyStrings } from "../../lib/forms";
 import { usePermissions } from "../../auth/usePermissions";
+import { SortableTableHeader } from "../../components/SortableTableHeader";
+import type { SortDirection } from "../../lib/sorting";
 
 export function StudentsListPage() {
   const { canManageStudents } = usePermissions();
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebouncedValue(search, 300);
   const [page, setPage] = useState(1);
+  const [sortField, setSortField] = useState<string | null>("lastName");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
   useEffect(() => setPage(1), [debouncedSearch]);
-  const { data, isLoading } = useStudents(debouncedSearch || undefined, page);
+
+  const { data, isLoading } = useStudents(
+    debouncedSearch || undefined,
+    page,
+    sortField || undefined,
+    sortDirection,
+  );
   const [opened, { open, close }] = useDisclosure(false);
   const createStudent = useCreateStudent();
   const [exporting, setExporting] = useState(false);
+
+  const handleSort = (field: string, direction: SortDirection) => {
+    setSortField(field);
+    setSortDirection(direction);
+    setPage(1);
+  };
 
   async function handleExport() {
     setExporting(true);
@@ -99,9 +116,33 @@ export function StudentsListPage() {
           <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Name</Table.Th>
-                <Table.Th>Student ID</Table.Th>
-                <Table.Th>Email</Table.Th>
+                <Table.Th>
+                  <SortableTableHeader
+                    field="lastName"
+                    label="Name"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                </Table.Th>
+                <Table.Th>
+                  <SortableTableHeader
+                    field="internalStudentId"
+                    label="Student ID"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                </Table.Th>
+                <Table.Th>
+                  <SortableTableHeader
+                    field="email"
+                    label="Email"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                </Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>

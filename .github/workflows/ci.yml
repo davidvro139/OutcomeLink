@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [main, master]
   pull_request:
 
 # A newer push to the same branch/PR makes an in-flight run obsolete.

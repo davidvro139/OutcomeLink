@@ -6,6 +6,7 @@ import { resetRateLimits, setRateLimitingForTests } from "./rateLimit";
 
 const app = createApp();
 
+// Increase timeout for rate limiting tests that make many API requests
 jest.setTimeout(20000);
 
 describe("rate limiting and security headers (integration)", () => {

@@ -12,6 +12,8 @@ export default defineConfig({
   // optimizeDeps fixes that.
   optimizeDeps: {
     include: ["@outcomelink/shared"],
+    exclude: ["remark-gfm", "react-markdown", "ccount", "trim-lines"],
+    noDiscovery: true,
   },
   test: {
     environment: "jsdom",

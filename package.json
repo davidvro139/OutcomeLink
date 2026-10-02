@@ -50,5 +50,9 @@
     "*.{ts,tsx,md,json}": [
       "prettier --write"
     ]
+  },
+  "dependencies": {
+    "nodemailer": "^10.0.13",
+    "sharp": "^0.35.5"
   }
 }

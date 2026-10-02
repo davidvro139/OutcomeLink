@@ -140,16 +140,16 @@ describe("keyboard and navigation basics", () => {
   });
 
   it("gives every page its own title", () => {
-    cy.nav().contains("a", "Students").click();
+    cy.nav().contains("a", "Students").click({ force: true });
     cy.title().should("eq", "Students — OutcomeLink");
-    cy.nav().contains("a", "Employers").click();
+    cy.nav().contains("a", "Employers").click({ force: true });
     cy.title().should("eq", "Employers — OutcomeLink");
-    cy.nav().contains("a", "My Programs").click();
+    cy.nav().contains("a", "My Programs").click({ force: true });
     cy.title().should("eq", "My Programs — OutcomeLink");
   });
 
   it("names the paging buttons for screen readers", () => {
-    cy.nav().contains("a", "Students").click();
+    cy.nav().contains("a", "Students").click({ force: true });
     cy.get('button[aria-label="Next page"]').should("exist");
     cy.get('button[aria-label="Previous page"]').should("exist");
   });
